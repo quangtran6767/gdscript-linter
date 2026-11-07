@@ -1,0 +1,5 @@
+scripts/player.gd:3:12: warning [unused-argument] Function argument 'niño' is unused. Consider removing it or prefixing with '_'
+scripts/player.gd:4:14: info [no-emoji-strings] String contains an emoji
+scripts/player.gd:5:5: warning [prefer-is-empty] Use `items.is_empty()` instead of `len(items) == 0`
+scripts/player.gd:5:2: error [no-empty-if] This if block does nothing
+scripts/enemies/enemy.gd:1:8: error [signal-name] Signal name 'OnDefeated' should be in snake_case format

@@ -62,11 +62,12 @@ Options:
       --disable <RULES>        Disable specific rules (comma-separated)
       --max-line-length <NUM>  Maximum line length allowed (default: 100)
       --list-rules             List all available linting rules (--format text|json)
-      --pretty                 Use pretty formatting for lint output
+      --pretty                 Same as --format pretty
       --fix                    Apply safe fixes
       --fix-unsafe             Apply safe and unsafe fixes
       --diff                   Print the fixes as a unified diff, don't write files
       --format <FORMAT>        Output format: pretty, compact, json, github, sarif
+                               (default: pretty on a terminal, compact otherwise)
       --config <PATH>          Use this gdguard.toml instead of searching for one
       --baseline <PATH>        Hide the issues listed in this baseline file
       --update-baseline        Write all current issues to the baseline file

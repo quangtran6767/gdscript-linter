@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "tool": {
+    "name": "gdguard",
+    "version": "0.28.0"
+  },
+  "summary": {
+    "files": 3,
+    "errors": 2,
+    "warnings": 2,
+    "infos": 1,
+    "fixable": 1
+  },
+  "issues": [
+    {
+      "file": "scripts/player.gd",
+      "rule": "unused-argument",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Function argument 'niño' is unused. Consider removing it or prefixing with '_'",
+      "help": "Remove 'niño', or rename it to '_niño' if the function signature must stay the same.",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 12,
+          "byte": 25
+        },
+        "end": {
+          "line": 3,
+          "column": 17,
+          "byte": 30
+        }
+      },
+      "snippet": "func café(niño: int) -> void:",
+      "explain": "gdguard explain unused-argument",
+      "fixes": []
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "no-emoji-strings",
+      "origin": "custom",
+      "severity": "info",
+      "message": "String contains an emoji",
+      "help": null,
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 14,
+          "byte": 59
+        },
+        "end": {
+          "line": 4,
+          "column": 26,
+          "byte": 71
+        }
+      },
+      "snippet": "\tvar label = \"🎮 joué\"",
+      "explain": "gdguard explain no-emoji-strings",
+      "fixes": []
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "prefer-is-empty",
+      "origin": "custom",
+      "severity": "warning",
+      "message": "Use `items.is_empty()` instead of `len(items) == 0`",
+      "help": "is_empty() states the intent.",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 5,
+          "byte": 76
+        },
+        "end": {
+          "line": 5,
+          "column": 20,
+          "byte": 91
+        }
+      },
+      "snippet": "\tif len(items) == 0:",
+      "explain": "gdguard explain prefer-is-empty",
+      "fixes": [
+        {
+          "description": "Replace with items.is_empty()",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 76
+                },
+                "end": {
+                  "byte": 91
+                }
+              },
+              "replacement": "items.is_empty()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "no-empty-if",
+      "origin": "custom",
+      "severity": "error",
+      "message": "This if block does nothing",
+      "help": null,
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 2,
+          "byte": 73
+        },
+        "end": {
+          "line": 6,
+          "column": 7,
+          "byte": 99
+        }
+      },
+      "snippet": "\tif len(items) == 0:",
+      "explain": "gdguard explain no-empty-if",
+      "fixes": [
+        {
+          "description": "Remove the if block",
+          "safety": "suggestion",
+          "edits": []
+        }
+      ]
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "signal-name",
+      "origin": "builtin",
+      "severity": "error",
+      "message": "Signal name 'OnDefeated' should be in snake_case format",
+      "help": "Rename it to 'on_defeated'.",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 8,
+          "byte": 7
+        },
+        "end": {
+          "line": 1,
+          "column": 18,
+          "byte": 17
+        }
+      },
+      "snippet": "signal OnDefeated",
+      "explain": "gdguard explain signal-name",
+      "fixes": []
+    }
+  ]
+}

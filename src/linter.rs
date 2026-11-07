@@ -1,7 +1,7 @@
 use crate::node_kind::GDScriptNodeKind;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fs;
 use std::path::{Path, PathBuf};
-use std::{fs, io::IsTerminal};
 use tree_sitter::{Node, Parser, Tree};
 
 // Shared contracts (frozen after W0).
@@ -31,8 +31,11 @@ pub mod rules_meta;
 #[cfg(test)]
 mod tests;
 
+use api::{Config, RuleLevel};
+use config::{CliRuleOverrides, CompiledConfig, FileSettings};
 use diagnostic::{Diagnostic, Severity};
 use ignore_patterns::{parse_ignore_patterns, should_ignore_rule};
+use output::{FileDiagnostics, LintReport, display_path};
 use rules::{ALL_RULES, Rule};
 
 /// Formats one diagnostic in the default text output:
@@ -62,42 +65,6 @@ impl Default for LinterConfig {
             max_line_length: 100,
             indent_size: 4,
         }
-    }
-}
-
-/// Counts of the diagnostics reported over a lint run, used to pick the exit
-/// code.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct LintSummary {
-    pub error_count: usize,
-    pub warning_count: usize,
-    pub info_count: usize,
-}
-
-impl LintSummary {
-    pub fn add(&mut self, diagnostics: &[Diagnostic]) {
-        for diagnostic in diagnostics {
-            match diagnostic.severity {
-                Severity::Error => self.error_count += 1,
-                Severity::Warning => self.warning_count += 1,
-                Severity::Info => self.info_count += 1,
-            }
-        }
-    }
-
-    /// Exit code of the `lint` command: 1 when there are errors, or more
-    /// warnings than `max_warnings` allows; 0 otherwise. Without
-    /// `--max-warnings`, any warning fails, like before exit codes existed.
-    /// Info diagnostics never fail.
-    pub fn exit_code(&self, max_warnings: Option<usize>) -> i32 {
-        if self.error_count > 0 {
-            return 1;
-        }
-        let allowed_warnings = max_warnings.unwrap_or(0);
-        if self.warning_count > allowed_warnings {
-            return 1;
-        }
-        0
     }
 }
 
@@ -149,141 +116,153 @@ impl GDScriptLinter {
         Ok(diagnostics)
     }
 
-    pub fn lint_files(
-        &mut self,
-        gdscript_files: &[PathBuf],
-        do_pretty_print: bool,
-    ) -> Result<LintSummary, String> {
-        self.lint_files_with_editorconfig(gdscript_files, do_pretty_print, None)
+    /// Replaces the built-in rule settings, for example when the next file
+    /// has a different config.
+    pub fn set_config(&mut self, config: LinterConfig) {
+        self.config = config;
     }
+}
 
-    /// Lints each file with its own `.editorconfig` settings, prints the
-    /// diagnostics and returns their counts.
-    pub fn lint_files_with_editorconfig(
-        &mut self,
-        gdscript_files: &[PathBuf],
-        do_pretty_print: bool,
-        max_line_length_override: Option<usize>,
-    ) -> Result<LintSummary, String> {
-        let with_colors = std::io::stdout().is_terminal();
-        let base_config = self.config.clone();
-
-        if do_pretty_print {
-            self.lint_files_pretty(
-                gdscript_files,
-                with_colors,
-                &base_config,
-                max_line_length_override,
-            )
-        } else {
-            self.lint_files_standard(gdscript_files, &base_config, max_line_length_override)
+/// Applies the levels from the config to a file's diagnostics: `off` removes
+/// them, other levels replace their severity.
+pub fn apply_rule_levels(levels: &BTreeMap<String, RuleLevel>, diagnostics: &mut Vec<Diagnostic>) {
+    if levels.is_empty() {
+        return;
+    }
+    diagnostics.retain(|diagnostic| levels.get(&diagnostic.rule) != Some(&RuleLevel::Off));
+    for diagnostic in diagnostics.iter_mut() {
+        match levels.get(&diagnostic.rule) {
+            Some(RuleLevel::Error) => diagnostic.severity = Severity::Error,
+            Some(RuleLevel::Warning) => diagnostic.severity = Severity::Warning,
+            Some(RuleLevel::Info) => diagnostic.severity = Severity::Info,
+            Some(RuleLevel::Off) | None => {}
         }
     }
+}
 
-    fn apply_file_config(
+/// Lints one buffer with the settings resolved for its file. This is the
+/// per-file pipeline shared by the CLI and `api::lint_source`.
+pub fn lint_with_settings(
+    linter: &mut GDScriptLinter,
+    path: &Path,
+    source_code: &str,
+    settings: &FileSettings,
+) -> Result<Vec<Diagnostic>, String> {
+    linter.set_config(settings.linter_config.clone());
+    // C1 (W2 merge): custom rule providers run here, on the same tree, once
+    // `custom::load_providers` returns them. See `GDScriptLinter::lint`.
+    let mut diagnostics = linter.lint(source_code, &path.to_string_lossy())?;
+    apply_rule_levels(&settings.levels, &mut diagnostics);
+    Ok(diagnostics)
+}
+
+/// What the `lint` command needs besides the files.
+#[derive(Debug, Clone, Default)]
+pub struct LintRunOptions {
+    /// `--config`: use this file for every linted file instead of searching
+    /// upward from each one.
+    pub config_path: Option<PathBuf>,
+    /// `--disable` and `--max-line-length`.
+    pub cli: CliRuleOverrides,
+}
+
+/// Loads and caches configs during a run, keyed by config file path, so each
+/// `gdguard.toml` is read and validated once.
+struct ConfigCache {
+    configs: HashMap<PathBuf, CompiledConfig>,
+}
+
+impl ConfigCache {
+    /// Returns the config that applies to `file_path`: the `--config` file,
+    /// the nearest `gdguard.toml`, or the defaults.
+    fn config_for(
         &mut self,
-        base_config: &LinterConfig,
         file_path: &Path,
-        max_line_length_override: Option<usize>,
-    ) {
-        self.config = base_config.clone();
-        crate::editorconfig::apply_editorconfig_to_linter_config(&mut self.config, file_path);
-        if let Some(max_line_length) = max_line_length_override {
-            self.config.max_line_length = max_line_length;
-        }
-    }
-
-    fn lint_files_pretty(
-        &mut self,
-        gdscript_files: &[PathBuf],
-        with_colors: bool,
-        base_config: &LinterConfig,
-        max_line_length_override: Option<usize>,
-    ) -> Result<LintSummary, String> {
-        let mut summary = LintSummary::default();
-        // Files keep the order they were given in (sorted by the CLI).
-        let mut files_with_diagnostics: Vec<(String, Vec<Diagnostic>)> = Vec::new();
-
-        for file_path in gdscript_files {
-            self.apply_file_config(base_config, file_path, max_line_length_override);
-            let source_code = fs::read_to_string(file_path).map_err(|error| {
-                format!("Failed to read file {}: {}", file_path.display(), error)
-            })?;
-
-            let diagnostics = self.lint(&source_code, &file_path.to_string_lossy())?;
-            summary.add(&diagnostics);
-            if !diagnostics.is_empty() {
-                files_with_diagnostics.push((file_path.to_string_lossy().to_string(), diagnostics));
-            }
-        }
-
-        let bold = if with_colors { "\x1b[1m" } else { "" };
-        let reset = if with_colors { "\x1b[0m" } else { "" };
-        for (file_index, (file_path, diagnostics)) in files_with_diagnostics.iter().enumerate() {
-            println!("{}{}{}", bold, file_path, reset);
-
-            // Diagnostics are sorted by line, so each line's group is a run of
-            // consecutive diagnostics.
-            let mut current_line = 0;
-            for diagnostic in diagnostics {
-                let line = diagnostic.span.start.line;
-                if line != current_line {
-                    if current_line != 0 {
-                        println!();
-                    }
-                    println!("    {}:{}", file_path, line);
-                    current_line = line;
+        options: &LintRunOptions,
+    ) -> Result<&CompiledConfig, String> {
+        let config_path = match &options.config_path {
+            Some(config_path) => Some(config_path.clone()),
+            None => config::find_config_file(file_path),
+        };
+        // The default config uses an empty path as its key.
+        let cache_key = match &config_path {
+            Some(config_path) => config_path.clone(),
+            None => PathBuf::new(),
+        };
+        if !self.configs.contains_key(&cache_key) {
+            let config = match &config_path {
+                Some(config_path) => {
+                    config::load_and_validate(config_path).map_err(|error| error.to_string())?
                 }
-                let (severity_label, severity_color) = match diagnostic.severity {
-                    Severity::Error => ("ERROR", "\x1b[31m"),  // Red
-                    Severity::Warning => ("WARN", "\x1b[33m"), // Yellow
-                    Severity::Info => ("INFO", "\x1b[34m"),    // Blue
-                };
-                if with_colors {
-                    println!(
-                        "        {}{}\x1b[0m: `{}`",
-                        severity_color, severity_label, diagnostic.rule
-                    );
-                } else {
-                    println!("        {}: `{}`", severity_label, diagnostic.rule);
-                }
-                println!("        {}", diagnostic.message);
-            }
-
-            // Add separator between files (except for the last file)
-            if file_index + 1 < files_with_diagnostics.len() {
-                println!("\n{}", "-".repeat(60));
-                println!();
-            }
+                None => Config::default(),
+            };
+            let compiled = CompiledConfig::new(config).map_err(|error| error.to_string())?;
+            self.configs.insert(cache_key.clone(), compiled);
         }
-
-        Ok(summary)
-    }
-
-    fn lint_files_standard(
-        &mut self,
-        gdscript_files: &[PathBuf],
-        base_config: &LinterConfig,
-        max_line_length_override: Option<usize>,
-    ) -> Result<LintSummary, String> {
-        let mut summary = LintSummary::default();
-
-        for file_path in gdscript_files {
-            self.apply_file_config(base_config, file_path, max_line_length_override);
-            let source_code = fs::read_to_string(file_path).map_err(|error| {
-                format!("Failed to read file {}: {}", file_path.display(), error)
-            })?;
-
-            let diagnostics = self.lint(&source_code, &file_path.to_string_lossy())?;
-            summary.add(&diagnostics);
-            let display_path = file_path.to_string_lossy();
-            for diagnostic in &diagnostics {
-                println!("{}", format_diagnostic_line(&display_path, diagnostic));
-            }
+        match self.configs.get(&cache_key) {
+            Some(compiled) => Ok(compiled),
+            None => Err("config cache lost an entry".to_string()),
         }
-
-        Ok(summary)
     }
+}
+
+/// Lints files from disk. Each file uses its nearest `gdguard.toml` (or
+/// `--config`); files matching `[lint].exclude` are skipped. Config errors
+/// and unreadable files return an error (exit code 2).
+pub fn lint_files(files: &[PathBuf], options: &LintRunOptions) -> Result<LintReport, String> {
+    let mut linter = GDScriptLinter::new(LinterConfig::default())?;
+    let mut config_cache = ConfigCache {
+        configs: HashMap::new(),
+    };
+    let mut report = LintReport::default();
+    for file_path in files {
+        let compiled_config = config_cache.config_for(file_path, options)?;
+        if compiled_config.is_excluded(file_path) {
+            continue;
+        }
+        let settings = compiled_config.settings_for_file(file_path, &options.cli);
+        let source_code = fs::read_to_string(file_path)
+            .map_err(|error| format!("Failed to read file {}: {}", file_path.display(), error))?;
+        let diagnostics = lint_with_settings(&mut linter, file_path, &source_code, &settings)?;
+        report.files_checked += 1;
+        if !diagnostics.is_empty() {
+            report.files.push(FileDiagnostics {
+                path: display_path(file_path),
+                source: source_code,
+                diagnostics,
+            });
+        }
+    }
+    Ok(report)
+}
+
+/// Lints source read from stdin. `config_lookup_path` is the path used to
+/// find the config and `.editorconfig`; `display_name` is shown in output.
+pub fn lint_stdin(
+    source_code: String,
+    config_lookup_path: &Path,
+    display_name: &str,
+    options: &LintRunOptions,
+) -> Result<LintReport, String> {
+    let mut linter = GDScriptLinter::new(LinterConfig::default())?;
+    let mut config_cache = ConfigCache {
+        configs: HashMap::new(),
+    };
+    let compiled_config = config_cache.config_for(config_lookup_path, options)?;
+    let settings = compiled_config.settings_for_file(config_lookup_path, &options.cli);
+    let diagnostics = lint_with_settings(&mut linter, config_lookup_path, &source_code, &settings)?;
+    let mut report = LintReport {
+        files: Vec::with_capacity(1),
+        files_checked: 1,
+    };
+    if !diagnostics.is_empty() {
+        report.files.push(FileDiagnostics {
+            path: display_name.to_string(),
+            source: source_code,
+            diagnostics,
+        });
+    }
+    Ok(report)
 }
 
 /// Runs every enabled built-in rule on a parsed file and appends their
