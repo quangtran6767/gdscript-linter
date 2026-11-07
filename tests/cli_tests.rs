@@ -158,10 +158,8 @@ fn unimplemented_lint_flags_exit_with_code_2_and_name_the_flag() {
 #[test]
 fn unimplemented_subcommands_exit_with_code_2_and_name_the_command() {
     let directory = test_directory();
-    let cases: [(&[&str], &str); 5] = [
+    let cases: [(&[&str], &str); 3] = [
         (&["explain", "unused-argument"], "explain"),
-        (&["test-rules"], "test-rules"),
-        (&["test-rules", "rules"], "test-rules"),
         (&["init", "--force"], "init"),
         (&["lsp"], "lsp"),
     ];
