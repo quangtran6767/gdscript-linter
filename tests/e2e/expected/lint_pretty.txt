@@ -1,0 +1,70 @@
+./scripts/enemies/enemy.gd
+    ./scripts/enemies/enemy.gd:3
+        ERROR: `signal-name`
+        Signal name 'OnDefeated' should be in snake_case format
+
+    ./scripts/enemies/enemy.gd:5
+        ERROR: `enum-name`
+        Enum name 'state' should be in PascalCase format
+
+    ./scripts/enemies/enemy.gd:7
+        ERROR: `enum-member-name`
+        Enum element name 'chase_player' should be in CONSTANT_CASE format
+
+    ./scripts/enemies/enemy.gd:11
+        ERROR: `variable-name`
+        Variable name 'targetName' should be in snake_case or _private_snake_case format
+
+    ./scripts/enemies/enemy.gd:14
+        ERROR: `function-name`
+        Function name 'moveTowards' should be in snake_case, _private_snake_case format
+
+    ./scripts/enemies/enemy.gd:15
+        WARN: `comparison-with-itself`
+        Redundant comparison 'target == target' - comparing expression with itself
+
+    ./scripts/enemies/enemy.gd:23
+        WARN: `no-else-return`
+        Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'
+
+    ./scripts/enemies/enemy.gd:28
+        ERROR: `private-access`
+        Private variable '_health' should not be accessed from outside its class
+
+    ./scripts/enemies/enemy.gd:33
+        WARN: `unnecessary-pass`
+        Unnecessary 'pass' statement when other statements are present
+
+------------------------------------------------------------
+
+./scripts/player.gd
+    ./scripts/player.gd:12
+        WARN: `unused-argument`
+        Function argument 'delta' is unused. Consider removing it or prefixing with '_'
+
+    ./scripts/player.gd:20
+        WARN: `unused-argument`
+        Function argument 'source' is unused. Consider removing it or prefixing with '_'
+
+------------------------------------------------------------
+
+./scripts/ui/hud.gd
+    ./scripts/ui/hud.gd:5
+        WARN: `duplicated-load`
+        Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
+
+    ./scripts/ui/hud.gd:6
+        WARN: `duplicated-load`
+        Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
+
+    ./scripts/ui/hud.gd:11
+        ERROR: `loop-variable-name`
+        Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format
+
+    ./scripts/ui/hud.gd:16
+        WARN: `standalone-expression`
+        Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect
+
+    ./scripts/ui/hud.gd:17
+        WARN: `max-line-length`
+        Line is too long. Found 118 characters, maximum allowed is 100

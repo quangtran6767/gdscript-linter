@@ -6,7 +6,18 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
-- Linter: new `lint` flags `--fix`, `--fix-unsafe`, `--diff`, `--format`, `--config`, `--baseline`, `--update-baseline`, `--max-warnings` and `--stdin-filename`, and new `explain`, `test-rules`, `init` and `lsp` subcommands are reserved; they report "not implemented yet" (exit code 2) until their feature lands.
+- Linter: every built-in rule now reports a precise start and end position and a `help` text with how to fix the issue (naming rules suggest the corrected name).
+- Linter: new `--max-warnings <N>` option: warnings only fail the run when there are more than N.
+- Linter: `lint --pretty` now lists files in a stable, sorted order.
+
+### Changed
+
+- Linter: `lint` exit codes are now 0 (no problems), 1 (problems found) and 2 (usage, config or file errors). Invalid `--disable` rule names and "no GDScript files found" now exit with 2 instead of 1.
+- The minimum supported Rust version is now 1.89 (needed by the custom rule engine's dependencies).
+
+### Reserved
+
+- Linter: new `lint` flags `--fix`, `--fix-unsafe`, `--diff`, `--format`, `--config`, `--baseline`, `--update-baseline` and `--stdin-filename`, and new `explain`, `test-rules`, `init` and `lsp` subcommands are reserved; they report "not implemented yet" (exit code 2) until their feature lands.
 
 ## Release 0.28.0 (2026-10-31)
 

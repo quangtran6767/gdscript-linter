@@ -107,6 +107,9 @@ pub struct Diagnostic {
     pub span: Span,
     pub fixes: Vec<Fix>,       // usually zero or one
 }
+// Built-in rules report on the most precise node: the name for naming rules,
+// the keyword for `no-else-return`, the part past the limit for
+// `max-line-length`.
 
 pub struct RuleMeta {
     pub id: String,
@@ -306,13 +309,53 @@ tests:                              # run by `gdguard test-rules`
 
 Supported in `rule:` for v1: `pattern`, `kind`, `regex`, `inside`, `has`,
 `follows`, `precedes`, `all`, `any`, `not`, plus `constraints` on
-metavariables.
+metavariables. Also `stopBy` and `field` inside `inside`, `has`, `follows`
+and `precedes`, and the object form `pattern: { context, selector,
+strictness }`. `follows` and `precedes` compare siblings, so for statements
+use `pattern: { context: <code>, selector: expression_statement }`. A
+top-level `rule` must contain `pattern`, `kind`, `regex`, `all` or `any`.
+Other ast-grep keys (`nthChild`, `range`, `matches`, `utils`, `transform`,
+`rewriters`) are not supported.
 
-Metavariables: `$X` matches one node, `$$$ARGS` matches zero or more. GDScript
-already uses `$` for node paths (`$Player`). The engine parses a pattern's
-`$UPPERCASE` names as metavariables. To match a literal node path, write
-`$$Player` (escaped) or use `kind: get_node` with a `regex`. W1/B1 confirms the
-exact escape after the engine spike.
+The engine is ast-grep (`ast-grep-core`/`ast-grep-config` 0.51), with a
+GDScript `Language` implementation (decided in W1/B1).
+
+Metavariables: `$X` matches one node, `$$$ARGS` matches zero or more nodes,
+`$_` and `$$$` match without capturing. A metavariable name uses uppercase
+letters, digits and `_` and must not be followed by another letter, so
+`$X`, `$ARGS` and `$NODE_1` are metavariables.
+
+GDScript also uses `$` for node paths. Every `$` that doesn't start a
+metavariable is literal: `$Player`, `$"UI/Label"` and `$player` are node
+paths. For an all-caps node path, escape the dollar: `\$HUD`. These rules
+apply the same way in `pattern`, `fix`, `message` and `help`.
+
+Patterns can't contain literal node paths: the GDScript grammar doesn't
+expose the path text as a node, so `$Player` would match every node path.
+The loader rejects them. Match a specific node path with a metavariable and
+a constraint:
+
+```yaml
+rule:
+  pattern: $P.hide()
+constraints:
+  P:
+    regex: ^\$Player$
+```
+
+or with `kind: get_node` and `regex: ^\$Player$`. Unique names (`%Health`)
+are `get_node` nodes too.
+
+Rule file details:
+
+- `severity` defaults to `warning`; `message` and `rule` are required;
+  `fixSafety` requires `fix`.
+- `tests.invalid` entries may also be a bare code string (no output check).
+- Rule files are found in each folder itself, not in sub-folders, sorted by
+  path. A duplicate id is reported on the second file and names the first.
+- `RuleMeta` mapping: `description` is the `message` as written,
+  `bad_example`/`good_example` are the first invalid/valid test, and
+  `fixable` is true when the rule has a `fix` with safety `safe` or `unsafe`.
 
 Validation errors (bad YAML, unknown keys, a pattern that doesn't parse as
 GDScript, a duplicate id) report the rule file path and stop with exit code 2.
@@ -358,6 +401,9 @@ Exit codes:
 - `0`: no errors, and warnings at or under `--max-warnings`.
 - `1`: lint problems found.
 - `2`: config, usage or rule-file error.
+
+Without `--max-warnings`, any warning gives exit code 1. Info diagnostics
+never change the exit code.
 
 The formatter's existing CLI keeps working unchanged.
 

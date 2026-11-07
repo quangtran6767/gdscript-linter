@@ -94,17 +94,17 @@ tell the other person.
 ## W1: A and B at the same time
 
 **A: `a/diagnostic-migration`, `a/exit-codes`**
-- [ ] A1. Make the pipeline produce `Diagnostic`. Port all 17 built-in rules
+- [x] A1. Make the pipeline produce `Diagnostic`. Port all 17 built-in rules
       to real spans and add `help` text where it's obvious.
-- [ ] Update `gdextension/src/lib.rs` to the new type. This is A's only
+- [x] Update `gdextension/src/lib.rs` to the new type. This is A's only
       gdextension work.
-- [ ] Update the `tests/lint/` expected files. The old text output format
+- [x] Update the `tests/lint/` expected files. The old text output format
       must stay the same.
-- [ ] A5. Exit codes (0/1/2) and `--max-warnings`.
-- [ ] Fill in the `api::lint_source` body (with no custom rules yet).
+- [x] A5. Exit codes (0/1/2) and `--max-warnings`.
+- [x] Fill in the `api::lint_source` body (with no custom rules yet).
 
 **B: `b/astgrep-spike`, `b/yaml-loader`**
-- [ ] B1. **Spike, time-boxed to half a day.**
+- [x] B1. **Spike, time-boxed to half a day.**
   - Build `ast-grep-core`/`ast-grep-config` 0.51 against tree-sitter-gdscript
     by implementing their `Language` trait.
   - Prove these work: `len($X) == 0`, `get_node($$$A)`, `inside`/`has`, a fix
@@ -113,12 +113,12 @@ tell the other person.
     metavariable escape note.
   - On no-go, fall back to a `query:` field (raw tree-sitter query) with the
     same YAML envelope.
-- [ ] B2. YAML loader:
+- [x] B2. YAML loader:
   - finds rule files in `custom_rules.paths`;
   - validates the schema and checks for duplicate ids;
   - maps each rule to `RuleMeta`;
   - gives errors that name the file and the key.
-- [ ] Tests for every loader error.
+- [x] Tests for every loader error.
 
 **Merge session:** merge both branches and test.
 

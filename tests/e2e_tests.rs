@@ -87,3 +87,37 @@ fn sample_project_is_formatted() {
     let output = run_in_sample_project(&["--check", "."]);
     assert_eq!(output.exit_code, 0, "stderr: {}", output.stderr);
 }
+
+// W1: exit codes (0 clean, 1 problems, 2 usage errors) and `--max-warnings`.
+#[test]
+fn lint_exit_codes_on_sample_project() {
+    let clean = run_in_sample_project(&["lint", "scripts/clean.gd"]);
+    assert_eq!(clean.exit_code, 0, "stdout: {}", clean.stdout);
+
+    // player.gd has 2 warnings and no errors.
+    let player_strict = run_in_sample_project(&["lint", "scripts/player.gd"]);
+    assert_eq!(player_strict.exit_code, 1);
+    let player_allowed =
+        run_in_sample_project(&["lint", "--max-warnings", "2", "scripts/player.gd"]);
+    assert_eq!(player_allowed.exit_code, 0);
+    let player_one_allowed =
+        run_in_sample_project(&["lint", "--max-warnings", "1", "scripts/player.gd"]);
+    assert_eq!(player_one_allowed.exit_code, 1);
+
+    // enemy.gd has errors, which always fail.
+    let enemy =
+        run_in_sample_project(&["lint", "--max-warnings", "100", "scripts/enemies/enemy.gd"]);
+    assert_eq!(enemy.exit_code, 1);
+
+    let bad_rule = run_in_sample_project(&["lint", "--disable", "not-a-rule", "."]);
+    assert_eq!(bad_rule.exit_code, 2);
+}
+
+// W1: pretty output now lists files in a stable order, so it can be
+// snapshotted.
+#[test]
+fn lint_sample_project_pretty_output() {
+    let output = run_in_sample_project(&["lint", "--pretty", "."]);
+    assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
+    assert_snapshot("lint_pretty.txt", &output.stdout);
+}
