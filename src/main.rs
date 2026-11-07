@@ -24,9 +24,12 @@ use std::{
 };
 
 use gdscript_formatter::linter::config::CliRuleOverrides;
+use gdscript_formatter::linter::fix::unified_diff;
 use gdscript_formatter::linter::output::{LintReport, OutputFormat, write_report};
 use gdscript_formatter::linter::rule_config::parse_disabled_rules;
-use gdscript_formatter::linter::{LintRunOptions, lint_files, lint_stdin};
+use gdscript_formatter::linter::{
+    FixRunReport, LintRunOptions, fix_files, fix_stdin, lint_files, lint_stdin,
+};
 use gdscript_formatter::linter::{explain, init, rule_tester};
 use gdscript_formatter::{
     FormatErrors, FormatterConfiguration, QuoteStyle, RenderElement, format_gdscript,
@@ -108,15 +111,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Flags from the linter spec that later waves implement. They fail
         // loudly instead of being ignored, so scripts don't silently get the
         // wrong behavior.
-        if do_fix {
-            exit_not_implemented("--fix");
-        }
-        if do_fix_unsafe {
-            exit_not_implemented("--fix-unsafe");
-        }
-        if do_diff {
-            exit_not_implemented("--diff");
-        }
         if let Some(format) = output_format
             && matches!(format, OutputFormat::Github | OutputFormat::Sarif)
         {
@@ -127,9 +121,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         if do_update_baseline {
             exit_not_implemented("--update-baseline");
-        }
-        if stdin_filename.is_some() {
-            exit_not_implemented("--stdin-filename");
         }
 
         // `--format` wins; the old `--pretty` flag means `--format pretty`.
@@ -146,7 +137,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             disabled_linter_rules,
             max_line_length,
             config_path,
+            stdin_filename,
         };
+        if do_fix || do_fix_unsafe || do_diff {
+            let fix_command = FixCommand {
+                allow_unsafe: do_fix_unsafe,
+                diff_only: do_diff,
+                format,
+                is_terminal,
+                max_warnings,
+            };
+            std::process::exit(run_fix_command(lint_command, &fix_command));
+        }
         // Exit codes: 0 clean, 1 lint problems, 2 usage or config errors.
         let report = match run_linter(lint_command) {
             Ok(report) => report,
@@ -440,11 +442,26 @@ struct LintCommand {
     max_line_length: Option<usize>,
     /// `--config`, which replaces the upward search for `gdguard.toml`.
     config_path: Option<PathBuf>,
+    /// `--stdin-filename`: read the source from stdin and report it as this
+    /// path, which also finds the config.
+    stdin_filename: Option<PathBuf>,
 }
 
-/// Lints the files (or stdin) and returns the report. Returns an error
-/// message for usage, config and I/O errors (exit code 2).
-fn run_linter(command: LintCommand) -> Result<LintReport, String> {
+/// Where `lint` reads its source from.
+enum LintInput {
+    Files(Vec<PathBuf>),
+    Stdin {
+        source: String,
+        /// The path used to find `gdguard.toml` and `.editorconfig`.
+        lookup_path: PathBuf,
+        /// The name shown in output.
+        display_name: String,
+    },
+}
+
+/// Builds the run options and reads the input (files or stdin) for `lint`.
+/// Returns an error message for usage, config and I/O errors (exit code 2).
+fn prepare_lint_input(command: LintCommand) -> Result<(LintInput, LintRunOptions), String> {
     let mut cli = CliRuleOverrides {
         max_line_length: command.max_line_length,
         ..CliRuleOverrides::default()
@@ -464,19 +481,40 @@ fn run_linter(command: LintCommand) -> Result<LintReport, String> {
         cli,
     };
 
-    let is_stdin_requested = command.input_file_paths.is_empty()
-        || (command.input_file_paths.len() == 1 && command.input_file_paths[0] == Path::new("-"));
+    let is_dash_only =
+        command.input_file_paths.len() == 1 && command.input_file_paths[0] == Path::new("-");
+    if let Some(stdin_filename) = command.stdin_filename {
+        if !command.input_file_paths.is_empty() && !is_dash_only {
+            return Err(
+                "--stdin-filename reads from stdin and can't be used with file paths".to_string(),
+            );
+        }
+        let source = read_stdin()?;
+        let current_directory = env::current_dir()
+            .map_err(|error| format!("Failed to get current directory: {}", error))?;
+        let lookup_path = current_directory.join(&stdin_filename);
+        let display_name = gdscript_formatter::linter::output::display_path(&stdin_filename);
+        let input = LintInput::Stdin {
+            source,
+            lookup_path,
+            display_name,
+        };
+        return Ok((input, options));
+    }
+
+    let is_stdin_requested = command.input_file_paths.is_empty() || is_dash_only;
     if is_stdin_requested && !io::stdin().is_terminal() {
-        let mut input_content = String::new();
-        io::stdin()
-            .read_to_string(&mut input_content)
-            .map_err(|error| format!("Failed to read from stdin: {}", error))?;
+        let source = read_stdin()?;
         let current_directory = env::current_dir()
             .map_err(|error| format!("Failed to get current directory: {}", error))?;
         // Like the formatter, stdin uses a `stdin.gd` file in the current
         // directory to find `gdguard.toml` and `.editorconfig`.
-        let stdin_path = current_directory.join("stdin.gd");
-        return lint_stdin(input_content, &stdin_path, "stdin", &options);
+        let input = LintInput::Stdin {
+            source,
+            lookup_path: current_directory.join("stdin.gd"),
+            display_name: "stdin".to_string(),
+        };
+        return Ok((input, options));
     }
 
     let input_gdscript_files =
@@ -485,7 +523,152 @@ fn run_linter(command: LintCommand) -> Result<LintReport, String> {
     if input_gdscript_files.is_empty() {
         return Err(NO_GDSCRIPT_FILES_MESSAGE.to_string());
     }
-    lint_files(&input_gdscript_files, &options)
+    Ok((LintInput::Files(input_gdscript_files), options))
+}
+
+fn read_stdin() -> Result<String, String> {
+    let mut input_content = String::new();
+    io::stdin()
+        .read_to_string(&mut input_content)
+        .map_err(|error| format!("Failed to read from stdin: {}", error))?;
+    Ok(input_content)
+}
+
+/// Options of `lint --fix`, `--fix-unsafe` and `--diff`.
+struct FixCommand {
+    /// `--fix-unsafe`: apply `Unsafe` fixes too.
+    allow_unsafe: bool,
+    /// `--diff`: print a unified diff and write nothing.
+    diff_only: bool,
+    format: OutputFormat,
+    is_terminal: bool,
+    max_warnings: Option<usize>,
+}
+
+/// Runs the fix engine and returns the exit code.
+///
+/// - `--diff` prints a unified diff per changed file and writes nothing.
+///   Exit code 1 when a file would change, else 0.
+/// - `--fix`/`--fix-unsafe` on files write them, report what's left, and
+///   print "Fixed N problems in M files".
+/// - With stdin, the fixed source goes to stdout and the report to stderr.
+///
+/// The exit code of a fix run follows the issues left after fixing.
+fn run_fix_command(lint_command: LintCommand, fix_command: &FixCommand) -> i32 {
+    let fix_report = match run_fixer(lint_command, fix_command.allow_unsafe) {
+        Ok(fix_report) => fix_report,
+        Err(error) => {
+            eprintln!("Error: {}", error);
+            return 2;
+        }
+    };
+
+    if fix_command.diff_only {
+        let mut diff_output = String::new();
+        for changed_file in &fix_report.changed_files {
+            diff_output.push_str(&unified_diff(
+                &changed_file.display_path,
+                &changed_file.original,
+                &changed_file.fixed,
+            ));
+        }
+        print!("{}", diff_output);
+        if fix_report.changed_files.is_empty() {
+            return 0;
+        }
+        return 1;
+    }
+
+    let is_stdin = fix_report.stdin_output.is_some();
+    if let Some(stdin_output) = &fix_report.stdin_output {
+        print!("{}", stdin_output);
+    } else {
+        for changed_file in &fix_report.changed_files {
+            if let Err(error) = fs::write(&changed_file.path, &changed_file.fixed) {
+                eprintln!(
+                    "Error: Failed to write file {}: {}",
+                    changed_file.path.display(),
+                    error
+                );
+                return 2;
+            }
+        }
+    }
+
+    // Stdout carries the fixed source for stdin, so the report goes to
+    // stderr there.
+    let with_colors = if is_stdin {
+        false
+    } else {
+        fix_command.is_terminal
+    };
+    let mut output = String::new();
+    if let Err(error) = write_report(
+        fix_command.format,
+        &fix_report.report,
+        with_colors,
+        &mut output,
+    ) {
+        eprintln!("Error: {}", error);
+        return 2;
+    }
+    let fixed_line = fixed_summary_line(fix_report.applied(), fix_report.changed_files.len());
+    // Machine-readable formats keep stdout parseable.
+    let is_machine_format = matches!(
+        fix_command.format,
+        OutputFormat::Json | OutputFormat::Github | OutputFormat::Sarif
+    );
+    if is_stdin {
+        eprint!("{}", output);
+        eprintln!("{}", fixed_line);
+    } else if is_machine_format {
+        print!("{}", output);
+        eprintln!("{}", fixed_line);
+    } else {
+        print!("{}", output);
+        println!("{}", fixed_line);
+    }
+    fix_report
+        .report
+        .summary()
+        .exit_code(fix_command.max_warnings)
+}
+
+/// "Fixed 3 problems in 2 files", with singular forms for 1.
+fn fixed_summary_line(applied: usize, file_count: usize) -> String {
+    let problem_word = if applied == 1 { "problem" } else { "problems" };
+    let file_word = if file_count == 1 { "file" } else { "files" };
+    format!(
+        "Fixed {} {} in {} {}",
+        applied, problem_word, file_count, file_word
+    )
+}
+
+/// Runs the fix engine on the files (or stdin) without writing anything.
+fn run_fixer(command: LintCommand, allow_unsafe: bool) -> Result<FixRunReport, String> {
+    let (input, options) = prepare_lint_input(command)?;
+    match input {
+        LintInput::Files(files) => fix_files(&files, &options, allow_unsafe),
+        LintInput::Stdin {
+            source,
+            lookup_path,
+            display_name,
+        } => fix_stdin(source, &lookup_path, &display_name, &options, allow_unsafe),
+    }
+}
+
+/// Lints the files (or stdin) and returns the report. Returns an error
+/// message for usage, config and I/O errors (exit code 2).
+fn run_linter(command: LintCommand) -> Result<LintReport, String> {
+    let (input, options) = prepare_lint_input(command)?;
+    match input {
+        LintInput::Files(files) => lint_files(&files, &options),
+        LintInput::Stdin {
+            source,
+            lookup_path,
+            display_name,
+        } => lint_stdin(source, &lookup_path, &display_name, &options),
+    }
 }
 
 /// Formats one file after applying its matching editorconfig settings.

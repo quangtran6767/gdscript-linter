@@ -4,6 +4,7 @@ pub mod constant_name;
 pub mod duplicated_load;
 pub mod enum_member_name;
 pub mod enum_name;
+pub mod fix_helpers;
 pub mod function_argument_name;
 pub mod function_name;
 pub mod loop_variable_name;

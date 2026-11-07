@@ -1,4 +1,4 @@
-use crate::linter::diagnostic::{Diagnostic, Severity, Span};
+use crate::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span};
 use crate::linter::lib::get_node_text;
 use crate::linter::rules::Rule;
 use crate::node_kind::GDScriptNodeKind;
@@ -100,7 +100,16 @@ impl Rule for UnusedArgumentRule {
                     param_name, param_name
                 )),
                 span: Span::from_node(&name_node),
-                fixes: Vec::new(),
+                fixes: vec![Fix {
+                    description: format!("Rename it to '_{}'", param_name),
+                    // Unsafe: the rule can miss a use it doesn't see, such as
+                    // a lookup by name, and the rename would then break it.
+                    safety: FixSafety::Unsafe,
+                    edits: vec![Edit {
+                        span: Span::from_node(&name_node),
+                        replacement: format!("_{}", param_name),
+                    }],
+                }],
             });
         }
     }

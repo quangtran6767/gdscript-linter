@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use crate::linter::config::{self, CliRuleOverrides, CompiledConfig};
 use crate::linter::custom;
 use crate::linter::diagnostic::Diagnostic;
+use crate::linter::fix;
 use crate::linter::{GDScriptLinter, LinterConfig, lint_with_settings};
 
 /// The level of a rule in `gdguard.toml`: `"off"`, `"info"`, `"warning"` or
@@ -178,13 +179,34 @@ pub fn lint_source(path: &Path, source: &str, config: &Config) -> Result<LintRes
 }
 
 /// Runs the fix engine on one buffer without touching the disk.
+///
+/// Applies `Safe` fixes, plus `Unsafe` ones when `unsafe_fixes` is true, over
+/// several passes; fixes that would break the code are dropped and reported
+/// as `fix-failed` in `remaining`. Formats the output when `source` was
+/// formatted.
 pub fn fix_source(
-    _path: &Path,
-    _source: &str,
-    _config: &Config,
-    _unsafe_fixes: bool,
+    path: &Path,
+    source: &str,
+    config: &Config,
+    unsafe_fixes: bool,
 ) -> Result<FixResult, String> {
-    Err("not implemented yet".into())
+    let compiled_config = CompiledConfig::new(config.clone()).map_err(|error| error.to_string())?;
+    let settings = compiled_config.settings_for_file(path, &CliRuleOverrides::default());
+    let mut providers = custom::load_providers(config)?;
+    let mut linter = GDScriptLinter::new(LinterConfig::default())?;
+    let fixed = fix::fix_source_with_settings(
+        &mut linter,
+        path,
+        source,
+        &settings,
+        &mut providers,
+        unsafe_fixes,
+    )?;
+    Ok(FixResult {
+        output: fixed.output,
+        applied: fixed.applied,
+        remaining: fixed.remaining,
+    })
 }
 
 #[cfg(test)]
@@ -241,10 +263,22 @@ mod tests {
     }
 
     #[test]
-    fn stubs_return_errors_instead_of_panicking() {
-        let path = Path::new("a.gd");
-        let config = Config::default();
-        assert!(fix_source(path, "", &config, false).is_err());
+    fn fix_source_applies_safe_fixes_and_reports_the_rest() {
+        let source = "func f(unused):\n\tprint(1)\n\tpass\n";
+        let result = fix_source(Path::new("a.gd"), source, &Config::default(), false).unwrap();
+        assert_eq!(result.output, "func f(unused):\n\tprint(1)\n");
+        assert_eq!(result.applied, 1);
+        assert_eq!(result.remaining.len(), 1);
+        assert_eq!(result.remaining[0].rule, "unused-argument");
+    }
+
+    #[test]
+    fn fix_source_applies_unsafe_fixes_only_when_asked() {
+        let source = "func f(unused):\n\tprint(1)\n";
+        let result = fix_source(Path::new("a.gd"), source, &Config::default(), true).unwrap();
+        assert_eq!(result.output, "func f(_unused):\n\tprint(1)\n");
+        assert_eq!(result.applied, 1);
+        assert!(result.remaining.is_empty());
     }
 
     fn rule_level(rule_id: &str, level: RuleLevel) -> Config {

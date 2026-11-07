@@ -1,5 +1,6 @@
-use crate::linter::diagnostic::{Diagnostic, Severity, Span};
+use crate::linter::diagnostic::{Diagnostic, Fix, FixSafety, Severity, Span};
 use crate::linter::rules::Rule;
+use crate::linter::rules::fix_helpers::remove_lines_edit;
 use crate::node_kind::GDScriptNodeKind;
 use tree_sitter::Node;
 
@@ -10,7 +11,7 @@ impl Rule for UnnecessaryPassRule {
         &[GDScriptNodeKind::Body, GDScriptNodeKind::ClassBody]
     }
 
-    fn check_node(&mut self, node: &Node, _source_code: &str, diagnostics: &mut Vec<Diagnostic>) {
+    fn check_node(&mut self, node: &Node, source_code: &str, diagnostics: &mut Vec<Diagnostic>) {
         let mut has_other_statements = false;
         let mut pass_nodes = Vec::new();
 
@@ -36,6 +37,18 @@ impl Rule for UnnecessaryPassRule {
             return;
         }
         for pass_node in pass_nodes {
+            // Safe: `pass` does nothing. Offered only when `pass` is alone on
+            // its line, so no comment or other code is removed with it.
+            let mut fixes = Vec::new();
+            if let Some(edit) =
+                remove_lines_edit(source_code, pass_node.start_byte(), pass_node.end_byte())
+            {
+                fixes.push(Fix {
+                    description: "Remove the 'pass' line".to_string(),
+                    safety: FixSafety::Safe,
+                    edits: vec![edit],
+                });
+            }
             diagnostics.push(Diagnostic {
                 rule: "unnecessary-pass".to_string(),
                 severity: Severity::Warning,
@@ -43,7 +56,7 @@ impl Rule for UnnecessaryPassRule {
                     .to_string(),
                 help: Some("Remove the 'pass' statement.".to_string()),
                 span: Span::from_node(&pass_node),
-                fixes: Vec::new(),
+                fixes,
             });
         }
     }
