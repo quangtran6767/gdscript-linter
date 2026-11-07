@@ -2,9 +2,8 @@
 // clippy versions flag. The lint fires on macro output we don't control.
 #![allow(clippy::redundant_field_names)]
 
-use gdscript_formatter::linter::{
-    LintIssue, LintSeverity, LinterConfig, lint_gdscript_with_config,
-};
+use gdscript_formatter::linter::diagnostic::Diagnostic;
+use gdscript_formatter::linter::{LinterConfig, lint_gdscript_with_config};
 use gdscript_formatter::{
     FormatterConfiguration, PrinterConfiguration, QuoteStyle, format_gdscript,
 };
@@ -145,21 +144,15 @@ fn dict_to_linter_config(dict: &Dictionary<Variant, Variant>) -> LinterConfig {
     result
 }
 
-fn issues_to_array(issues: &Vec<LintIssue>) -> Array<Dictionary<Variant, Variant>> {
+fn issues_to_array(diagnostics: &[Diagnostic]) -> Array<Dictionary<Variant, Variant>> {
     let mut gd_issues = Array::<Dictionary<Variant, Variant>>::new();
-    for issue in issues {
+    for diagnostic in diagnostics {
         let mut gd_issue = Dictionary::<Variant, Variant>::new();
-        gd_issue.set("line", issue.line as i64);
-        gd_issue.set("column", issue.column as i64);
-        gd_issue.set("rule", &GString::from(&issue.rule));
-        gd_issue.set(
-            "severity",
-            match issue.severity {
-                LintSeverity::Error => "error",
-                LintSeverity::Warning => "warning",
-            },
-        );
-        gd_issue.set("message", &GString::from(&issue.message));
+        gd_issue.set("line", diagnostic.span.start.line as i64);
+        gd_issue.set("column", diagnostic.span.start.column as i64);
+        gd_issue.set("rule", &GString::from(&diagnostic.rule));
+        gd_issue.set("severity", diagnostic.severity.as_str());
+        gd_issue.set("message", &GString::from(&diagnostic.message));
         gd_issues.push(&gd_issue);
     }
     gd_issues

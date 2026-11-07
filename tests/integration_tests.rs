@@ -2,7 +2,7 @@
 /// Runs the formatter over a series of input files and verifies the output
 /// matches the expected output file. See files in the ./input and ./expected
 /// folders.
-use gdscript_formatter::linter::{GDScriptLinter, LinterConfig};
+use gdscript_formatter::linter::{GDScriptLinter, LinterConfig, format_diagnostic_line};
 use gdscript_formatter::{
     FormatterConfiguration, PrinterConfiguration, QuoteStyle, format_gdscript,
 };
@@ -71,19 +71,10 @@ fn test_lint_file(file_path: &Path) {
 
     // Format issues as they would appear in the CLI output
     let mut actual_output = String::new();
-    for issue in issues {
-        let relative_path = format!("tests/lint/input/{}", file_name.to_string_lossy());
-        actual_output.push_str(&format!(
-            "{}:{}:{}:{}: {}\n",
-            relative_path,
-            issue.line,
-            issue.rule,
-            match issue.severity {
-                gdscript_formatter::linter::LintSeverity::Error => "error",
-                gdscript_formatter::linter::LintSeverity::Warning => "warning",
-            },
-            issue.message
-        ));
+    let relative_path = format!("tests/lint/input/{}", file_name.to_string_lossy());
+    for diagnostic in &issues {
+        actual_output.push_str(&format_diagnostic_line(&relative_path, diagnostic));
+        actual_output.push('\n');
     }
 
     if actual_output.ends_with('\n') {

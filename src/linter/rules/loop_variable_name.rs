@@ -1,7 +1,7 @@
-use crate::linter::lib::{get_line_column, get_node_text};
+use crate::linter::diagnostic::{Diagnostic, Severity, Span};
+use crate::linter::lib::{get_node_text, to_snake_case};
 use crate::linter::regex_patterns::{PRIVATE_SNAKE_CASE, SNAKE_CASE};
 use crate::linter::rules::Rule;
-use crate::linter::{LintIssue, LintSeverity};
 use crate::node_kind::GDScriptNodeKind;
 use tree_sitter::Node;
 
@@ -18,45 +18,42 @@ impl Rule for LoopVariableNameRule {
         &[GDScriptNodeKind::ForStatement]
     }
 
-    fn check_node(&mut self, node: &Node, source_code: &str) -> Vec<LintIssue> {
-        let mut issues = Vec::new();
-
-        // Look for the loop variable
+    fn check_node(&mut self, node: &Node, source_code: &str, diagnostics: &mut Vec<Diagnostic>) {
         // In GDScript, for loops have the pattern: for <variable> in <iterable>:
-        // The variable could be an identifier or a typed parameter
-        if let Some(left_node) = node.child_by_field_name("left") {
-            let variable_name = if GDScriptNodeKind::get_kind_from_ast_node(left_node)
-                == GDScriptNodeKind::Identifier
-            {
-                get_node_text(&left_node, source_code)
-            } else if GDScriptNodeKind::get_kind_from_ast_node(left_node)
-                == GDScriptNodeKind::Parameter
-            {
-                // For typed loop variables like "for i: int in range(10):"
-                if let Some(name_child) = left_node.child(0) {
-                    get_node_text(&name_child, source_code)
-                } else {
-                    ""
-                }
-            } else {
-                ""
-            };
-
-            if !variable_name.is_empty() && !Self::is_valid_loop_variable_name(variable_name) {
-                let (line, column) = get_line_column(&left_node);
-                issues.push(LintIssue::new(
-                    line,
-                    column,
-                    "loop-variable-name".to_string(),
-                    LintSeverity::Error,
-                    format!(
-                        "Loop variable '{}' should be in snake_case_or _private_snake_case format",
-                        variable_name
-                    ),
-                ));
+        // The variable is an identifier or a typed parameter like
+        // "for i: int in range(10):", whose first child is the name.
+        let Some(left_node) = node.child_by_field_name("left") else {
+            return;
+        };
+        let name_node = match GDScriptNodeKind::get_kind_from_ast_node(left_node) {
+            GDScriptNodeKind::Identifier => left_node,
+            GDScriptNodeKind::Parameter => {
+                let Some(name_child) = left_node.child(0) else {
+                    return;
+                };
+                name_child
             }
+            _ => return,
+        };
+        let variable_name = get_node_text(&name_node, source_code);
+        if variable_name.is_empty() || Self::is_valid_loop_variable_name(variable_name) {
+            return;
         }
-
-        issues
+        let suggestion = to_snake_case(variable_name);
+        let mut help = None;
+        if Self::is_valid_loop_variable_name(&suggestion) {
+            help = Some(format!("Rename it to '{}'.", suggestion));
+        }
+        diagnostics.push(Diagnostic {
+            rule: "loop-variable-name".to_string(),
+            severity: Severity::Error,
+            message: format!(
+                "Loop variable '{}' should be in snake_case_or _private_snake_case format",
+                variable_name
+            ),
+            help,
+            span: Span::from_node(&name_node),
+            fixes: Vec::new(),
+        });
     }
 }

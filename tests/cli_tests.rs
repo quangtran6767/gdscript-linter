@@ -137,7 +137,7 @@ fn unimplemented_lint_flags_exit_with_code_2_and_name_the_flag() {
     let directory = test_directory();
     fs::write(directory.join("a.gd"), "var a = 1\n").expect("should write input file");
 
-    let cases: [(&[&str], &str); 9] = [
+    let cases: [(&[&str], &str); 8] = [
         (&["lint", "--fix", "a.gd"], "--fix"),
         (&["lint", "--fix-unsafe", "a.gd"], "--fix-unsafe"),
         (&["lint", "--diff", "a.gd"], "--diff"),
@@ -145,7 +145,6 @@ fn unimplemented_lint_flags_exit_with_code_2_and_name_the_flag() {
         (&["lint", "--config", "gdguard.toml", "a.gd"], "--config"),
         (&["lint", "--baseline=baseline.json", "a.gd"], "--baseline"),
         (&["lint", "--update-baseline", "a.gd"], "--update-baseline"),
-        (&["lint", "--max-warnings", "0", "a.gd"], "--max-warnings"),
         (&["lint", "--stdin-filename", "a.gd"], "--stdin-filename"),
     ];
     for (args, flag) in cases {
@@ -229,6 +228,131 @@ fn bad_subcommand_and_format_arguments_are_usage_errors() {
         let (exit_code, stderr) = run_and_capture_stderr(&directory, args);
         assert_eq!(exit_code, 2, "{:?} should exit with code 2", args);
         assert_eq!(stderr, expected_stderr);
+    }
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+/// Writes `files` (name, content) into a new temporary directory.
+fn directory_with_files(files: &[(&str, &str)]) -> std::path::PathBuf {
+    let directory = test_directory();
+    for (name, content) in files {
+        fs::write(directory.join(name), content).expect("should write test file");
+    }
+    directory
+}
+
+const CLEAN_SCRIPT: &str = "var health = 1\n";
+// One `unused-argument` warning.
+const SCRIPT_WITH_ONE_WARNING: &str = "func f(unused):\n\tpass\n";
+// Two `unused-argument` warnings.
+const SCRIPT_WITH_TWO_WARNINGS: &str = "func f(first, second):\n\tpass\n";
+// One `function-name` error.
+const SCRIPT_WITH_ONE_ERROR: &str = "func badName():\n\tpass\n";
+
+#[test]
+fn lint_exit_code_is_0_when_clean() {
+    let directory = directory_with_files(&[("clean.gd", CLEAN_SCRIPT)]);
+    let (exit_code, stderr) = run_and_capture_stderr(&directory, &["lint", "clean.gd"]);
+    assert_eq!(exit_code, 0, "stderr: {}", stderr);
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn lint_exit_code_is_1_when_problems_are_found() {
+    let directory = directory_with_files(&[
+        ("warning.gd", SCRIPT_WITH_ONE_WARNING),
+        ("error.gd", SCRIPT_WITH_ONE_ERROR),
+    ]);
+    let (warning_exit_code, _) = run_and_capture_stderr(&directory, &["lint", "warning.gd"]);
+    assert_eq!(warning_exit_code, 1);
+    let (error_exit_code, _) = run_and_capture_stderr(&directory, &["lint", "error.gd"]);
+    assert_eq!(error_exit_code, 1);
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn lint_exit_code_is_2_on_usage_errors() {
+    let directory = directory_with_files(&[("clean.gd", CLEAN_SCRIPT)]);
+
+    let (exit_code, stderr) =
+        run_and_capture_stderr(&directory, &["lint", "--disable", "not-a-rule", "clean.gd"]);
+    assert_eq!(exit_code, 2);
+    assert_eq!(
+        stderr,
+        "Error: Invalid rule names: not-a-rule\nUse --list-rules to see all available rules\n"
+    );
+
+    let (exit_code, stderr) = run_and_capture_stderr(&directory, &["lint", "no_scripts_here"]);
+    assert_eq!(exit_code, 2);
+    assert!(
+        stderr.starts_with("Error: No GDScript files found"),
+        "{}",
+        stderr
+    );
+
+    let (exit_code, stderr) = run_and_capture_stderr(&directory, &["lint", "missing.gd"]);
+    assert_eq!(exit_code, 2);
+    assert!(
+        stderr.starts_with("Error: Failed to read file missing.gd"),
+        "{}",
+        stderr
+    );
+
+    let (exit_code, _) = run_and_capture_stderr(&directory, &["lint", "--max-warnings", "x"]);
+    assert_eq!(exit_code, 2);
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn lint_max_warnings_allows_up_to_n_warnings() {
+    let directory = directory_with_files(&[
+        ("two_warnings.gd", SCRIPT_WITH_TWO_WARNINGS),
+        ("error.gd", SCRIPT_WITH_ONE_ERROR),
+    ]);
+    let cases: [(&[&str], i32); 5] = [
+        (&["lint", "two_warnings.gd"], 1),
+        (&["lint", "--max-warnings", "1", "two_warnings.gd"], 1),
+        (&["lint", "--max-warnings", "2", "two_warnings.gd"], 0),
+        (&["lint", "--max-warnings=5", "two_warnings.gd"], 0),
+        // Errors fail no matter how many warnings are allowed.
+        (&["lint", "--max-warnings", "100", "error.gd"], 1),
+    ];
+    for (args, expected_exit_code) in cases {
+        let (exit_code, stderr) = run_and_capture_stderr(&directory, args);
+        assert_eq!(exit_code, expected_exit_code, "{:?}: {}", args, stderr);
+    }
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn lint_stdin_uses_the_same_exit_codes() {
+    let directory = test_directory();
+    let cases: [(&str, &[&str], i32); 3] = [
+        (CLEAN_SCRIPT, &["lint"], 0),
+        (SCRIPT_WITH_ONE_WARNING, &["lint"], 1),
+        (SCRIPT_WITH_ONE_WARNING, &["lint", "--max-warnings", "1"], 0),
+    ];
+    for (input, args, expected_exit_code) in cases {
+        let mut child = formatter_command(&directory, args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("should start the linter");
+        child
+            .stdin
+            .take()
+            .expect("stdin should be piped")
+            .write_all(input.as_bytes())
+            .expect("should write linter input");
+        let output = child.wait_with_output().expect("should collect output");
+        assert_eq!(
+            output.status.code(),
+            Some(expected_exit_code),
+            "{:?} on {:?}",
+            args,
+            input
+        );
     }
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
 }

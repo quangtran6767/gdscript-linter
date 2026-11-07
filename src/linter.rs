@@ -2,7 +2,7 @@ use crate::node_kind::GDScriptNodeKind;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::{fs, io::IsTerminal};
-use tree_sitter::{Node, Parser};
+use tree_sitter::{Node, Parser, Tree};
 
 // Shared contracts (frozen after W0).
 pub mod api;
@@ -31,51 +31,21 @@ pub mod rules_meta;
 #[cfg(test)]
 mod tests;
 
+use diagnostic::{Diagnostic, Severity};
 use ignore_patterns::{parse_ignore_patterns, should_ignore_rule};
 use rules::{ALL_RULES, Rule};
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum LintSeverity {
-    Error,
-    Warning,
-}
-
-#[derive(Debug, Clone)]
-pub struct LintIssue {
-    pub line: usize,
-    pub column: usize,
-    pub rule: String,
-    pub severity: LintSeverity,
-    pub message: String,
-}
-
-impl LintIssue {
-    pub fn new(
-        line: usize,
-        column: usize,
-        rule: String,
-        severity: LintSeverity,
-        message: String,
-    ) -> Self {
-        Self {
-            line,
-            column,
-            rule,
-            severity,
-            message,
-        }
-    }
-
-    pub fn format(&self, file_path: &str) -> String {
-        let severity_str = match self.severity {
-            LintSeverity::Error => "error",
-            LintSeverity::Warning => "warning",
-        };
-        format!(
-            "{}:{}:{}:{}: {}",
-            file_path, self.line, self.rule, severity_str, self.message
-        )
-    }
+/// Formats one diagnostic in the default text output:
+/// `path:line:rule:severity: message`.
+pub fn format_diagnostic_line(file_path: &str, diagnostic: &Diagnostic) -> String {
+    format!(
+        "{}:{}:{}:{}: {}",
+        file_path,
+        diagnostic.span.start.line,
+        diagnostic.rule,
+        diagnostic.severity.as_str(),
+        diagnostic.message
+    )
 }
 
 #[derive(Debug, Clone)]
@@ -95,6 +65,42 @@ impl Default for LinterConfig {
     }
 }
 
+/// Counts of the diagnostics reported over a lint run, used to pick the exit
+/// code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct LintSummary {
+    pub error_count: usize,
+    pub warning_count: usize,
+    pub info_count: usize,
+}
+
+impl LintSummary {
+    pub fn add(&mut self, diagnostics: &[Diagnostic]) {
+        for diagnostic in diagnostics {
+            match diagnostic.severity {
+                Severity::Error => self.error_count += 1,
+                Severity::Warning => self.warning_count += 1,
+                Severity::Info => self.info_count += 1,
+            }
+        }
+    }
+
+    /// Exit code of the `lint` command: 1 when there are errors, or more
+    /// warnings than `max_warnings` allows; 0 otherwise. Without
+    /// `--max-warnings`, any warning fails, like before exit codes existed.
+    /// Info diagnostics never fail.
+    pub fn exit_code(&self, max_warnings: Option<usize>) -> i32 {
+        if self.error_count > 0 {
+            return 1;
+        }
+        let allowed_warnings = max_warnings.unwrap_or(0);
+        if self.warning_count > allowed_warnings {
+            return 1;
+        }
+        0
+    }
+}
+
 pub struct GDScriptLinter {
     config: LinterConfig,
     parser: Parser,
@@ -111,91 +117,54 @@ impl GDScriptLinter {
         Ok(Self { config, parser })
     }
 
-    pub fn lint(&mut self, source_code: &str, _file_path: &str) -> Result<Vec<LintIssue>, String> {
+    /// Parses and lints one file. Returns the diagnostics left after inline
+    /// ignore comments, sorted by position.
+    pub fn lint(&mut self, source_code: &str, _file_path: &str) -> Result<Vec<Diagnostic>, String> {
         let tree = self
             .parser
             .parse(source_code, None)
             .ok_or("Failed to parse GDScript code")?;
 
-        let root_node = tree.root_node();
-        let mut issues = Vec::new();
+        let mut diagnostics = Vec::new();
+        run_builtin_rules(&self.config, &tree, source_code, &mut diagnostics);
 
+        // Inline ignore comments apply to the line where a diagnostic starts.
         let ignore_map = parse_ignore_patterns(source_code);
-
-        let mut checkers: Vec<Box<dyn Rule>> = Vec::new();
-        for current_rule in ALL_RULES {
-            if !self.config.disabled_rules.contains(current_rule.name) {
-                checkers.push((current_rule.create)(&self.config));
-            }
+        if !ignore_map.is_empty() {
+            diagnostics.retain(|diagnostic| {
+                !should_ignore_rule(&ignore_map, diagnostic.span.start.line, &diagnostic.rule)
+            });
         }
 
-        // Here we build a map from node kinds to the rules that care about
-        // them. That allows us to use the visitor pattern to go through the
-        // tree only once. We call each rule only when we encounter an AST node
-        // it cares about.
-        let mut node_kind_map: HashMap<GDScriptNodeKind, Vec<usize>> = HashMap::new();
-        let mut source_only_rules = Vec::new();
-        for (current_index, checker) in checkers.iter().enumerate() {
-            let kinds = checker.get_target_ast_nodes();
-            if kinds.is_empty() {
-                source_only_rules.push(current_index);
-            } else {
-                for &kind in kinds {
-                    node_kind_map.entry(kind).or_default().push(current_index);
-                }
-            }
-        }
+        // Sort by position. Rules that run on the source code like the line
+        // length check would otherwise appear at the end.
+        diagnostics.sort_by(|a, b| {
+            a.span
+                .start
+                .line
+                .cmp(&b.span.start.line)
+                .then(a.span.start.column.cmp(&b.span.start.column))
+        });
 
-        // First we run the rules that only care about the source code. Then we
-        // visit each node in the AST, calling the relevant rules. Finally we
-        // call the finalize method on each rule in case a rule needs to collect
-        // state while visiting nodes and report issues at the end.
-        for &current_index in &source_only_rules {
-            let rule_issues = checkers[current_index].check_source(source_code);
-            for issue in rule_issues {
-                if !should_ignore_rule(&ignore_map, issue.line, &issue.rule) {
-                    issues.push(issue);
-                }
-            }
-        }
-        visit_each_node(
-            &root_node,
-            source_code,
-            &mut checkers,
-            &node_kind_map,
-            &mut issues,
-            &ignore_map,
-        );
-        for checker in checkers.iter_mut() {
-            let rule_issues = checker.finalize(source_code);
-            for issue in rule_issues {
-                if !should_ignore_rule(&ignore_map, issue.line, &issue.rule) {
-                    issues.push(issue);
-                }
-            }
-        }
-
-        // Sort issues by line number. Rules that run on the source code like
-        // line length check will otherwise appear at the end.
-        issues.sort_by(|a, b| a.line.cmp(&b.line).then(a.column.cmp(&b.column)));
-
-        Ok(issues)
+        Ok(diagnostics)
     }
 
     pub fn lint_files(
         &mut self,
         gdscript_files: &[PathBuf],
         do_pretty_print: bool,
-    ) -> Result<bool, Box<dyn std::error::Error>> {
+    ) -> Result<LintSummary, String> {
         self.lint_files_with_editorconfig(gdscript_files, do_pretty_print, None)
     }
 
+    /// Lints each file with its own `.editorconfig` settings, prints the
+    /// diagnostics and returns their counts.
     pub fn lint_files_with_editorconfig(
         &mut self,
         gdscript_files: &[PathBuf],
         do_pretty_print: bool,
         max_line_length_override: Option<usize>,
-    ) -> Result<bool, Box<dyn std::error::Error>> {
+    ) -> Result<LintSummary, String> {
         let with_colors = std::io::stdout().is_terminal();
         let base_config = self.config.clone();
 
@@ -230,10 +199,10 @@ impl GDScriptLinter {
         with_colors: bool,
         base_config: &LinterConfig,
         max_line_length_override: Option<usize>,
-    ) -> Result<bool, Box<dyn std::error::Error>> {
-        use std::collections::HashMap;
-        let mut file_issues: HashMap<String, Vec<_>> = HashMap::new();
-        let mut has_issues = false;
+    ) -> Result<LintSummary, String> {
+        let mut summary = LintSummary::default();
+        // Files keep the order they were given in (sorted by the CLI).
+        let mut files_with_diagnostics: Vec<(String, Vec<Diagnostic>)> = Vec::new();
 
         for file_path in gdscript_files {
             self.apply_file_config(base_config, file_path, max_line_length_override);
@@ -241,67 +210,54 @@ impl GDScriptLinter {
                 format!("Failed to read file {}: {}", file_path.display(), error)
             })?;
 
-            let issues = self.lint(&source_code, &file_path.to_string_lossy())?;
-
-            if !issues.is_empty() {
-                has_issues = true;
-                file_issues.insert(file_path.to_string_lossy().to_string(), issues);
+            let diagnostics = self.lint(&source_code, &file_path.to_string_lossy())?;
+            summary.add(&diagnostics);
+            if !diagnostics.is_empty() {
+                files_with_diagnostics.push((file_path.to_string_lossy().to_string(), diagnostics));
             }
         }
 
-        // Print pretty output grouped by file and line
-        let mut file_iter = file_issues.iter().peekable();
-        while let Some((file_path, issues)) = file_iter.next() {
-            let bold = if with_colors { "\x1b[1m" } else { "" };
-            let reset = if with_colors { "\x1b[0m" } else { "" };
-
+        let bold = if with_colors { "\x1b[1m" } else { "" };
+        let reset = if with_colors { "\x1b[0m" } else { "" };
+        for (file_index, (file_path, diagnostics)) in files_with_diagnostics.iter().enumerate() {
             println!("{}{}{}", bold, file_path, reset);
 
-            // Group issues by line number
-            let mut line_issues: HashMap<usize, Vec<_>> = HashMap::new();
-            for issue in issues {
-                line_issues.entry(issue.line).or_default().push(issue);
-            }
-
-            // Sort by line number and print
-            let mut sorted_lines: Vec<_> = line_issues.keys().collect();
-            sorted_lines.sort();
-
-            for (i, &line_num) in sorted_lines.iter().enumerate() {
-                if let Some(line_issues) = line_issues.get(line_num) {
-                    println!("    {}:{}", file_path, line_num);
-                    for issue in line_issues {
-                        let (severity_str, severity_color) = match issue.severity {
-                            LintSeverity::Error => ("ERROR", "\x1b[31m"),  // Red
-                            LintSeverity::Warning => ("WARN", "\x1b[33m"), // Yellow
-                        };
-
-                        if with_colors {
-                            println!(
-                                "        {}{}\x1b[0m: `{}`",
-                                severity_color, severity_str, issue.rule
-                            );
-                        } else {
-                            println!("        {}: `{}`", severity_str, issue.rule);
-                        }
-                        println!("        {}", issue.message);
-                    }
-
-                    // Add newline between line groups (except for the last line group)
-                    if i < sorted_lines.len() - 1 {
+            // Diagnostics are sorted by line, so each line's group is a run of
+            // consecutive diagnostics.
+            let mut current_line = 0;
+            for diagnostic in diagnostics {
+                let line = diagnostic.span.start.line;
+                if line != current_line {
+                    if current_line != 0 {
                         println!();
                     }
+                    println!("    {}:{}", file_path, line);
+                    current_line = line;
                 }
+                let (severity_label, severity_color) = match diagnostic.severity {
+                    Severity::Error => ("ERROR", "\x1b[31m"),  // Red
+                    Severity::Warning => ("WARN", "\x1b[33m"), // Yellow
+                    Severity::Info => ("INFO", "\x1b[34m"),    // Blue
+                };
+                if with_colors {
+                    println!(
+                        "        {}{}\x1b[0m: `{}`",
+                        severity_color, severity_label, diagnostic.rule
+                    );
+                } else {
+                    println!("        {}: `{}`", severity_label, diagnostic.rule);
+                }
+                println!("        {}", diagnostic.message);
             }
 
             // Add separator between files (except for the last file)
-            if file_iter.peek().is_some() {
+            if file_index + 1 < files_with_diagnostics.len() {
                 println!("\n{}", "-".repeat(60));
                 println!();
             }
         }
 
-        Ok(has_issues)
+        Ok(summary)
     }
 
     fn lint_files_standard(
@@ -309,8 +265,8 @@ impl GDScriptLinter {
         gdscript_files: &[PathBuf],
         base_config: &LinterConfig,
         max_line_length_override: Option<usize>,
-    ) -> Result<bool, Box<dyn std::error::Error>> {
-        let mut has_issues = false;
+    ) -> Result<LintSummary, String> {
+        let mut summary = LintSummary::default();
 
         for file_path in gdscript_files {
             self.apply_file_config(base_config, file_path, max_line_length_override);
@@ -318,15 +274,63 @@ impl GDScriptLinter {
                 format!("Failed to read file {}: {}", file_path.display(), error)
             })?;
 
-            let issues = self.lint(&source_code, &file_path.to_string_lossy())?;
-
-            for issue in issues {
-                has_issues = true;
-                println!("{}", issue.format(&file_path.to_string_lossy()));
+            let diagnostics = self.lint(&source_code, &file_path.to_string_lossy())?;
+            summary.add(&diagnostics);
+            let display_path = file_path.to_string_lossy();
+            for diagnostic in &diagnostics {
+                println!("{}", format_diagnostic_line(&display_path, diagnostic));
             }
         }
 
-        Ok(has_issues)
+        Ok(summary)
+    }
+}
+
+/// Runs every enabled built-in rule on a parsed file and appends their
+/// diagnostics, unfiltered and unsorted.
+///
+/// We build a map from node kinds to the rules that care about them, so we
+/// walk the tree only once and call each rule only on the nodes it targets.
+/// Source-only rules run first, then the tree walk, then each rule's
+/// `finalize` for rules that report after collecting state.
+pub fn run_builtin_rules(
+    config: &LinterConfig,
+    tree: &Tree,
+    source_code: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let mut checkers: Vec<Box<dyn Rule>> = Vec::with_capacity(ALL_RULES.len());
+    for current_rule in ALL_RULES {
+        if !config.disabled_rules.contains(current_rule.name) {
+            checkers.push((current_rule.create)(config));
+        }
+    }
+
+    let mut node_kind_map: HashMap<GDScriptNodeKind, Vec<usize>> = HashMap::new();
+    let mut source_only_rules = Vec::new();
+    for (current_index, checker) in checkers.iter().enumerate() {
+        let kinds = checker.get_target_ast_nodes();
+        if kinds.is_empty() {
+            source_only_rules.push(current_index);
+        } else {
+            for &kind in kinds {
+                node_kind_map.entry(kind).or_default().push(current_index);
+            }
+        }
+    }
+
+    for &current_index in &source_only_rules {
+        checkers[current_index].check_source(source_code, diagnostics);
+    }
+    visit_each_node(
+        &tree.root_node(),
+        source_code,
+        &mut checkers,
+        &node_kind_map,
+        diagnostics,
+    );
+    for checker in checkers.iter_mut() {
+        checker.finalize(source_code, diagnostics);
     }
 }
 
@@ -337,19 +341,13 @@ fn visit_each_node(
     source_code: &str,
     checkers: &mut [Box<dyn Rule>],
     node_kind_map: &HashMap<GDScriptNodeKind, Vec<usize>>,
-    issues: &mut Vec<LintIssue>,
-    ignore_map: &HashMap<usize, HashSet<String>>,
+    diagnostics: &mut Vec<Diagnostic>,
 ) {
     if let Some(matching_rules) =
         node_kind_map.get(&GDScriptNodeKind::get_kind_from_ast_node(*node))
     {
-        for &rule_idx in matching_rules {
-            let rule_issues = checkers[rule_idx].check_node(node, source_code);
-            for issue in rule_issues {
-                if !should_ignore_rule(ignore_map, issue.line, &issue.rule) {
-                    issues.push(issue);
-                }
-            }
+        for &rule_index in matching_rules {
+            checkers[rule_index].check_node(node, source_code, diagnostics);
         }
     }
 
@@ -361,8 +359,7 @@ fn visit_each_node(
                 source_code,
                 checkers,
                 node_kind_map,
-                issues,
-                ignore_map,
+                diagnostics,
             );
             if !cursor.goto_next_sibling() {
                 break;
@@ -375,12 +372,12 @@ pub fn lint_gdscript_with_config(
     source_code: &str,
     file_path: &str,
     config: &LinterConfig,
-) -> Result<Vec<LintIssue>, String> {
+) -> Result<Vec<Diagnostic>, String> {
     let mut linter = GDScriptLinter::new(config.clone())?;
     linter.lint(source_code, file_path)
 }
 
-pub fn lint_gdscript(source_code: &str, file_path: &str) -> Result<Vec<LintIssue>, String> {
+pub fn lint_gdscript(source_code: &str, file_path: &str) -> Result<Vec<Diagnostic>, String> {
     let config = LinterConfig::default();
     lint_gdscript_with_config(source_code, file_path, &config)
 }

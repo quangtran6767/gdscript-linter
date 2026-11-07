@@ -24,10 +24,13 @@ use std::{
 };
 
 use gdscript_formatter::linter::rule_config::{parse_disabled_rules, validate_rule_names};
+use gdscript_formatter::linter::{
+    GDScriptLinter, LintSummary, LinterConfig, format_diagnostic_line,
+};
 use gdscript_formatter::linter::{explain, init, rule_tester};
 use gdscript_formatter::{
     FormatErrors, FormatterConfiguration, QuoteStyle, RenderElement, format_gdscript,
-    format_gdscript_with_buffers, linter::LinterConfig,
+    format_gdscript_with_buffers,
 };
 use std::collections::HashSet;
 
@@ -127,70 +130,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if do_update_baseline {
             exit_not_implemented("--update-baseline");
         }
-        if max_warnings.is_some() {
-            exit_not_implemented("--max-warnings");
-        }
         if stdin_filename.is_some() {
             exit_not_implemented("--stdin-filename");
         }
 
-        let disabled_rules = if let Some(disable_str) = disabled_linter_rules {
-            let rules = parse_disabled_rules(&disable_str);
-            if let Err(invalid_rules) = validate_rule_names(&rules) {
-                eprintln!("Error: Invalid rule names: {}", invalid_rules.join(", "));
-                eprintln!("Use --list-rules to see all available rules");
-                std::process::exit(1);
-            }
-            rules
-        } else {
-            HashSet::new()
+        let lint_options = LintRunOptions {
+            input_file_paths: parsed_cli_args.input_file_paths,
+            excluded_paths: parsed_cli_args.excluded_paths,
+            disabled_linter_rules,
+            max_line_length,
+            do_pretty_print,
         };
-
-        let linter_config = LinterConfig {
-            disabled_rules,
-            max_line_length: max_line_length.unwrap_or(100),
-            ..LinterConfig::default()
-        };
-
-        let is_stdin_requested = parsed_cli_args.input_file_paths.is_empty()
-            || (parsed_cli_args.input_file_paths.len() == 1
-                && parsed_cli_args.input_file_paths[0] == Path::new("-"));
-        if is_stdin_requested && !io::stdin().is_terminal() {
-            let mut input_content = String::new();
-            io::stdin()
-                .read_to_string(&mut input_content)
-                .map_err(|error| format!("Failed to read from stdin: {}", error))?;
-            let stdin_path = env::current_dir()?.join("stdin.gd");
-            let mut stdin_config = linter_config;
-            gdscript_formatter::editorconfig::apply_editorconfig_to_linter_config(
-                &mut stdin_config,
-                &stdin_path,
-            );
-            if let Some(max_line_length) = max_line_length {
-                stdin_config.max_line_length = max_line_length;
+        // Exit codes: 0 clean, 1 lint problems, 2 usage or config errors.
+        match run_linter(lint_options) {
+            Ok(summary) => std::process::exit(summary.exit_code(max_warnings)),
+            Err(error) => {
+                eprintln!("Error: {}", error);
+                std::process::exit(2);
             }
-
-            let mut linter = gdscript_formatter::linter::GDScriptLinter::new(stdin_config)?;
-            let issues = linter.lint(&input_content, "stdin")?;
-            let has_issues = !issues.is_empty();
-            for issue in issues {
-                println!("{}", issue.format("stdin"));
-            }
-            if has_issues {
-                std::process::exit(1);
-            }
-            return Ok(());
-        } else {
-            let input_gdscript_files = find_gdscript_files(
-                &parsed_cli_args.input_file_paths,
-                &parsed_cli_args.excluded_paths,
-            )?;
-            return run_linter(
-                &input_gdscript_files,
-                linter_config,
-                max_line_length,
-                do_pretty_print,
-            );
         }
     }
 
@@ -285,6 +242,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         parsed_cli_args.input_file_paths
     };
     let input_gdscript_files = find_gdscript_files(&input_paths, &parsed_cli_args.excluded_paths)?;
+    if input_gdscript_files.is_empty() {
+        eprintln!("Error: {}", NO_GDSCRIPT_FILES_MESSAGE);
+        std::process::exit(1);
+    }
 
     let total_files = input_gdscript_files.len();
 
@@ -456,24 +417,78 @@ fn exit_not_implemented(name: &str) -> ! {
     std::process::exit(2);
 }
 
-fn run_linter(
-    input_files: &[PathBuf],
-    config: LinterConfig,
-    max_line_length_override: Option<usize>,
+/// What the `lint` command needs to lint files or stdin.
+struct LintRunOptions {
+    input_file_paths: Vec<PathBuf>,
+    excluded_paths: Vec<PathBuf>,
+    /// Comma-separated rule names from `--disable`.
+    disabled_linter_rules: Option<String>,
+    /// `--max-line-length`, which overrides `.editorconfig`.
+    max_line_length: Option<usize>,
     do_pretty_print: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut linter = gdscript_formatter::linter::GDScriptLinter::new(config)?;
-    let has_issues = linter.lint_files_with_editorconfig(
-        input_files,
-        do_pretty_print,
-        max_line_length_override,
-    )?;
+}
 
-    if has_issues {
-        std::process::exit(1);
+/// Lints the files (or stdin) and prints the diagnostics. Returns their
+/// counts, or an error message for usage and I/O errors (exit code 2).
+fn run_linter(options: LintRunOptions) -> Result<LintSummary, String> {
+    let mut disabled_rules = HashSet::new();
+    if let Some(disable_str) = options.disabled_linter_rules {
+        disabled_rules = parse_disabled_rules(&disable_str);
+        if let Err(invalid_rules) = validate_rule_names(&disabled_rules) {
+            return Err(format!(
+                "Invalid rule names: {}\nUse --list-rules to see all available rules",
+                invalid_rules.join(", ")
+            ));
+        }
     }
 
-    Ok(())
+    let linter_config = LinterConfig {
+        disabled_rules,
+        max_line_length: options.max_line_length.unwrap_or(100),
+        ..LinterConfig::default()
+    };
+
+    let is_stdin_requested = options.input_file_paths.is_empty()
+        || (options.input_file_paths.len() == 1 && options.input_file_paths[0] == Path::new("-"));
+    if is_stdin_requested && !io::stdin().is_terminal() {
+        let mut input_content = String::new();
+        io::stdin()
+            .read_to_string(&mut input_content)
+            .map_err(|error| format!("Failed to read from stdin: {}", error))?;
+        let current_directory = env::current_dir()
+            .map_err(|error| format!("Failed to get current directory: {}", error))?;
+        let stdin_path = current_directory.join("stdin.gd");
+        let mut stdin_config = linter_config;
+        gdscript_formatter::editorconfig::apply_editorconfig_to_linter_config(
+            &mut stdin_config,
+            &stdin_path,
+        );
+        if let Some(max_line_length) = options.max_line_length {
+            stdin_config.max_line_length = max_line_length;
+        }
+
+        let mut linter = GDScriptLinter::new(stdin_config)?;
+        let diagnostics = linter.lint(&input_content, "stdin")?;
+        let mut summary = LintSummary::default();
+        summary.add(&diagnostics);
+        for diagnostic in &diagnostics {
+            println!("{}", format_diagnostic_line("stdin", diagnostic));
+        }
+        return Ok(summary);
+    }
+
+    let input_gdscript_files =
+        find_gdscript_files(&options.input_file_paths, &options.excluded_paths)
+            .map_err(|error| error.to_string())?;
+    if input_gdscript_files.is_empty() {
+        return Err(NO_GDSCRIPT_FILES_MESSAGE.to_string());
+    }
+    let mut linter = GDScriptLinter::new(linter_config)?;
+    linter.lint_files_with_editorconfig(
+        &input_gdscript_files,
+        options.do_pretty_print,
+        options.max_line_length,
+    )
 }
 
 /// Formats one file after applying its matching editorconfig settings.
@@ -650,6 +665,10 @@ fn format_chunk(
     results
 }
 
+const NO_GDSCRIPT_FILES_MESSAGE: &str = "No GDScript files found in the arguments provided. Please provide at least one .gd file or directory containing .gd files.";
+
+/// Finds the `.gd` files in `input_paths`, sorted. Returns an empty list when
+/// there are none; each command decides how to report that.
 fn find_gdscript_files(
     input_paths: &[PathBuf],
     excluded_paths: &[PathBuf],
@@ -706,14 +725,6 @@ fn find_gdscript_files(
 
     gdscript_file_paths.sort();
     gdscript_file_paths.dedup();
-
-    if gdscript_file_paths.is_empty() {
-        eprintln!(
-            "Error: No GDScript files found in the arguments provided. Please provide at least one .gd file or directory containing .gd files."
-        );
-        std::process::exit(1);
-    }
-
     Ok(gdscript_file_paths)
 }
 

@@ -1,6 +1,6 @@
-use crate::linter::lib::{get_line_column, get_node_text};
+use crate::linter::diagnostic::{Diagnostic, Severity, Span};
+use crate::linter::lib::get_node_text;
 use crate::linter::rules::Rule;
-use crate::linter::{LintIssue, LintSeverity};
 use crate::node_kind::GDScriptNodeKind;
 use tree_sitter::Node;
 
@@ -11,39 +11,28 @@ impl Rule for StandaloneExpressionRule {
         &[GDScriptNodeKind::ExpressionStatement]
     }
 
-    fn check_node(&mut self, node: &Node, source_code: &str) -> Vec<LintIssue> {
-        let mut issues = Vec::new();
-
-        if let Some(expr_child) = node.child(0) {
-            let expr_kind = GDScriptNodeKind::get_kind_from_ast_node(expr_child);
-            if expr_kind == GDScriptNodeKind::Call
-                || expr_kind == GDScriptNodeKind::Assignment
-                || expr_kind == GDScriptNodeKind::AugmentedAssignment
-            {
-                return issues;
-            }
-
-            if matches!(
-                expr_kind,
-                GDScriptNodeKind::BinaryOperator
-                    | GDScriptNodeKind::Literal
-                    | GDScriptNodeKind::String
-            ) {
-                let (line, column) = get_line_column(&expr_child);
-                let expr_text = get_node_text(&expr_child, source_code);
-                issues.push(LintIssue::new(
-                        line,
-                        column,
-                        "standalone-expression".to_string(),
-                        LintSeverity::Warning,
-                        format!(
-                            "Standalone expression '{}' is not assigned or used, the line may have no effect",
-                            expr_text
-                        ),
-                    ));
-            }
+    fn check_node(&mut self, node: &Node, source_code: &str, diagnostics: &mut Vec<Diagnostic>) {
+        let Some(expr_child) = node.child(0) else {
+            return;
+        };
+        let expr_kind = GDScriptNodeKind::get_kind_from_ast_node(expr_child);
+        if !matches!(
+            expr_kind,
+            GDScriptNodeKind::BinaryOperator | GDScriptNodeKind::Literal | GDScriptNodeKind::String
+        ) {
+            return;
         }
-
-        issues
+        let expr_text = get_node_text(&expr_child, source_code);
+        diagnostics.push(Diagnostic {
+            rule: "standalone-expression".to_string(),
+            severity: Severity::Warning,
+            message: format!(
+                "Standalone expression '{}' is not assigned or used, the line may have no effect",
+                expr_text
+            ),
+            help: Some("Assign or use the value, or remove the line.".to_string()),
+            span: Span::from_node(&expr_child),
+            fixes: Vec::new(),
+        });
     }
 }
