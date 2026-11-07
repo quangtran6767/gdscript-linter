@@ -314,6 +314,6 @@ fn message_uses_metavariable_captured_in_a_relational_rule() {
     assert_eq!(diagnostics.len(), 1);
     assert_eq!(
         diagnostics[0].message,
-        "Don't call `get_node()` in `_physics_process()`; cache the node in an `@onready` variable"
+        "Don't look up nodes in `_physics_process()`; cache the node in an `@onready` variable"
     );
 }

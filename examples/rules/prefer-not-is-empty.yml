@@ -1,0 +1,43 @@
+id: prefer-not-is-empty
+severity: warning
+message: "Use `not $X.is_empty()` instead of comparing `len($X)` to zero"
+help: "`not is_empty()` states the intent and works on Array, Dictionary, String and packed arrays."
+rationale: |
+  `len(x) > 0` and `len(x) != 0` ask whether a collection has elements by
+  counting them. `not x.is_empty()` asks the question directly.
+  This is the counterpart of `prefer-is-empty`; a rule has one fix template,
+  so the two checks are separate rules.
+rule:
+  any:
+    - pattern: len($X) > 0
+    - pattern: len($X) != 0
+    - pattern: len($X) >= 1
+    - pattern: 0 < len($X)
+constraints:
+  X:
+    any:
+      - kind: identifier
+      - kind: attribute
+      - kind: call
+      - kind: subscript
+      - kind: get_node
+      - kind: array
+      - kind: dictionary
+      - kind: string
+      - kind: parenthesized_expression
+fix: not $X.is_empty()
+fixSafety: safe
+tests:
+  invalid:
+    - code: "func f(items):\n\tif len(items) > 0:\n\t\tpass\n"
+      output: "func f(items):\n\tif not items.is_empty():\n\t\tpass\n"
+    - code: "func f(items):\n\twhile len(items) != 0:\n\t\titems.pop_back()\n"
+      output: "func f(items):\n\twhile not items.is_empty():\n\t\titems.pop_back()\n"
+    - code: "var has_children = len(get_children()) >= 1\n"
+      output: "var has_children = not get_children().is_empty()\n"
+    - code: "func f(names):\n\treturn 0 < len(names)\n"
+      output: "func f(names):\n\treturn not names.is_empty()\n"
+  valid:
+    - "func f(items):\n\tif not items.is_empty():\n\t\tpass\n"
+    - "func f(items):\n\tif len(items) > 1:\n\t\tpass\n"
+    - "func f(a, b):\n\tif len(a + b) > 0:\n\t\tpass\n"

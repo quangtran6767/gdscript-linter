@@ -1,0 +1,54 @@
+id: prefer-is-instance-valid
+severity: info
+message: "`$X != null` is still true after the node is freed; use `is_instance_valid($X)`"
+help: "`is_instance_valid($X)` is false for both `null` and freed nodes."
+rationale: |
+  A variable typed as a node keeps pointing at the node after `queue_free()`
+  frees it. `x != null` is then still true, and using `x` errors with
+  "previously freed". `is_instance_valid(x)` checks both cases. The rule only
+  sees declared types (`var x: Node2D`, `func f(x: Control)`) from a list of
+  common node classes, in the same file; it can't follow inferred types or
+  your own classes. The fix is a suggestion: when the variable can't hold a
+  freed node, `!= null` is fine.
+rule:
+  pattern: $X != null
+  inside:
+    kind: source
+    has:
+      any:
+        - kind: variable_statement
+          all:
+            - has:
+                field: name
+                pattern: $X
+            - has:
+                field: type
+                pattern: $TYPE
+        - kind: typed_parameter
+          all:
+            - has:
+                kind: identifier
+                pattern: $X
+            - has:
+                field: type
+                pattern: $TYPE
+      stopBy: end
+    stopBy: end
+constraints:
+  TYPE:
+    regex: ^(Node|Node2D|Node3D|CanvasItem|Control|Sprite2D|Sprite3D|AnimatedSprite2D|AnimatedSprite3D|CharacterBody2D|CharacterBody3D|RigidBody2D|RigidBody3D|StaticBody2D|StaticBody3D|Area2D|Area3D|Camera2D|Camera3D|Timer|AnimationPlayer|AudioStreamPlayer|AudioStreamPlayer2D|AudioStreamPlayer3D|Label|Button|TextureRect|Panel|Container|CollisionShape2D|CollisionShape3D|MeshInstance3D|Marker2D|Marker3D|PathFollow2D|PathFollow3D|NavigationAgent2D|NavigationAgent3D|Tween|Window|Viewport|SubViewport)$
+fix: is_instance_valid($X)
+fixSafety: suggestion
+tests:
+  invalid:
+    - code: "var target: Node2D\n\nfunc _process(delta):\n\tif target != null:\n\t\tlook_at(target.position)\n"
+      output: "var target: Node2D\n\nfunc _process(delta):\n\tif is_instance_valid(target):\n\t\tlook_at(target.position)\n"
+    - code: "@onready var label: Label = $Label\n\nfunc show_text(text):\n\tif label != null:\n\t\tlabel.text = text\n"
+      output: "@onready var label: Label = $Label\n\nfunc show_text(text):\n\tif is_instance_valid(label):\n\t\tlabel.text = text\n"
+    - code: "func attack(enemy: CharacterBody2D):\n\treturn enemy != null\n"
+      output: "func attack(enemy: CharacterBody2D):\n\treturn is_instance_valid(enemy)\n"
+  valid:
+    - "var target: Node2D\n\nfunc f():\n\tif is_instance_valid(target):\n\t\tpass\n"
+    - "var data: Dictionary\n\nfunc f():\n\tif data != null:\n\t\tpass\n"
+    - "var target\n\nfunc f():\n\tif target != null:\n\t\tpass\n"
+    - "var target: Node2D\n\nfunc f(other):\n\tif other != null:\n\t\tpass\n"

@@ -1,0 +1,37 @@
+id: no-string-connect
+severity: error
+message: "Godot 3 `connect($SIGNAL, $TARGET, $METHOD)` doesn't work in Godot 4"
+help: "Pass a Callable: `signal_name.connect(method)`, or `connect($SIGNAL, Callable($TARGET, $METHOD))`."
+rationale: |
+  Godot 4's `Object.connect()` takes a signal name and a `Callable`; the
+  Godot 3 form with a target object and a method name string fails at run
+  time. The fix rewrites the arguments to `connect($SIGNAL,
+  Callable($TARGET, $METHOD))`, which connects the same method. The idiomatic
+  form, `pressed.connect(_on_pressed)`, needs the names without quotes and is
+  left to you. The fix is unsafe because extra arguments (binds, flags) are
+  not handled, so only the three-argument form is reported.
+rule:
+  any:
+    - pattern: connect($SIGNAL, $TARGET, $METHOD)
+    - pattern:
+        context: $OBJECT.connect($SIGNAL, $TARGET, $METHOD)
+        selector: attribute_call
+constraints:
+  SIGNAL:
+    kind: string
+  METHOD:
+    kind: string
+fix: connect($SIGNAL, Callable($TARGET, $METHOD))
+fixSafety: unsafe
+tests:
+  invalid:
+    - code: "func _ready():\n\tconnect(\"died\", self, \"_on_died\")\n"
+      output: "func _ready():\n\tconnect(\"died\", Callable(self, \"_on_died\"))\n"
+    - code: "func _ready():\n\t$Button.connect(\"pressed\", self, \"_on_pressed\")\n"
+      output: "func _ready():\n\t$Button.connect(\"pressed\", Callable(self, \"_on_pressed\"))\n"
+    - code: "func _ready():\n\ttimer.connect(\"timeout\", hud, \"refresh\")\n"
+      output: "func _ready():\n\ttimer.connect(\"timeout\", Callable(hud, \"refresh\"))\n"
+  valid:
+    - "func _ready():\n\t$Button.pressed.connect(_on_pressed)\n"
+    - "func _ready():\n\tconnect(\"died\", _on_died)\n"
+    - "func _ready():\n\tconnect(\"died\", _on_died, CONNECT_ONE_SHOT)\n"

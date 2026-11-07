@@ -1,0 +1,36 @@
+id: no-print-left
+severity: info
+message: "Debug print left in the code"
+help: "Remove it, or use `push_warning()`/`push_error()` for messages that should stay."
+rationale: |
+  `print()`, `prints()` and `print_debug()` calls are useful while debugging
+  but clutter the output once the code ships. The suggested fix replaces the
+  call with `pass`, which keeps the block valid when the print was its only
+  statement; `unnecessary-pass` then flags the `pass` when other statements
+  remain.
+rule:
+  any:
+    - pattern:
+        context: print($$$ARGS)
+        selector: expression_statement
+    - pattern:
+        context: prints($$$ARGS)
+        selector: expression_statement
+    - pattern:
+        context: print_debug($$$ARGS)
+        selector: expression_statement
+fix: pass
+fixSafety: suggestion
+tests:
+  invalid:
+    - code: "func f(x):\n\tprint(x)\n"
+      output: "func f(x):\n\tpass\n"
+    - code: "func f(x):\n\tprints(\"x =\", x)\n\treturn x\n"
+      output: "func f(x):\n\tpass\n\treturn x\n"
+    - code: "func f(x):\n\tif x:\n\t\tprint_debug(x)\n\tprint()\n"
+      output: "func f(x):\n\tif x:\n\t\tpass\n\tpass\n"
+      errors: 2
+  valid:
+    - "func f(x):\n\tpush_warning(str(x))\n"
+    - "func f(x):\n\tvar text = str(x)\n"
+    - "func f(printer):\n\tprinter.print(1)\n"

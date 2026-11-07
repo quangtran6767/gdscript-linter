@@ -1,13 +1,19 @@
 id: no-get-node-in-process
 severity: warning
-message: "Don't call `get_node()` in `$FUNC()`; cache the node in an `@onready` variable"
-help: "Add `@onready var node := get_node(...)` at the top of the script and use the variable."
+message: "Don't look up nodes in `$FUNC()`; cache the node in an `@onready` variable"
+help: "Add `@onready var node := $Path` at the top of the script and use the variable in `$FUNC()`."
 rationale: |
   `_process()` and `_physics_process()` run every frame. Looking a node up by
   path each time costs time and hides the dependency. An `@onready` variable
-  looks it up once and documents what the script needs.
+  looks it up once, when the node is ready, and documents what the script
+  needs. Unique names (`%Name`) are cached by Godot and are not reported.
+  There is no automatic fix: the variable has to be added at the top of the
+  script, which is outside the reported code.
 rule:
-  pattern: get_node($$$ARGS)
+  any:
+    - pattern: get_node($$$ARGS)
+    - kind: get_node
+      regex: ^\$
   inside:
     kind: function_definition
     has:
@@ -20,10 +26,11 @@ constraints:
 tests:
   invalid:
     - code: "func _process(delta):\n\tget_node(\"Player\").hide()\n"
-    - code: "func _physics_process(delta):\n\tif delta > 0:\n\t\tvar enemy = get_node(\"Enemy\")\n"
-    - code: "func _process(delta):\n\tget_node(\"A\").show()\n\tget_node(\"B\").show()\n"
+    - code: "func _physics_process(delta):\n\tif delta > 0:\n\t\tvar enemy = $Enemy\n"
+    - code: "func _process(delta):\n\tget_node(\"A\").show()\n\t$\"UI/B\".show()\n"
       errors: 2
   valid:
-    - "@onready var player := get_node(\"Player\")\n\nfunc _process(delta):\n\tplayer.hide()\n"
-    - "func _ready():\n\tget_node(\"Player\").hide()\n"
+    - "@onready var player := $Player\n\nfunc _process(delta):\n\tplayer.hide()\n"
+    - "func _ready():\n\tget_node(\"Player\").hide()\n\t$Enemy.hide()\n"
+    - "func _process(delta):\n\t%Health.value -= delta\n"
     - "func process_items():\n\tget_node(\"Items\").show()\n"

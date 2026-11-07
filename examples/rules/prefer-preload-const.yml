@@ -1,0 +1,42 @@
+id: prefer-preload-const
+severity: warning
+message: "`load($PATH)` runs every time; preload the resource once instead"
+help: "Use `const Resource = preload($PATH)` at the top of the script, or `preload($PATH)` here."
+rationale: |
+  `load()` with a fixed `res://` path inside a loop or `_process()` asks the
+  resource loader for the same file again and again. `preload()` resolves it
+  once when the script loads, and a constant names it. The suggested fix
+  swaps `load` for `preload`; moving it into a constant is up to you.
+rule:
+  pattern: load($PATH)
+  any:
+    - inside:
+        any:
+          - kind: for_statement
+          - kind: while_statement
+        stopBy: end
+    - inside:
+        kind: function_definition
+        has:
+          field: name
+          regex: ^_(physics_)?process$
+        stopBy: end
+constraints:
+  PATH:
+    kind: string
+    regex: ^"res://
+fix: preload($PATH)
+fixSafety: suggestion
+tests:
+  invalid:
+    - code: "func spawn(count):\n\tfor i in count:\n\t\tvar scene = load(\"res://enemy.tscn\")\n"
+      output: "func spawn(count):\n\tfor i in count:\n\t\tvar scene = preload(\"res://enemy.tscn\")\n"
+    - code: "func _process(delta):\n\tvar icon = load(\"res://icon.svg\")\n"
+      output: "func _process(delta):\n\tvar icon = preload(\"res://icon.svg\")\n"
+    - code: "func wait():\n\twhile true:\n\t\tif randf() > 0.5:\n\t\t\tadd_child(load(\"res://a.tscn\").instantiate())\n"
+      output: "func wait():\n\twhile true:\n\t\tif randf() > 0.5:\n\t\t\tadd_child(preload(\"res://a.tscn\").instantiate())\n"
+  valid:
+    - "const Enemy = preload(\"res://enemy.tscn\")\n\nfunc spawn(count):\n\tfor i in count:\n\t\tadd_child(Enemy.instantiate())\n"
+    - "func _ready():\n\tvar icon = load(\"res://icon.svg\")\n"
+    - "func _process(delta):\n\tvar file = load(path)\n"
+    - "func _process(delta):\n\tvar file = load(\"user://save.tres\")\n"

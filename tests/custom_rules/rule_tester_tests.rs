@@ -173,7 +173,18 @@ fn cli_passes_on_example_rules() {
     assert_eq!(code, 0, "{}{}", stdout, stderr);
     assert_eq!(
         stdout,
-        "✓ no-get-node-in-process  6 passed\n✓ prefer-is-empty  6 passed\n\n2 rules, 2 passed, 0 failed\n"
+        "\
+✓ no-get-node-in-process  7 passed
+✓ no-godot3-yield  6 passed
+✓ no-print-left  6 passed
+✓ no-string-connect  6 passed
+✓ prefer-is-empty  7 passed
+✓ prefer-is-instance-valid  7 passed
+✓ prefer-not-is-empty  7 passed
+✓ prefer-preload-const  7 passed
+
+8 rules, 8 passed, 0 failed
+"
     );
 }
 
@@ -216,4 +227,35 @@ fn cli_missing_folder_exits_2() {
     let (_, stderr, code) = run_cli(&fixture("does-not-exist"));
     assert_eq!(code, 2);
     assert!(stderr.contains("can't read the rule folder"), "{}", stderr);
+}
+
+// Example rule pack (W3/B5)
+
+#[test]
+fn every_example_rule_is_documented_and_well_tested() {
+    let examples = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("examples")
+        .join("rules");
+    let rules = load_rules(&[examples]).unwrap();
+    assert_eq!(rules.len(), 8);
+    for rule in &rules {
+        let id = &rule.meta.id;
+        assert!(!rule.meta.rationale.is_empty(), "`{}` has no rationale", id);
+        assert!(rule.compiled.help.is_some(), "`{}` has no help", id);
+        assert!(rule.tests.valid.len() >= 3, "`{}` needs 3 valid tests", id);
+        assert!(
+            rule.tests.invalid.len() >= 3,
+            "`{}` needs 3 invalid tests",
+            id
+        );
+        if rule.compiled.fix.is_some() {
+            for case in &rule.tests.invalid {
+                assert!(
+                    case.output.is_some(),
+                    "`{}` has a fix, so every invalid test should check its output",
+                    id
+                );
+            }
+        }
+    }
 }
