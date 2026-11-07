@@ -2,6 +2,8 @@
 
 #![allow(clippy::unwrap_used)]
 
+mod init_tests;
+
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
