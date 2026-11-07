@@ -216,7 +216,7 @@ Other useful commands and flags:
 
 Exit codes: `0` clean, `1` issues found, `2` config, usage or rule-file
 error. Pass the folder to lint (`.`): with no path, `gdguard lint` currently
-lints nothing.
+reads GDScript from stdin instead of linting the project.
 
 ### More documentation
 

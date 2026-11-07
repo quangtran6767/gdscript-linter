@@ -249,4 +249,5 @@ scripts/player.gd:6:15: warning [unused-argument] Function argument 'delta' is u
 (exit code 0: two warnings, at most five allowed).
 
 Pass the folder (`.`) explicitly: with no path, `gdguard lint` currently
-lints nothing.
+reads GDScript from stdin instead of linting the project (in CI, with an
+empty stdin, it passes without checking anything).
