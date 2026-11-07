@@ -1,0 +1,11 @@
+id: no-get-node-in-process
+severity: error
+message: "Cache the node instead of calling `get_node()` in `_process`"
+rule:
+  pattern: get_node($$$ARGS)
+  inside:
+    kind: function_definition
+    has:
+      field: name
+      regex: ^_process$
+    stopBy: end

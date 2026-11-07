@@ -1,0 +1,6 @@
+id: suggest-node-path
+message: "Use a node path"
+rule:
+  pattern: get_node("Player")
+fix: |-
+  $Player

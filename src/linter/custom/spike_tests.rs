@@ -5,9 +5,14 @@
 #![allow(clippy::unwrap_used)]
 
 use ast_grep_config::{DeserializeEnv, Fixer, RuleCore, SerializableRuleCore};
-use ast_grep_core::tree_sitter::LanguageExt;
+use ast_grep_core::AstGrep;
 
+use super::doc::GdDoc;
 use super::language::{GdScript, to_internal};
+
+fn grep(source: &str) -> AstGrep<GdDoc> {
+    AstGrep::doc(GdDoc::parse(source).unwrap())
+}
 
 fn compile(rule_yaml: &str) -> RuleCore {
     let core: SerializableRuleCore = ast_grep_config::from_str(rule_yaml).unwrap();
@@ -17,9 +22,9 @@ fn compile(rule_yaml: &str) -> RuleCore {
 /// Returns the text of every match, in source order.
 fn matched_texts(rule_yaml: &str, source: &str) -> Vec<String> {
     let rule = compile(rule_yaml);
-    let grep = GdScript.ast_grep(source);
+    let root = grep(source);
     let mut texts = Vec::new();
-    for node_match in grep.root().find_all(&rule) {
+    for node_match in root.root().find_all(&rule) {
         texts.push(node_match.text().to_string());
     }
     texts
@@ -30,9 +35,9 @@ fn matched_texts(rule_yaml: &str, source: &str) -> Vec<String> {
 fn apply_fix(rule_yaml: &str, fix_template: &str, source: &str) -> String {
     let rule = compile(rule_yaml);
     let fixer = Fixer::from_str(&to_internal(fix_template), &GdScript).unwrap();
-    let grep = GdScript.ast_grep(source);
+    let root = grep(source);
     let mut edits = Vec::new();
-    for node_match in grep.root().find_all(&rule) {
+    for node_match in root.root().find_all(&rule) {
         edits.push(node_match.replace_by(&fixer));
     }
     let mut output = source.to_string();
@@ -52,8 +57,8 @@ fn pattern_with_metavariable_matches_and_captures() {
     let rule = compile("rule:\n  pattern: len($X) == 0\n");
     let source =
         "func f(items):\n\tif len(items) == 0:\n\t\tpass\n\tif len(items) == 1:\n\t\tpass\n";
-    let grep = GdScript.ast_grep(source);
-    let matches: Vec<_> = grep.root().find_all(&rule).collect();
+    let root = grep(source);
+    let matches: Vec<_> = root.root().find_all(&rule).collect();
     assert_eq!(matches.len(), 1);
     assert_eq!(matches[0].text(), "len(items) == 0");
     let captured = matches[0].get_env().get_match("X").unwrap();
@@ -77,8 +82,8 @@ fn multi_metavariable_matches_any_number_of_arguments() {
     let rule = compile("rule:\n  pattern: get_node($$$A)\n");
     let source =
         "func f():\n\tget_node()\n\tget_node(\"A\")\n\tget_node(\"A\", 1)\n\tfind_node(\"A\")\n";
-    let grep = GdScript.ast_grep(source);
-    let matches: Vec<_> = grep.root().find_all(&rule).collect();
+    let root = grep(source);
+    let matches: Vec<_> = root.root().find_all(&rule).collect();
     let mut texts = Vec::new();
     for node_match in &matches {
         texts.push(node_match.text().to_string());
@@ -300,16 +305,67 @@ fn escaped_all_caps_node_path_in_fix_template() {
 }
 
 #[test]
-fn literal_node_path_in_pattern_matches_every_node_path() {
-    // In tree-sitter-gdscript, `$Player` is one `get_node` node whose only
-    // child is the anonymous `$`. The path text is not a node, so ast-grep
-    // can't tell `$Player` from `$Enemy`. This is why the loader rejects
-    // literal node paths in patterns (see `loader.rs`).
+fn literal_node_path_in_pattern() {
+    // `GdNode` treats `get_node` as a leaf, so its text is compared.
     let texts = matched_texts(
         "rule:\n  pattern: $Player.hide()\n",
         "func f():\n\t$Player.hide()\n\t$Enemy.hide()\n",
     );
-    assert_eq!(texts, vec!["$Player.hide()", "$Enemy.hide()"]);
+    assert_eq!(texts, vec!["$Player.hide()"]);
+}
+
+#[test]
+fn quoted_and_unique_node_paths_in_pattern() {
+    let texts = matched_texts(
+        "rule:\n  pattern: $\"UI/Label\".text\n",
+        "func f():\n\tprint($\"UI/Label\".text)\n\tprint($\"UI/Other\".text)\n",
+    );
+    assert_eq!(texts, vec!["$\"UI/Label\".text"]);
+    let unique = matched_texts(
+        "rule:\n  pattern: \"%Health.value\"\n",
+        "func f():\n\tprint(%Health.value)\n\tprint(%Mana.value)\n",
+    );
+    assert_eq!(unique, vec!["%Health.value"]);
+}
+
+#[test]
+fn escaped_all_caps_node_path_in_pattern() {
+    let texts = matched_texts(
+        "rule:\n  pattern: \\$HUD.show()\n",
+        "func f():\n\t$HUD.show()\n\t$Menu.show()\n",
+    );
+    assert_eq!(texts, vec!["$HUD.show()"]);
+}
+
+#[test]
+fn string_literals_in_patterns_are_compared() {
+    let texts = matched_texts(
+        "rule:\n  pattern: get_node(\"Player\")\n",
+        "func f():\n\tget_node(\"Player\")\n\tget_node(\"Enemy\")\n",
+    );
+    assert_eq!(texts, vec!["get_node(\"Player\")"]);
+    let names = matched_texts(
+        "rule:\n  pattern: emit_signal(&\"died\")\n",
+        "func f():\n\temit_signal(&\"died\")\n\temit_signal(&\"hit\")\n",
+    );
+    assert_eq!(names, vec!["emit_signal(&\"died\")"]);
+    let paths = matched_texts(
+        "rule:\n  pattern: has_node(^\"A/B\")\n",
+        "func f():\n\thas_node(^\"A/B\")\n\thas_node(^\"A/C\")\n",
+    );
+    assert_eq!(paths, vec!["has_node(^\"A/B\")"]);
+}
+
+#[test]
+fn metavariable_captures_a_string() {
+    let rule = compile("rule:\n  pattern: get_node($NAME)\n");
+    let root = grep("func f():\n\tget_node(\"Player\")\n");
+    let matches: Vec<_> = root.root().find_all(&rule).collect();
+    assert_eq!(matches.len(), 1);
+    assert_eq!(
+        matches[0].get_env().get_match("NAME").unwrap().text(),
+        "\"Player\""
+    );
 }
 
 #[test]
@@ -325,8 +381,8 @@ constraints:
 ";
     let rule = compile(rule_yaml);
     let source = "func f():\n\t$Player.hide()\n\t$Enemy.hide()\n\tplayer.hide()\n";
-    let grep = GdScript.ast_grep(source);
-    let matches: Vec<_> = grep.root().find_all(&rule).collect();
+    let root = grep(source);
+    let matches: Vec<_> = root.root().find_all(&rule).collect();
     assert_eq!(matches.len(), 1);
     assert_eq!(matches[0].text(), "$Player.hide()");
     assert_eq!(
