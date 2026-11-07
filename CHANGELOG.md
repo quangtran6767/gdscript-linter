@@ -13,9 +13,18 @@ This file documents the changes made to the formatter with each release.
 - Linter: new `--format` option with `pretty` (source snippet with carets, help and fix hints, and a summary), `compact` and `json` (stable schema for tools and AI agents).
 - Linter: custom YAML rules in `[custom_rules].paths` run alongside the built-in rules, with metavariables in messages and fixes. Their levels are set in `[rules]` like built-in rules, and `--disable` accepts their ids.
 - Linter: new `gdguard test-rules [RULE_DIR]` command runs the `tests` in custom rule files, including fix output and idempotency checks.
-- Linter: example custom rules in `examples/rules/` (`prefer-is-empty`, `no-get-node-in-process`).
+- Linter: starter custom rule pack in `examples/rules/`: `prefer-is-empty`, `prefer-not-is-empty`, `no-get-node-in-process`, `prefer-preload-const`, `no-godot3-yield`, `no-string-connect`, `no-print-left`, `prefer-is-instance-valid`.
+- Linter: new `lint --fix` and `--fix-unsafe` options apply automatic fixes, over several passes, and never write code that doesn't parse (a fix that would break the code is reported as `fix-failed`). Files that were formatted stay formatted.
+- Linter: new `lint --diff` option prints the fixes as a unified diff without writing files.
+- Linter: new `lint --stdin-filename <PATH>` option reads the source from stdin and uses PATH for the config and output; with `--fix` it prints the fixed source.
+- Linter: `unnecessary-pass` and `no-else-return` now have safe fixes, and `unused-argument` has an unsafe fix (prefix the name with `_`).
+- Linter: `gdguard explain <rule>` shows a rule's rationale, examples, severity and fixability, for built-in and custom rules.
+- Linter: `lint --list-rules` shows descriptions, severities and fixability, and includes custom rules; `--list-rules --format json` prints them as JSON.
+- Linter: `gdguard init` sets up a project with a commented `gdguard.toml` and an example custom rule.
 
 ### Changed
+
+- Linter: `lint --list-rules` lists rules sorted by id, with their default severity and fixability.
 
 - Linter: `lint` exit codes are now 0 (no problems), 1 (problems found) and 2 (usage, config or file errors). Invalid `--disable` rule names and "no GDScript files found" now exit with 2 instead of 1.
 - Linter: the default output is now `pretty` in a terminal and `compact` (`file:line:col: severity [rule] message`) otherwise. This replaces the old `file:line:rule:severity: message` output; scripts that parse it should use `--format compact` or `--format json`. The Godot addon now uses `--format compact`.
@@ -23,7 +32,7 @@ This file documents the changes made to the formatter with each release.
 
 ### Reserved
 
-- Linter: new `lint` flags `--fix`, `--fix-unsafe`, `--diff`, `--baseline`, `--update-baseline`, `--stdin-filename` and `--format github|sarif`, and new `explain`, `init` and `lsp` subcommands are reserved; they report "not implemented yet" (exit code 2) until their feature lands.
+- Linter: new `lint` flags `--baseline`, `--update-baseline` and `--format github|sarif`, and the new `lsp` subcommand are reserved; they report "not implemented yet" (exit code 2) until their feature lands.
 
 ## Release 0.28.0 (2026-10-31)
 

@@ -153,18 +153,18 @@ After C1, `gdguard lint` shows both built-in and custom issues.
 ## W3: A and B at the same time
 
 **A: `a/fix-engine`, `a/builtin-fixes`**
-- [ ] A4. Fix engine:
+- [x] A4. Fix engine:
   - multiple passes (at most 10) with overlap handling;
   - re-parse after each pass and roll back fixes that break parsing;
   - formatter step, only for files that were already formatted;
   - `--fix`, `--fix-unsafe`, `--diff`, `--stdin-filename`;
   - fill in the `api::fix_source` body.
-- [ ] Tests: overlapping fixes, rollback, idempotency.
-- [ ] A6. Safe fixes for `unnecessary-pass` and `no-else-return`, and any
+- [x] Tests: overlapping fixes, rollback, idempotency.
+- [x] A6. Safe fixes for `unnecessary-pass` and `no-else-return`, and any
       other easy ones.
 
 **B: `b/rule-pack`, `b/explain`, `b/init`**
-- [ ] B5. `examples/rules/`, each rule with tests:
+- [x] B5. `examples/rules/`, each rule with tests:
   - `prefer-is-empty`
   - `no-get-node-in-process`
   - `prefer-preload-const`
@@ -172,12 +172,12 @@ After C1, `gdguard lint` shows both built-in and custom issues.
   - `no-string-connect`
   - `no-print-left`
   - `prefer-is-instance-valid`
-- [ ] B6. `rules_meta.rs`: rationale and good/bad examples for the 17
+- [x] B6. `rules_meta.rs`: rationale and good/bad examples for the 17
       built-ins. Then `gdguard explain <rule>` and
       `--list-rules [--format json]`.
-- [ ] B7. `gdguard init`: writes a starter `gdguard.toml` and `.gdguard/rules/`.
+- [x] B7. `gdguard init`: writes a starter `gdguard.toml` and `.gdguard/rules/`.
 
-**Merge session (C2):** add an end-to-end test where a custom rule's fix is applied by
+- [x] **Merge session (C2):** add an end-to-end test where a custom rule's fix is applied by
 `--fix`. Tag **v0.29**.
 
 ## W4: A and B at the same time

@@ -378,6 +378,11 @@ Rule file details:
 Validation errors (bad YAML, unknown keys, a pattern that doesn't parse as
 GDScript, a duplicate id) report the rule file path and stop with exit code 2.
 
+When a metavariable is captured in several places (for example in the
+pattern and in a `has`), `constraints` check the last capture.
+
+The starter rule pack is in `examples/rules/`.
+
 `gdguard test-rules [RULE_DIR]` loads the rules from `RULE_DIR`, else
 `[custom_rules].paths`, else `.gdguard/rules`, and runs each rule's `tests`:
 `valid` cases must produce no diagnostic for that rule; `invalid` cases at
@@ -390,18 +395,29 @@ rules can't be loaded.
 
 ## Fix engine
 
-1. Collect the fixes of the allowed safety levels (`--fix` means Safe;
-   `--fix-unsafe` means Safe and Unsafe).
-2. Sort them and drop any fix that overlaps one already chosen. Dropped fixes
-   are retried on the next pass.
+1. Collect, for each diagnostic, its first fix allowed by the safety level
+   (`--fix`: Safe; `--fix-unsafe`: Safe and Unsafe; Suggestion never).
+2. Sort them by position and skip any fix that overlaps one already chosen
+   or starts at the same byte. Skipped fixes are retried on the next pass.
 3. Apply the fixes with `apply_edits`, then re-parse. If the new tree has
-   `ERROR` or `MISSING` nodes, undo that pass's fixes one by one to find the
-   bad fix, then report it as `fix-failed`. Never write broken code.
-4. Re-lint and repeat until nothing changes, for at most 10 passes.
-5. Run the formatter on files that changed, only when the file was already
-   formatted before the fix. That way we never reformat files the user
-   doesn't format.
-6. `--diff` prints a unified diff and doesn't write anything.
+   `ERROR` or `MISSING` nodes, add the pass's fixes one at a time to find
+   the ones that break the code. They are dropped, never retried, and
+   reported as `fix-failed` (Warning; the message names the rule) on the
+   issues they belonged to. Never write broken code.
+4. Re-lint and repeat until no fix is left, for at most 10 passes.
+5. If at least one fix was applied and the original file was formatted
+   (formatting it gives the same text), format the result. That way we
+   never reformat files the user doesn't format.
+6. A file that already has syntax errors is not fixed.
+7. `--diff` prints a unified diff (`a/<path>`, `b/<path>`) and doesn't
+   write anything. Exit code 1 when a file would change, else 0.
+
+`fix-failed` is a built-in id: it can be set in `[rules]` like any rule.
+
+Built-in fixes: `unnecessary-pass` (Safe, when `pass` is alone on its line),
+`no-else-return` (Safe: `elif` → `if` when every earlier branch returns, and
+removing `else:` and dedenting its body; Unsafe when that body declares a
+`var` or `const`), `unused-argument` (Unsafe: prefix the name with `_`).
 
 ## CLI
 
@@ -419,6 +435,32 @@ gdguard test-rules [RULE_DIR]            # run YAML rule tests
 gdguard init [--force]                   # write a starter gdguard.toml and .gdguard/
 gdguard lsp                              # language server on stdin/stdout
 ```
+
+- `--fix`/`--fix-unsafe` write the files, print the report of the issues
+  left, then `Fixed N problems in M files` (on stderr for machine formats).
+  The exit code follows the issues left.
+- `--stdin-filename <PATH>` reads the source from stdin; `PATH` finds the
+  config and is shown in output. It can't be combined with file arguments.
+  With `--fix`, the fixed source goes to stdout and the report to stderr.
+
+`gdguard explain <RULE>` prints the rule's id, origin (built-in or the
+custom rule file), default severity, whether it is fixable, its description,
+rationale, and bad and good examples. An unknown id exits with 2 and
+suggests the closest id.
+
+`lint --list-rules` prints one line per rule (id, default severity, `fix`
+when fixable, description, `(custom)` for custom rules). With `--format
+json` it prints `{ "version": 1, "rules": [ ... ] }`, each rule with `id`,
+`description`, `rationale`, `default_severity`, `fixable`, `origin`
+(`built-in` | `custom`), `path` (rule file or `null`), `bad_example` and
+`good_example`. Both include the custom rules of the config found from the
+current folder.
+
+`gdguard init [--force]` writes `gdguard.toml` (every built-in rule with its
+default level, commented) and `.gdguard/rules/prefer-is-empty.yml` in the
+Godot project root (the nearest folder with `project.godot`, else the
+current folder). If either file exists it writes nothing and exits 1, unless
+`--force` is given.
 
 `--pretty` is an alias of `--format pretty`. The compact format is one line
 per issue: `file:line:col: severity [rule] message`.
