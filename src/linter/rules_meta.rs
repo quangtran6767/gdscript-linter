@@ -3,7 +3,8 @@
 //!
 //! Every id in `rule_config::get_all_rule_names()` has an entry, plus
 //! `load-variable-name`, which the `variable-name` rule reports for variables
-//! holding a loaded resource. A test runs every bad example through the
+//! holding a loaded resource, and `fix-failed`, which the fix engine reports
+//! when a fix would break the code. A test runs every bad example through the
 //! linter and checks it is reported, and that every good example is not.
 
 use crate::linter::diagnostic::{RuleMeta, RuleOrigin, Severity};
@@ -18,7 +19,7 @@ struct BuiltinInfo {
     good_example: &'static str,
 }
 
-const BUILTIN_RULES: [BuiltinInfo; 18] = [
+const BUILTIN_RULES: [BuiltinInfo; 19] = [
     BuiltinInfo {
         id: "class-name",
         severity: Severity::Error,
@@ -72,6 +73,15 @@ const BUILTIN_RULES: [BuiltinInfo; 18] = [
         rationale: "Enums are types, so the GDScript style guide names them in PascalCase like classes.",
         bad_example: "enum state { IDLE, RUN }\n",
         good_example: "enum State { IDLE, RUN }\n",
+    },
+    BuiltinInfo {
+        id: "fix-failed",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "A fix was not applied because it would break the code.",
+        rationale: "The fix engine re-parses the code after each pass. When a fix produces code that doesn't parse, it is rolled back and reported under this id instead, so `--fix` never writes broken code. Fix the original issue by hand; if the fix comes from a custom rule, check its `fix` template.",
+        bad_example: "",
+        good_example: "",
     },
     BuiltinInfo {
         id: "function-argument-name",
@@ -166,7 +176,7 @@ const BUILTIN_RULES: [BuiltinInfo; 18] = [
     BuiltinInfo {
         id: "unused-argument",
         severity: Severity::Warning,
-        fixable: false,
+        fixable: true,
         description: "Function arguments are used, or start with `_`.",
         rationale: "An unused argument is often a bug or a leftover. When the signature must stay (callbacks, overrides), prefix the name with `_` to say so.",
         bad_example: "func _process(delta):\n\tprint(\"tick\")\n",
@@ -233,7 +243,8 @@ mod tests {
             );
         }
         assert!(builtin_rule_meta("load-variable-name").is_some());
-        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 1);
+        assert!(builtin_rule_meta("fix-failed").is_some());
+        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 2);
     }
 
     #[test]
@@ -263,6 +274,11 @@ mod tests {
     #[test]
     fn bad_examples_are_reported_and_good_examples_are_not() {
         for info in &BUILTIN_RULES {
+            // `fix-failed` comes from the fix engine, not from linting code.
+            if info.bad_example.is_empty() {
+                assert_eq!(info.id, "fix-failed");
+                continue;
+            }
             let bad = lint_gdscript(info.bad_example, "example.gd").unwrap();
             let mut reported = false;
             for diagnostic in &bad {

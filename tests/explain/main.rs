@@ -138,7 +138,8 @@ fn explain_unknown_rule_suggests_the_closest_id() {
 #[test]
 fn all_rule_metas_lists_built_ins_then_custom_rules() {
     let metas = all_rule_metas(&project_config()).unwrap();
-    assert_eq!(metas.len(), get_all_rule_names().len() + 2);
+    // Built-ins, plus `load-variable-name` and `fix-failed`, plus one custom rule.
+    assert_eq!(metas.len(), get_all_rule_names().len() + 3);
     assert_eq!(metas[0].id, "class-name");
     assert_eq!(metas[metas.len() - 1].id, "no-print-left");
 }

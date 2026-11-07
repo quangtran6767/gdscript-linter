@@ -129,9 +129,9 @@ pub fn starter_config() -> String {
 ",
     );
     for meta in &metas {
-        // `load-variable-name` is reported by `variable-name` and follows its
-        // level, so it isn't configured on its own.
-        if meta.id == "load-variable-name" {
+        // `load-variable-name` follows the level of `variable-name`, and
+        // `fix-failed` comes from the fix engine, so neither is listed.
+        if meta.id == "load-variable-name" || meta.id == "fix-failed" {
             continue;
         }
         let value = if meta.id == "max-line-length" {
