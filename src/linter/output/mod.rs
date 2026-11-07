@@ -3,10 +3,12 @@
 //! terminal; the CLI prints the result.
 
 pub mod compact;
+pub mod github;
 pub mod json;
 pub mod pretty;
+pub mod sarif;
 
-use crate::linter::diagnostic::{Diagnostic, FixSafety, Severity};
+use crate::linter::diagnostic::{Diagnostic, FixSafety, RuleMeta, Severity};
 
 /// The value of `lint --format`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +63,9 @@ pub struct LintReport {
     pub files_checked: usize,
     /// How many issues the baseline hid. They are not in `files`.
     pub baseline_hidden: usize,
+    /// Metadata of the custom rules that ran, for reporters that describe
+    /// rules (SARIF). Built-in metadata comes from `rules_meta`.
+    pub rule_metas: Vec<RuleMeta>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -128,12 +133,8 @@ pub fn write_report(
         OutputFormat::Pretty => pretty::write_pretty(report, with_colors, output),
         OutputFormat::Compact => compact::write_compact(report, output),
         OutputFormat::Json => json::write_json(report, output)?,
-        OutputFormat::Github | OutputFormat::Sarif => {
-            return Err(format!(
-                "`--format {}` is not implemented yet",
-                format.as_str()
-            ));
-        }
+        OutputFormat::Github => github::write_github(report, output),
+        OutputFormat::Sarif => sarif::write_sarif(report, output)?,
     }
     Ok(())
 }
@@ -149,6 +150,21 @@ pub fn display_path(path: &std::path::Path) -> String {
 }
 
 /// The full text of the line that contains `byte`, without its line ending.
+/// The 1-based column of `byte` on its line, counted in UTF-16 code units
+/// (what SARIF and editors based on JavaScript expect).
+pub fn utf16_column(source: &str, byte: usize) -> usize {
+    let byte = byte.min(source.len());
+    let line_start = match source[..byte].rfind('\n') {
+        Some(newline) => newline + 1,
+        None => 0,
+    };
+    let mut units = 0;
+    for character in source[line_start..byte].chars() {
+        units += character.len_utf16();
+    }
+    units + 1
+}
+
 pub fn line_text_at(source: &str, byte: usize) -> &str {
     let byte = byte.min(source.len());
     let line_start = match source[..byte].rfind('\n') {

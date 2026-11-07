@@ -33,7 +33,7 @@ mod tests;
 
 use api::{Config, RuleLevel};
 use config::{CliRuleOverrides, CompiledConfig, FileSettings};
-use diagnostic::{Diagnostic, FileContext, RuleProvider, Severity};
+use diagnostic::{Diagnostic, FileContext, RuleMeta, RuleProvider, Severity};
 use ignore_patterns::{apply_ignores, parse_ignore_comments};
 use output::{FileDiagnostics, LintReport, display_path};
 use rules::{ALL_RULES, Rule};
@@ -240,6 +240,22 @@ struct ConfigCache {
 }
 
 impl ConfigCache {
+    /// The metadata of every custom rule loaded so far, sorted by id, each
+    /// id once.
+    fn custom_rule_metas(&self) -> Vec<RuleMeta> {
+        let mut metas: Vec<RuleMeta> = Vec::new();
+        for loaded in self.configs.values() {
+            for provider in &loaded.providers {
+                for meta in provider.rules() {
+                    metas.push(meta.clone());
+                }
+            }
+        }
+        metas.sort_by(|left, right| left.id.cmp(&right.id));
+        metas.dedup_by(|left, right| left.id == right.id);
+        metas
+    }
+
     /// Returns the config that applies to `file_path`: the `--config` file,
     /// the nearest `gdguard.toml`, or the defaults.
     fn config_for(
@@ -347,6 +363,7 @@ pub fn lint_files(files: &[PathBuf], options: &LintRunOptions) -> Result<LintRep
             });
         }
     }
+    report.rule_metas = config_cache.custom_rule_metas();
     Ok(report)
 }
 
@@ -377,6 +394,7 @@ pub fn lint_stdin(
         files: Vec::with_capacity(1),
         files_checked: 1,
         baseline_hidden: 0,
+        rule_metas: Vec::new(),
     };
     if !diagnostics.is_empty() {
         report.files.push(FileDiagnostics {
@@ -385,6 +403,7 @@ pub fn lint_stdin(
             diagnostics,
         });
     }
+    report.rule_metas = config_cache.custom_rule_metas();
     Ok(report)
 }
 
@@ -460,6 +479,7 @@ pub fn fix_files(
             &mut fix_report,
         );
     }
+    fix_report.report.rule_metas = config_cache.custom_rule_metas();
     Ok(fix_report)
 }
 
@@ -499,6 +519,7 @@ pub fn fix_stdin(
         fixed,
         &mut fix_report,
     );
+    fix_report.report.rule_metas = config_cache.custom_rule_metas();
     Ok(fix_report)
 }
 

@@ -1,0 +1,5 @@
+::warning file=scripts/player.gd,line=3,col=11,endLine=3,endColumn=15,title=unused-argument::Function argument 'niño' is unused. Consider removing it or prefixing with '_'
+::notice file=scripts/player.gd,line=4,col=14,endLine=4,endColumn=23,title=no-emoji-strings::String contains an emoji
+::warning file=scripts/player.gd,line=5,col=5,endLine=5,endColumn=20,title=prefer-is-empty::Use `items.is_empty()` instead of `len(items) == 0`
+::error file=scripts/player.gd,line=5,col=2,endLine=6,endColumn=7,title=no-empty-if::This if block does nothing
+::error file=scripts/enemies/enemy.gd,line=1,col=8,endLine=1,endColumn=18,title=signal-name::Signal name 'OnDefeated' should be in snake_case format

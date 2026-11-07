@@ -133,19 +133,29 @@ fn run_and_capture_stderr(directory: &std::path::Path, args: &[&str]) -> (i32, S
 }
 
 #[test]
-fn unimplemented_lint_flags_exit_with_code_2_and_name_the_flag() {
+fn github_and_sarif_formats_report_issues() {
     let directory = test_directory();
-    fs::write(directory.join("a.gd"), "var a = 1\n").expect("should write input file");
+    fs::write(directory.join("a.gd"), SCRIPT_WITH_ONE_ERROR).expect("should write input file");
 
-    let cases: [(&[&str], &str); 2] = [
-        (&["lint", "--format", "github", "a.gd"], "--format github"),
-        (&["lint", "--format=sarif", "a.gd"], "--format sarif"),
-    ];
-    for (args, flag) in cases {
-        let (exit_code, stderr) = run_and_capture_stderr(&directory, args);
-        assert_eq!(exit_code, 2, "{:?} should exit with code 2", args);
-        assert_eq!(stderr, format!("`{}` is not implemented yet\n", flag));
-    }
+    let (exit_code, stdout, stderr) =
+        run_and_capture(&directory, &["lint", "--format", "github", "a.gd"]);
+    assert_eq!(exit_code, 1, "{}", stderr);
+    assert!(
+        stdout.starts_with("::error file=a.gd,line=1,col="),
+        "{}",
+        stdout
+    );
+    assert!(stdout.contains(",title=function-name::"));
+
+    let (exit_code, stdout, stderr) =
+        run_and_capture(&directory, &["lint", "--format=sarif", "a.gd"]);
+    assert_eq!(exit_code, 1, "{}", stderr);
+    let log: serde_json::Value = serde_json::from_str(&stdout).expect("sarif should parse");
+    assert_eq!(log["runs"][0]["results"][0]["ruleId"], "function-name");
+    assert_eq!(
+        log["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
+        "a.gd"
+    );
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
 }
 

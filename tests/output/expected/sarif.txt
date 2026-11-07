@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "gdguard",
+          "version": "<version>",
+          "informationUri": "https://github.com/GDQuest/GDScript-formatter",
+          "rules": [
+            {
+              "id": "no-emoji-strings",
+              "shortDescription": {
+                "text": "no-emoji-strings"
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "fixable": false,
+                "origin": "custom"
+              }
+            },
+            {
+              "id": "no-empty-if",
+              "shortDescription": {
+                "text": "no-empty-if"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "fixable": false,
+                "origin": "custom"
+              }
+            },
+            {
+              "id": "prefer-is-empty",
+              "shortDescription": {
+                "text": "Use `is_empty()` instead of comparing `len()` to zero"
+              },
+              "fullDescription": {
+                "text": "`is_empty()` states the intent."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "fixable": true,
+                "origin": "custom"
+              }
+            },
+            {
+              "id": "signal-name",
+              "shortDescription": {
+                "text": "Signals use snake_case."
+              },
+              "fullDescription": {
+                "text": "The GDScript style guide names signals in snake_case, usually in the past tense, like Godot's built-in signals."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "fixable": false,
+                "origin": "builtin"
+              }
+            },
+            {
+              "id": "unused-argument",
+              "shortDescription": {
+                "text": "Function arguments are used, or start with `_`."
+              },
+              "fullDescription": {
+                "text": "An unused argument is often a bug or a leftover. When the signature must stay (callbacks, overrides), prefix the name with `_` to say so."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "fixable": true,
+                "origin": "builtin"
+              }
+            }
+          ]
+        }
+      },
+      "columnKind": "utf16CodeUnits",
+      "results": [
+        {
+          "ruleId": "unused-argument",
+          "ruleIndex": 4,
+          "level": "warning",
+          "message": {
+            "text": "Function argument 'niño' is unused. Consider removing it or prefixing with '_'"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 11,
+                  "endLine": 3,
+                  "endColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "no-emoji-strings",
+          "ruleIndex": 0,
+          "level": "note",
+          "message": {
+            "text": "String contains an emoji"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 4,
+                  "startColumn": 14,
+                  "endLine": 4,
+                  "endColumn": 23
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "prefer-is-empty",
+          "ruleIndex": 2,
+          "level": "warning",
+          "message": {
+            "text": "Use `items.is_empty()` instead of `len(items) == 0`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 5,
+                  "startColumn": 5,
+                  "endLine": 5,
+                  "endColumn": 20
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "no-empty-if",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "This if block does nothing"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 5,
+                  "startColumn": 2,
+                  "endLine": 6,
+                  "endColumn": 7
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "signal-name",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "Signal name 'OnDefeated' should be in snake_case format"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/enemies/enemy.gd"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 8,
+                  "endLine": 1,
+                  "endColumn": 18
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

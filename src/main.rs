@@ -112,14 +112,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(explain::list_rules(list_rules_format));
         }
 
-        // Flags from the linter spec that later waves implement. They fail
-        // loudly instead of being ignored, so scripts don't silently get the
-        // wrong behavior.
-        if let Some(format) = output_format
-            && matches!(format, OutputFormat::Github | OutputFormat::Sarif)
-        {
-            exit_not_implemented(&format!("--format {}", format.as_str()));
-        }
         if do_update_baseline && (do_fix || do_fix_unsafe || do_diff) {
             eprintln!(
                 "Error: --update-baseline can't be combined with --fix, --fix-unsafe or --diff"

@@ -5,7 +5,7 @@
 #![allow(clippy::unwrap_used)]
 
 use super::*;
-use crate::linter::diagnostic::{Edit, Fix, FixSafety, Span};
+use crate::linter::diagnostic::{Edit, Fix, FixSafety, RuleOrigin, Span};
 
 const PLAYER_SOURCE: &str = "extends Node\n\nfunc café(niño: int) -> void:\n\tvar label = \"🎮 joué\"\n\tif len(items) == 0:\n\t\tpass\n";
 const ENEMY_SOURCE: &str = "signal OnDefeated\n";
@@ -115,6 +115,18 @@ fn sample_report() -> LintReport {
         ],
         files_checked: 3,
         baseline_hidden: 0,
+        rule_metas: vec![RuleMeta {
+            id: "prefer-is-empty".to_string(),
+            description: "Use `is_empty()` instead of comparing `len()` to zero".to_string(),
+            rationale: "`is_empty()` states the intent.\n".to_string(),
+            bad_example: "len(items) == 0".to_string(),
+            good_example: "items.is_empty()".to_string(),
+            default_severity: Severity::Warning,
+            fixable: true,
+            origin: RuleOrigin::Custom {
+                path: std::path::PathBuf::from(".gdguard/rules/prefer-is-empty.yml"),
+            },
+        }],
     }
 }
 
@@ -165,6 +177,100 @@ fn compact_snapshot() {
 }
 
 #[test]
+fn github_snapshot() {
+    assert_snapshot(
+        "github.txt",
+        &render(OutputFormat::Github, &sample_report(), false),
+    );
+}
+
+#[test]
+fn sarif_snapshot() {
+    let output = render(OutputFormat::Sarif, &sample_report(), false);
+    // The tool version changes with each release; the snapshot doesn't.
+    let output = output.replace(
+        &format!("\"version\": \"{}\"", env!("CARGO_PKG_VERSION")),
+        "\"version\": \"<version>\"",
+    );
+    assert_snapshot("sarif.txt", &output);
+}
+
+#[test]
+fn sarif_has_the_required_structure() {
+    let report = sample_report();
+    let output = render(OutputFormat::Sarif, &report, false);
+    let log: serde_json::Value = serde_json::from_str(&output).unwrap();
+    assert_eq!(log["version"], "2.1.0");
+    assert_eq!(log["$schema"], sarif::SARIF_SCHEMA);
+    let runs = log["runs"].as_array().unwrap();
+    assert_eq!(runs.len(), 1);
+    let run = &runs[0];
+    assert_eq!(run["tool"]["driver"]["name"], "gdguard");
+    assert_eq!(run["columnKind"], "utf16CodeUnits");
+
+    let rules = run["tool"]["driver"]["rules"].as_array().unwrap();
+    let mut rule_ids = Vec::new();
+    for rule in rules {
+        assert!(rule["shortDescription"]["text"].is_string());
+        assert!(rule["defaultConfiguration"]["level"].is_string());
+        rule_ids.push(rule["id"].as_str().unwrap().to_string());
+    }
+    let mut sorted_ids = rule_ids.clone();
+    sorted_ids.sort();
+    sorted_ids.dedup();
+    assert_eq!(rule_ids, sorted_ids, "rules are sorted and unique");
+
+    let results = run["results"].as_array().unwrap();
+    let mut diagnostic_count = 0;
+    for file in &report.files {
+        diagnostic_count += file.diagnostics.len();
+    }
+    assert_eq!(results.len(), diagnostic_count);
+    for result in results {
+        let rule_index = result["ruleIndex"].as_u64().unwrap() as usize;
+        assert_eq!(result["ruleId"], rules[rule_index]["id"]);
+        let level = result["level"].as_str().unwrap();
+        assert!(level == "error" || level == "warning" || level == "note");
+        assert!(result["message"]["text"].is_string());
+        let location = &result["locations"][0]["physicalLocation"];
+        assert!(location["artifactLocation"]["uri"].is_string());
+        for key in ["startLine", "startColumn", "endLine", "endColumn"] {
+            assert!(location["region"][key].as_u64().unwrap() >= 1, "{}", key);
+        }
+    }
+
+    // Built-in metadata comes from `rules_meta`, custom metadata from the
+    // report, and a custom rule without metadata gets a minimal entry.
+    let unused_argument = &rules[rule_ids
+        .iter()
+        .position(|id| id == "unused-argument")
+        .unwrap()];
+    assert_eq!(unused_argument["properties"]["origin"], "builtin");
+    let prefer_is_empty = &rules[rule_ids
+        .iter()
+        .position(|id| id == "prefer-is-empty")
+        .unwrap()];
+    assert_eq!(prefer_is_empty["properties"]["origin"], "custom");
+    assert_eq!(prefer_is_empty["properties"]["fixable"], true);
+    let no_emoji = &rules[rule_ids
+        .iter()
+        .position(|id| id == "no-emoji-strings")
+        .unwrap()];
+    assert_eq!(no_emoji["shortDescription"]["text"], "no-emoji-strings");
+}
+
+#[test]
+fn columns_in_utf16_units() {
+    // `🎮` is 4 UTF-8 bytes and 2 UTF-16 units; `é` is 2 bytes and 1 unit,
+    // so `x` follows 6 units.
+    let source = "a\n\"🎮é\" x";
+    let x_byte = source.find('x').unwrap();
+    assert_eq!(utf16_column(source, x_byte), 7);
+    assert_eq!(utf16_column(source, 0), 1);
+    assert_eq!(utf16_column(source, 2), 1);
+}
+
+#[test]
 fn json_snapshot() {
     assert_snapshot(
         "json.txt",
@@ -178,6 +284,7 @@ fn empty_report_prints_nothing_except_json() {
         files: Vec::new(),
         files_checked: 2,
         baseline_hidden: 0,
+        rule_metas: Vec::new(),
     };
     assert_eq!(render(OutputFormat::Pretty, &report, false), "");
     assert_eq!(render(OutputFormat::Compact, &report, false), "");
