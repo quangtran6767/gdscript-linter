@@ -1,12 +1,30 @@
 id: prefer-is-empty
 severity: warning
-message: "Use `$X.is_empty()` instead of `len($X) == 0`"
-help: "`is_empty()` states the intent and works on Array, Dictionary and String."
+message: "Use `$X.is_empty()` instead of comparing `len($X)` to zero"
+help: "`is_empty()` states the intent and works on Array, Dictionary, String and packed arrays."
 rationale: |
   Comparing `len()` to zero hides the intent of the check. `is_empty()` reads
-  as a question about the collection and avoids counting its elements.
+  as a question about the collection and doesn't count its elements.
+  See also `prefer-not-is-empty` for `len(x) > 0` and `len(x) != 0`.
 rule:
-  pattern: len($X) == 0
+  any:
+    - pattern: len($X) == 0
+    - pattern: len($X) < 1
+    - pattern: 0 == len($X)
+# Only expressions that can take `.is_empty()` without parentheses, so the fix
+# never changes precedence (`len(a + b) == 0` is left alone).
+constraints:
+  X:
+    any:
+      - kind: identifier
+      - kind: attribute
+      - kind: call
+      - kind: subscript
+      - kind: get_node
+      - kind: array
+      - kind: dictionary
+      - kind: string
+      - kind: parenthesized_expression
 fix: $X.is_empty()
 fixSafety: safe
 tests:
@@ -15,10 +33,12 @@ tests:
       output: "func f(items):\n\tif items.is_empty():\n\t\tpass\n"
     - code: "var empty = len(get_children()) == 0\n"
       output: "var empty = get_children().is_empty()\n"
-    - code: "func f(a, b):\n\treturn len(a) == 0 and len(b) == 0\n"
-      output: "func f(a, b):\n\treturn a.is_empty() and b.is_empty()\n"
+    - code: "func f(a, b):\n\treturn len(a) == 0 and len(b.items) < 1\n"
+      output: "func f(a, b):\n\treturn a.is_empty() and b.items.is_empty()\n"
       errors: 2
+    - code: "func f(names):\n\tif 0 == len(names):\n\t\tpass\n"
+      output: "func f(names):\n\tif names.is_empty():\n\t\tpass\n"
   valid:
     - "func f(items):\n\tif items.is_empty():\n\t\tpass\n"
     - "func f(items):\n\tif len(items) == 1:\n\t\tpass\n"
-    - "func f(items):\n\tif len(items) > 0:\n\t\tpass\n"
+    - "func f(a, b):\n\tif len(a + b) == 0:\n\t\tpass\n"

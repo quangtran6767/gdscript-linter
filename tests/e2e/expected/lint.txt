@@ -8,9 +8,10 @@ scripts/enemies/enemy.gd:23:2: warning [no-else-return] Unnecessary 'else' after
 scripts/enemies/enemy.gd:28:16: error [private-access] Private variable '_health' should not be accessed from outside its class
 scripts/enemies/enemy.gd:33:2: warning [unnecessary-pass] Unnecessary 'pass' statement when other statements are present
 scripts/player.gd:12:15: info [unused-argument] Function argument 'delta' is unused. Consider removing it or prefixing with '_'
-scripts/player.gd:14:19: error [no-get-node-in-process] Don't call `get_node()` in `_process()`; cache the node in an `@onready` variable
-scripts/player.gd:16:5: warning [prefer-is-empty] Use `inventory.is_empty()` instead of `len(inventory) == 0`
+scripts/player.gd:14:19: error [no-get-node-in-process] Don't look up nodes in `_process()`; cache the node in an `@onready` variable
+scripts/player.gd:16:5: warning [prefer-is-empty] Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero
 scripts/player.gd:20:31: info [unused-argument] Function argument 'source' is unused. Consider removing it or prefixing with '_'
+scripts/player.gd:28:9: warning [prefer-not-is-empty] Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero
 scripts/ui/hud.gd:5:25: warning [duplicated-load] Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
 scripts/ui/hud.gd:6:31: warning [duplicated-load] Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
 scripts/ui/hud.gd:11:6: error [loop-variable-name] Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format

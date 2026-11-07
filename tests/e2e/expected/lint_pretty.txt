@@ -40,6 +40,7 @@ scripts/enemies/enemy.gd
 23 |     else:
    |     ^^^^
    = help: Remove the 'else' line and dedent its body: the blocks before it always return.
+   = fix (safe): Remove the 'else' and dedent its body
 
  28:16 error [private-access] Private variable '_health' should not be accessed from outside its class
    |
@@ -52,6 +53,7 @@ scripts/enemies/enemy.gd
 33 |     pass
    |     ^^^^
    = help: Remove the 'pass' statement.
+   = fix (safe): Remove the 'pass' line
 
 scripts/player.gd
  12:15 info [unused-argument] Function argument 'delta' is unused. Consider removing it or prefixing with '_'
@@ -59,18 +61,19 @@ scripts/player.gd
 12 | func _process(delta: float) -> void:
    |               ^^^^^
    = help: Remove 'delta', or rename it to '_delta' if the function signature must stay the same.
+   = fix (unsafe): Rename it to '_delta'
 
- 14:19 error [no-get-node-in-process] Don't call `get_node()` in `_process()`; cache the node in an `@onready` variable
+ 14:19 error [no-get-node-in-process] Don't look up nodes in `_process()`; cache the node in an `@onready` variable
    |
 14 |     var health_bar = get_node("HealthBar")
    |                      ^^^^^^^^^^^^^^^^^^^^^
-   = help: Add `@onready var node := get_node(...)` at the top of the script and use the variable.
+   = help: Add `@onready var node := $Path` at the top of the script and use the variable in `_process()`.
 
- 16:5 warning [prefer-is-empty] Use `inventory.is_empty()` instead of `len(inventory) == 0`
+ 16:5 warning [prefer-is-empty] Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero
    |
 16 |     if len(inventory) == 0:
    |        ^^^^^^^^^^^^^^^^^^^
-   = help: `is_empty()` states the intent and works on Array, Dictionary and String.
+   = help: `is_empty()` states the intent and works on Array, Dictionary, String and packed arrays.
    = fix (safe): Replace with `inventory.is_empty()`
 
  20:31 info [unused-argument] Function argument 'source' is unused. Consider removing it or prefixing with '_'
@@ -78,6 +81,14 @@ scripts/player.gd
 20 | func take_damage(amount: int, source: Node) -> void:
    |                               ^^^^^^
    = help: Remove 'source', or rename it to '_source' if the function signature must stay the same.
+   = fix (unsafe): Rename it to '_source'
+
+ 28:9 warning [prefer-not-is-empty] Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero
+   |
+28 |     return len(inventory) > 0
+   |            ^^^^^^^^^^^^^^^^^^
+   = help: `not is_empty()` states the intent and works on Array, Dictionary, String and packed arrays.
+   = fix (safe): Replace with `not inventory.is_empty()`
 
 scripts/ui/hud.gd
  5:25 warning [duplicated-load] Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
@@ -110,4 +121,4 @@ scripts/ui/hud.gd
    |                                                                                                     ^^^^^^^^^^^^^^^^^^
    = help: Split the line, for example by wrapping arguments in parentheses or extracting a variable.
 
-Found 18 problems (8 errors, 8 warnings, 2 infos) in 3 files. 1 fixable with --fix.
+Found 19 problems (8 errors, 9 warnings, 2 infos) in 3 files. 4 fixable with --fix.

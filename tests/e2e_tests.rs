@@ -103,8 +103,8 @@ fn lint_exit_codes_on_sample_project() {
     assert_eq!(clean.exit_code, 0, "stdout: {}", clean.stdout);
 
     // player.gd has one error (the custom `no-get-node-in-process`, raised to
-    // `error` in gdguard.toml), one warning and two infos. Without the error,
-    // only the warning counts against `--max-warnings`; infos never fail.
+    // `error` in gdguard.toml), two warnings and two infos. Without the error,
+    // only the warnings count against `--max-warnings`; infos never fail.
     let player = run_in_sample_project(&["lint", "scripts/player.gd"]);
     assert_eq!(player.exit_code, 1);
     let player_allowed = run_in_sample_project(&[
@@ -112,7 +112,7 @@ fn lint_exit_codes_on_sample_project() {
         "--disable",
         "no-get-node-in-process",
         "--max-warnings",
-        "1",
+        "2",
         "scripts/player.gd",
     ]);
     assert_eq!(
@@ -124,6 +124,8 @@ fn lint_exit_codes_on_sample_project() {
         "lint",
         "--disable",
         "no-get-node-in-process",
+        "--max-warnings",
+        "1",
         "scripts/player.gd",
     ]);
     assert_eq!(player_strict.exit_code, 1);
@@ -169,10 +171,10 @@ fn custom_rules_report_with_config_levels() {
     let output = run_in_sample_project(&["lint", "--format", "compact", "scripts/player.gd"]);
     assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
     assert!(output.stdout.contains(
-        "scripts/player.gd:14:19: error [no-get-node-in-process] Don't call `get_node()` in `_process()`"
+        "scripts/player.gd:14:19: error [no-get-node-in-process] Don't look up nodes in `_process()`"
     ));
     assert!(output.stdout.contains(
-        "scripts/player.gd:16:5: warning [prefer-is-empty] Use `inventory.is_empty()` instead of `len(inventory) == 0`"
+        "scripts/player.gd:16:5: warning [prefer-is-empty] Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero"
     ));
     assert!(output.stdout.contains("info [unused-argument]"));
 }
@@ -187,4 +189,212 @@ fn test_rules_passes_on_sample_project_rules() {
     );
     assert!(output.stdout.contains("prefer-is-empty"));
     assert!(output.stdout.contains("no-get-node-in-process"));
+}
+
+#[test]
+fn sample_project_rules_match_the_example_rules() {
+    // The sample project uses copies of `examples/rules/`; keep them in sync.
+    let rules_folder = sample_project_path().join(".gdguard/rules");
+    let examples_folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/rules");
+    let mut checked = 0;
+    for entry in fs::read_dir(&rules_folder).expect("should list sample rules") {
+        let path = entry.expect("should read entry").path();
+        let file_name = path.file_name().expect("rule file has a name");
+        let sample = fs::read_to_string(&path).expect("should read sample rule");
+        let example = fs::read_to_string(examples_folder.join(file_name))
+            .expect("every sample rule should come from examples/rules");
+        assert_eq!(sample, example, "{} differs", path.display());
+        checked += 1;
+    }
+    assert_eq!(checked, 3);
+}
+
+// W3: fix engine (C2), the rule pack, explain and list-rules.
+
+/// Copies `source` into `destination` recursively.
+fn copy_folder(source: &Path, destination: &Path) {
+    fs::create_dir_all(destination).expect("should create folder");
+    for entry in fs::read_dir(source).expect("should list folder") {
+        let entry = entry.expect("should read entry");
+        let target = destination.join(entry.file_name());
+        if entry.path().is_dir() {
+            copy_folder(&entry.path(), &target);
+        } else {
+            fs::copy(entry.path(), &target).expect("should copy file");
+        }
+    }
+}
+
+/// A copy of the sample project in the temp folder, removed on drop.
+struct SampleProjectCopy {
+    root: PathBuf,
+}
+
+impl SampleProjectCopy {
+    fn new(name: &str) -> SampleProjectCopy {
+        let root =
+            std::env::temp_dir().join(format!("gdguard-e2e-{}-{}", name, std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        copy_folder(&sample_project_path(), &root);
+        SampleProjectCopy { root }
+    }
+
+    fn run(&self, args: &[&str]) -> CommandOutput {
+        let output = Command::new(env!("CARGO_BIN_EXE_gdscript-formatter"))
+            .current_dir(&self.root)
+            .args(args)
+            .stdin(Stdio::null())
+            .output()
+            .expect("should run the binary");
+        CommandOutput {
+            exit_code: output
+                .status
+                .code()
+                .expect("the binary should exit with a code"),
+            stdout: String::from_utf8(output.stdout)
+                .expect("stdout should be valid UTF-8")
+                .replace('\\', "/"),
+            stderr: String::from_utf8(output.stderr).expect("stderr should be valid UTF-8"),
+        }
+    }
+
+    fn read(&self, relative_path: &str) -> String {
+        fs::read_to_string(self.root.join(relative_path)).expect("should read file")
+    }
+}
+
+impl Drop for SampleProjectCopy {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.root);
+    }
+}
+
+#[test]
+fn diff_on_sample_project_shows_safe_fixes_and_writes_nothing() {
+    let output = run_in_sample_project(&["lint", "--diff", "."]);
+    assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
+    assert_snapshot("fix.diff", &output.stdout);
+    let player = fs::read_to_string(sample_project_path().join("scripts/player.gd"))
+        .expect("should read player.gd");
+    assert!(player.contains("if len(inventory) == 0:"));
+}
+
+#[test]
+fn fix_on_sample_project_applies_builtin_and_custom_fixes() {
+    let project = SampleProjectCopy::new("fix");
+    let output = project.run(&["lint", "--fix", "--format", "compact", "."]);
+    assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
+    assert!(
+        output.stdout.ends_with("Fixed 4 problems in 2 files\n"),
+        "stdout: {}",
+        output.stdout
+    );
+
+    // Custom rule fixes (`prefer-is-empty`, `prefer-not-is-empty`).
+    let player = project.read("scripts/player.gd");
+    assert!(player.contains("\tif inventory.is_empty():\n"));
+    assert!(player.contains("\treturn not inventory.is_empty()\n"));
+    // Built-in fixes (`no-else-return`, `unnecessary-pass`).
+    let enemy = project.read("scripts/enemies/enemy.gd");
+    assert!(!enemy.contains("else:"));
+    assert!(enemy.ends_with("func idle() -> void:\n\tspeed = 0.0\n"));
+    // The fixed issues are gone from the report; others stay.
+    assert!(!output.stdout.contains("[prefer-is-empty]"));
+    assert!(!output.stdout.contains("[unnecessary-pass]"));
+    assert!(output.stdout.contains("[no-get-node-in-process]"));
+
+    // The project stays formatted, and fixing again changes nothing.
+    let check = project.run(&["--check", "."]);
+    assert_eq!(check.exit_code, 0, "stderr: {}", check.stderr);
+    let again = project.run(&["lint", "--fix", "--format", "compact", "."]);
+    assert!(again.stdout.ends_with("Fixed 0 problems in 0 files\n"));
+}
+
+#[test]
+fn fix_unsafe_on_sample_project_renames_unused_arguments() {
+    let project = SampleProjectCopy::new("fix-unsafe");
+    let output = project.run(&["lint", "--fix-unsafe", "scripts/player.gd"]);
+    assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
+    let player = project.read("scripts/player.gd");
+    assert!(player.contains("func _process(_delta: float) -> void:"));
+    assert!(player.contains("func take_damage(amount: int, _source: Node) -> void:"));
+}
+
+#[test]
+fn stdin_fix_on_sample_project_uses_its_config() {
+    let source = fs::read_to_string(sample_project_path().join("scripts/player.gd"))
+        .expect("should read player.gd");
+    let mut child = Command::new(env!("CARGO_BIN_EXE_gdscript-formatter"))
+        .current_dir(sample_project_path())
+        .args(["lint", "--fix", "--stdin-filename", "scripts/player.gd"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("should run the binary");
+    {
+        use std::io::Write;
+        let mut stdin = child.stdin.take().expect("should open stdin");
+        stdin
+            .write_all(source.as_bytes())
+            .expect("should write stdin");
+    }
+    let output = child.wait_with_output().expect("should finish");
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be valid UTF-8");
+    assert_eq!(output.status.code(), Some(1));
+    assert!(stdout.contains("\tif inventory.is_empty():\n"));
+    assert!(stderr.contains("scripts/player.gd:14:19: error [no-get-node-in-process]"));
+    assert!(stderr.ends_with("Fixed 2 problems in 1 file\n"));
+}
+
+#[test]
+fn test_rules_passes_on_the_example_rule_pack() {
+    let examples_folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/rules");
+    let output = run_in_sample_project(&[
+        "test-rules",
+        examples_folder.to_str().expect("path is UTF-8"),
+    ]);
+    assert_eq!(
+        output.exit_code, 0,
+        "stdout: {}\nstderr: {}",
+        output.stdout, output.stderr
+    );
+    assert!(output.stdout.contains(", 0 failed"));
+}
+
+#[test]
+fn explain_and_list_rules_include_sample_custom_rules() {
+    let builtin = run_in_sample_project(&["explain", "no-else-return"]);
+    assert_eq!(builtin.exit_code, 0, "stderr: {}", builtin.stderr);
+    assert!(builtin.stdout.starts_with("no-else-return\n"));
+    assert!(builtin.stdout.contains("Fixable:  yes"));
+
+    let custom = run_in_sample_project(&["explain", "prefer-is-empty"]);
+    assert_eq!(custom.exit_code, 0, "stderr: {}", custom.stderr);
+    assert!(custom.stdout.contains("custom ("));
+    assert!(custom.stdout.contains(".gdguard/rules/prefer-is-empty.yml"));
+
+    let unknown = run_in_sample_project(&["explain", "prefer-is-emty"]);
+    assert_eq!(unknown.exit_code, 2);
+
+    let list = run_in_sample_project_raw(&["lint", "--list-rules", "--format", "json"]);
+    assert_eq!(list.exit_code, 0, "stderr: {}", list.stderr);
+    let rules: serde_json::Value =
+        serde_json::from_str(&list.stdout).expect("list-rules json should parse");
+    let mut custom_ids = Vec::new();
+    for rule in rules["rules"].as_array().expect("rules is an array") {
+        if rule["origin"] == "custom" {
+            custom_ids.push(rule["id"].as_str().expect("id is a string").to_string());
+        }
+    }
+    custom_ids.sort();
+    assert_eq!(
+        custom_ids,
+        vec![
+            "no-get-node-in-process",
+            "prefer-is-empty",
+            "prefer-not-is-empty"
+        ]
+    );
 }

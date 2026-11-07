@@ -7,9 +7,9 @@
   "summary": {
     "files": 5,
     "errors": 8,
-    "warnings": 8,
+    "warnings": 9,
     "infos": 2,
-    "fixable": 1
+    "fixable": 4
   },
   "issues": [
     {
@@ -171,7 +171,25 @@
       },
       "snippet": "\telse:",
       "explain": "gdguard explain no-else-return",
-      "fixes": []
+      "fixes": [
+        {
+          "description": "Remove the 'else' and dedent its body",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 302
+                },
+                "end": {
+                  "byte": 319
+                }
+              },
+              "replacement": "\treturn 5"
+            }
+          ]
+        }
+      ]
     },
     {
       "file": "scripts/enemies/enemy.gd",
@@ -217,7 +235,25 @@
       },
       "snippet": "\tpass",
       "explain": "gdguard explain unnecessary-pass",
-      "fixes": []
+      "fixes": [
+        {
+          "description": "Remove the 'pass' line",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 415
+                },
+                "end": {
+                  "byte": 421
+                }
+              },
+              "replacement": ""
+            }
+          ]
+        }
+      ]
     },
     {
       "file": "scripts/player.gd",
@@ -240,15 +276,33 @@
       },
       "snippet": "func _process(delta: float) -> void:",
       "explain": "gdguard explain unused-argument",
-      "fixes": []
+      "fixes": [
+        {
+          "description": "Rename it to '_delta'",
+          "safety": "unsafe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 138
+                },
+                "end": {
+                  "byte": 143
+                }
+              },
+              "replacement": "_delta"
+            }
+          ]
+        }
+      ]
     },
     {
       "file": "scripts/player.gd",
       "rule": "no-get-node-in-process",
       "origin": "custom",
       "severity": "error",
-      "message": "Don't call `get_node()` in `_process()`; cache the node in an `@onready` variable",
-      "help": "Add `@onready var node := get_node(...)` at the top of the script and use the variable.",
+      "message": "Don't look up nodes in `_process()`; cache the node in an `@onready` variable",
+      "help": "Add `@onready var node := $Path` at the top of the script and use the variable in `_process()`.",
       "range": {
         "start": {
           "line": 14,
@@ -270,8 +324,8 @@
       "rule": "prefer-is-empty",
       "origin": "custom",
       "severity": "warning",
-      "message": "Use `inventory.is_empty()` instead of `len(inventory) == 0`",
-      "help": "`is_empty()` states the intent and works on Array, Dictionary and String.",
+      "message": "Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero",
+      "help": "`is_empty()` states the intent and works on Array, Dictionary, String and packed arrays.",
       "range": {
         "start": {
           "line": 16,
@@ -327,7 +381,66 @@
       },
       "snippet": "func take_damage(amount: int, source: Node) -> void:",
       "explain": "gdguard explain unused-argument",
-      "fixes": []
+      "fixes": [
+        {
+          "description": "Rename it to '_source'",
+          "safety": "unsafe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 393
+                },
+                "end": {
+                  "byte": 399
+                }
+              },
+              "replacement": "_source"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "prefer-not-is-empty",
+      "origin": "custom",
+      "severity": "warning",
+      "message": "Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero",
+      "help": "`not is_empty()` states the intent and works on Array, Dictionary, String and packed arrays.",
+      "range": {
+        "start": {
+          "line": 28,
+          "column": 9,
+          "byte": 566
+        },
+        "end": {
+          "line": 28,
+          "column": 27,
+          "byte": 584
+        }
+      },
+      "snippet": "\treturn len(inventory) > 0",
+      "explain": "gdguard explain prefer-not-is-empty",
+      "fixes": [
+        {
+          "description": "Replace with `not inventory.is_empty()`",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 566
+                },
+                "end": {
+                  "byte": 584
+                }
+              },
+              "replacement": "not inventory.is_empty()"
+            }
+          ]
+        }
+      ]
     },
     {
       "file": "scripts/ui/hud.gd",

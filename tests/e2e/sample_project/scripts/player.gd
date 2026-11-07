@@ -24,5 +24,5 @@ func take_damage(amount: int, source: Node) -> void:
 
 
 func has_items() -> bool:
-	# `prefer-is-empty` only flags `len(...) == 0`, so this line is clean.
+	# The custom `prefer-not-is-empty` rule flags `len(...) > 0`.
 	return len(inventory) > 0
