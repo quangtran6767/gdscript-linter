@@ -1,0 +1,33 @@
+scripts/player.gd
+ 3:12 warning [unused-argument] Function argument 'niño' is unused. Consider removing it or prefixing with '_'
+  |
+3 | func café(niño: int) -> void:
+  |           ^^^^
+  = help: Remove 'niño', or rename it to '_niño' if the function signature must stay the same.
+
+ 4:14 info [no-emoji-strings] String contains an emoji
+  |
+4 |     var label = "🎮 joué"
+  |                 ^^^^^^^^
+
+ 5:5 warning [prefer-is-empty] Use `items.is_empty()` instead of `len(items) == 0`
+  |
+5 |     if len(items) == 0:
+  |        ^^^^^^^^^^^^^^^
+  = help: is_empty() states the intent.
+  = fix (safe): Replace with items.is_empty()
+
+ 5:2 error [no-empty-if] This if block does nothing
+  |
+5 |     if len(items) == 0:
+  |     ^^^^^^^^^^^^^^^^^^^
+  = fix (suggestion): Remove the if block
+
+scripts/enemies/enemy.gd
+ 1:8 error [signal-name] Signal name 'OnDefeated' should be in snake_case format
+  |
+1 | signal OnDefeated
+  |        ^^^^^^^^^^
+  = help: Rename it to 'on_defeated'.
+
+Found 5 problems (2 errors, 2 warnings, 1 info) in 2 files. 1 fixable with --fix.

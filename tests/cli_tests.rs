@@ -141,8 +141,8 @@ fn unimplemented_lint_flags_exit_with_code_2_and_name_the_flag() {
         (&["lint", "--fix", "a.gd"], "--fix"),
         (&["lint", "--fix-unsafe", "a.gd"], "--fix-unsafe"),
         (&["lint", "--diff", "a.gd"], "--diff"),
-        (&["lint", "--format", "json", "a.gd"], "--format"),
-        (&["lint", "--config", "gdguard.toml", "a.gd"], "--config"),
+        (&["lint", "--format", "github", "a.gd"], "--format github"),
+        (&["lint", "--format=sarif", "a.gd"], "--format sarif"),
         (&["lint", "--baseline=baseline.json", "a.gd"], "--baseline"),
         (&["lint", "--update-baseline", "a.gd"], "--update-baseline"),
         (&["lint", "--stdin-filename", "a.gd"], "--stdin-filename"),
@@ -354,5 +354,120 @@ fn lint_stdin_uses_the_same_exit_codes() {
             input
         );
     }
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+fn run_and_capture(directory: &std::path::Path, args: &[&str]) -> (i32, String, String) {
+    let output = formatter_command(directory, args)
+        .stdin(Stdio::null())
+        .output()
+        .expect("should run the binary");
+    (
+        output.status.code().expect("should exit with a code"),
+        String::from_utf8(output.stdout).expect("stdout should be valid UTF-8"),
+        String::from_utf8(output.stderr).expect("stderr should be valid UTF-8"),
+    )
+}
+
+#[test]
+fn lint_default_output_is_compact_when_not_a_terminal() {
+    let directory = directory_with_files(&[("error.gd", SCRIPT_WITH_ONE_ERROR)]);
+    let (exit_code, stdout, _) = run_and_capture(&directory, &["lint", "error.gd"]);
+    assert_eq!(exit_code, 1);
+    assert_eq!(
+        stdout,
+        "error.gd:1:6: error [function-name] Function name 'badName' should be in snake_case, _private_snake_case format\n"
+    );
+    // `--pretty` is kept as an alias of `--format pretty`.
+    let (_, pretty_stdout, _) = run_and_capture(&directory, &["lint", "--pretty", "error.gd"]);
+    let (_, format_stdout, _) =
+        run_and_capture(&directory, &["lint", "--format", "pretty", "error.gd"]);
+    assert_eq!(pretty_stdout, format_stdout);
+    assert!(
+        pretty_stdout.contains("1 | func badName():\n"),
+        "{}",
+        pretty_stdout
+    );
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn lint_json_output_is_valid_json() {
+    let directory = directory_with_files(&[("error.gd", SCRIPT_WITH_ONE_ERROR)]);
+    let (exit_code, stdout, _) =
+        run_and_capture(&directory, &["lint", "--format", "json", "error.gd"]);
+    assert_eq!(exit_code, 1);
+    assert!(stdout.starts_with("{\n  \"version\": 1,\n"), "{}", stdout);
+    assert!(stdout.contains("\"rule\": \"function-name\""), "{}", stdout);
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn lint_reads_the_nearest_gdguard_toml() {
+    let directory = directory_with_files(&[
+        (
+            "gdguard.toml",
+            "[rules]\nfunction-name = \"off\"\nunused-argument = \"error\"\n",
+        ),
+        ("error.gd", SCRIPT_WITH_ONE_ERROR),
+        ("warning.gd", SCRIPT_WITH_ONE_WARNING),
+    ]);
+    let (exit_code, stdout, _) = run_and_capture(&directory, &["lint", "error.gd"]);
+    assert_eq!(exit_code, 0, "{}", stdout);
+    let (exit_code, stdout, _) = run_and_capture(&directory, &["lint", "warning.gd"]);
+    assert_eq!(exit_code, 1);
+    assert!(stdout.contains(": error [unused-argument]"), "{}", stdout);
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn lint_config_errors_exit_with_code_2() {
+    let directory = directory_with_files(&[
+        ("gdguard.toml", "[rules]\nfunction-nam = \"off\"\n"),
+        ("clean.gd", CLEAN_SCRIPT),
+    ]);
+    let (exit_code, _, stderr) = run_and_capture(&directory, &["lint", "clean.gd"]);
+    assert_eq!(exit_code, 2);
+    assert!(
+        stderr.ends_with(
+            "gdguard.toml: `rules.function-nam`: unknown rule id \"function-nam\"; did you mean \"function-name\"?\n"
+        ),
+        "{}",
+        stderr
+    );
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn lint_config_flag_replaces_discovery() {
+    let directory = directory_with_files(&[
+        ("gdguard.toml", "[rules]\nfunction-nam = \"off\"\n"),
+        ("other.toml", "[rules]\nfunction-name = \"off\"\n"),
+        ("error.gd", SCRIPT_WITH_ONE_ERROR),
+    ]);
+    let (exit_code, stdout, stderr) =
+        run_and_capture(&directory, &["lint", "--config", "other.toml", "error.gd"]);
+    assert_eq!(exit_code, 0, "{}{}", stdout, stderr);
+
+    let (exit_code, _, stderr) = run_and_capture(
+        &directory,
+        &["lint", "--config", "missing.toml", "error.gd"],
+    );
+    assert_eq!(exit_code, 2);
+    assert_eq!(stderr, "Error: --config: missing.toml is not a file\n");
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn lint_skips_excluded_files() {
+    let directory = directory_with_files(&[
+        ("gdguard.toml", "[lint]\nexclude = [\"generated\"]\n"),
+        ("clean.gd", CLEAN_SCRIPT),
+    ]);
+    fs::create_dir(directory.join("generated")).expect("should create folder");
+    fs::write(directory.join("generated/error.gd"), SCRIPT_WITH_ONE_ERROR)
+        .expect("should write file");
+    let (exit_code, stdout, _) = run_and_capture(&directory, &["lint", "."]);
+    assert_eq!(exit_code, 0, "{}", stdout);
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
 }

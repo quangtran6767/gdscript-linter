@@ -1,0 +1,33 @@
+[1mscripts/player.gd[0m
+ 3:12 [1;33mwarning[0m [2m[unused-argument][0m Function argument 'niño' is unused. Consider removing it or prefixing with '_'
+[34m  |[0m
+[34m3 |[0m func café(niño: int) -> void:
+[34m  |[0m           [1;33m^^^^[0m
+[34m  =[0m [36mhelp[0m: Remove 'niño', or rename it to '_niño' if the function signature must stay the same.
+
+ 4:14 [1;34minfo[0m [2m[no-emoji-strings][0m String contains an emoji
+[34m  |[0m
+[34m4 |[0m     var label = "🎮 joué"
+[34m  |[0m                 [1;34m^^^^^^^^[0m
+
+ 5:5 [1;33mwarning[0m [2m[prefer-is-empty][0m Use `items.is_empty()` instead of `len(items) == 0`
+[34m  |[0m
+[34m5 |[0m     if len(items) == 0:
+[34m  |[0m        [1;33m^^^^^^^^^^^^^^^[0m
+[34m  =[0m [36mhelp[0m: is_empty() states the intent.
+[34m  =[0m [36mfix (safe)[0m: Replace with items.is_empty()
+
+ 5:2 [1;31merror[0m [2m[no-empty-if][0m This if block does nothing
+[34m  |[0m
+[34m5 |[0m     if len(items) == 0:
+[34m  |[0m     [1;31m^^^^^^^^^^^^^^^^^^^[0m
+[34m  =[0m [36mfix (suggestion)[0m: Remove the if block
+
+[1mscripts/enemies/enemy.gd[0m
+ 1:8 [1;31merror[0m [2m[signal-name][0m Signal name 'OnDefeated' should be in snake_case format
+[34m  |[0m
+[34m1 |[0m signal OnDefeated
+[34m  |[0m        [1;31m^^^^^^^^^^[0m
+[34m  =[0m [36mhelp[0m: Rename it to 'on_defeated'.
+
+[1mFound 5 problems (2 errors, 2 warnings, 1 info) in 2 files.[0m 1 fixable with --fix.

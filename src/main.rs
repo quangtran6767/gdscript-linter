@@ -23,16 +23,15 @@ use std::{
     thread,
 };
 
+use gdscript_formatter::linter::config::CliRuleOverrides;
+use gdscript_formatter::linter::output::{LintReport, OutputFormat, write_report};
 use gdscript_formatter::linter::rule_config::{parse_disabled_rules, validate_rule_names};
-use gdscript_formatter::linter::{
-    GDScriptLinter, LintSummary, LinterConfig, format_diagnostic_line,
-};
+use gdscript_formatter::linter::{LintRunOptions, lint_files, lint_stdin};
 use gdscript_formatter::linter::{explain, init, rule_tester};
 use gdscript_formatter::{
     FormatErrors, FormatterConfiguration, QuoteStyle, RenderElement, format_gdscript,
     format_gdscript_with_buffers,
 };
-use std::collections::HashSet;
 
 use cli::{Command, parse_args};
 
@@ -118,11 +117,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if do_diff {
             exit_not_implemented("--diff");
         }
-        if output_format.is_some() {
-            exit_not_implemented("--format");
-        }
-        if config_path.is_some() {
-            exit_not_implemented("--config");
+        if let Some(format) = output_format
+            && matches!(format, OutputFormat::Github | OutputFormat::Sarif)
+        {
+            exit_not_implemented(&format!("--format {}", format.as_str()));
         }
         if baseline_path.is_some() {
             exit_not_implemented("--baseline");
@@ -134,21 +132,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             exit_not_implemented("--stdin-filename");
         }
 
-        let lint_options = LintRunOptions {
+        // `--format` wins; the old `--pretty` flag means `--format pretty`.
+        // Otherwise: pretty for people at a terminal, compact for tools.
+        let is_terminal = io::stdout().is_terminal();
+        let format = match output_format {
+            Some(format) => format,
+            None if do_pretty_print || is_terminal => OutputFormat::Pretty,
+            None => OutputFormat::Compact,
+        };
+        let lint_command = LintCommand {
             input_file_paths: parsed_cli_args.input_file_paths,
             excluded_paths: parsed_cli_args.excluded_paths,
             disabled_linter_rules,
             max_line_length,
-            do_pretty_print,
+            config_path,
         };
         // Exit codes: 0 clean, 1 lint problems, 2 usage or config errors.
-        match run_linter(lint_options) {
-            Ok(summary) => std::process::exit(summary.exit_code(max_warnings)),
+        let report = match run_linter(lint_command) {
+            Ok(report) => report,
             Err(error) => {
                 eprintln!("Error: {}", error);
                 std::process::exit(2);
             }
+        };
+        let mut output = String::new();
+        if let Err(error) = write_report(format, &report, is_terminal, &mut output) {
+            eprintln!("Error: {}", error);
+            std::process::exit(2);
         }
+        print!("{}", output);
+        std::process::exit(report.summary().exit_code(max_warnings));
     }
 
     let Command::Format {
@@ -418,38 +431,45 @@ fn exit_not_implemented(name: &str) -> ! {
 }
 
 /// What the `lint` command needs to lint files or stdin.
-struct LintRunOptions {
+struct LintCommand {
     input_file_paths: Vec<PathBuf>,
     excluded_paths: Vec<PathBuf>,
     /// Comma-separated rule names from `--disable`.
     disabled_linter_rules: Option<String>,
-    /// `--max-line-length`, which overrides `.editorconfig`.
+    /// `--max-line-length`, which overrides every config.
     max_line_length: Option<usize>,
-    do_pretty_print: bool,
+    /// `--config`, which replaces the upward search for `gdguard.toml`.
+    config_path: Option<PathBuf>,
 }
 
-/// Lints the files (or stdin) and prints the diagnostics. Returns their
-/// counts, or an error message for usage and I/O errors (exit code 2).
-fn run_linter(options: LintRunOptions) -> Result<LintSummary, String> {
-    let mut disabled_rules = HashSet::new();
-    if let Some(disable_str) = options.disabled_linter_rules {
-        disabled_rules = parse_disabled_rules(&disable_str);
-        if let Err(invalid_rules) = validate_rule_names(&disabled_rules) {
+/// Lints the files (or stdin) and returns the report. Returns an error
+/// message for usage, config and I/O errors (exit code 2).
+fn run_linter(command: LintCommand) -> Result<LintReport, String> {
+    let mut cli = CliRuleOverrides {
+        max_line_length: command.max_line_length,
+        ..CliRuleOverrides::default()
+    };
+    if let Some(disable_str) = command.disabled_linter_rules {
+        cli.disabled_rules = parse_disabled_rules(&disable_str);
+        if let Err(invalid_rules) = validate_rule_names(&cli.disabled_rules) {
             return Err(format!(
                 "Invalid rule names: {}\nUse --list-rules to see all available rules",
                 invalid_rules.join(", ")
             ));
         }
     }
-
-    let linter_config = LinterConfig {
-        disabled_rules,
-        max_line_length: options.max_line_length.unwrap_or(100),
-        ..LinterConfig::default()
+    if let Some(config_path) = &command.config_path
+        && !config_path.is_file()
+    {
+        return Err(format!("--config: {} is not a file", config_path.display()));
+    }
+    let options = LintRunOptions {
+        config_path: command.config_path,
+        cli,
     };
 
-    let is_stdin_requested = options.input_file_paths.is_empty()
-        || (options.input_file_paths.len() == 1 && options.input_file_paths[0] == Path::new("-"));
+    let is_stdin_requested = command.input_file_paths.is_empty()
+        || (command.input_file_paths.len() == 1 && command.input_file_paths[0] == Path::new("-"));
     if is_stdin_requested && !io::stdin().is_terminal() {
         let mut input_content = String::new();
         io::stdin()
@@ -457,38 +477,19 @@ fn run_linter(options: LintRunOptions) -> Result<LintSummary, String> {
             .map_err(|error| format!("Failed to read from stdin: {}", error))?;
         let current_directory = env::current_dir()
             .map_err(|error| format!("Failed to get current directory: {}", error))?;
+        // Like the formatter, stdin uses a `stdin.gd` file in the current
+        // directory to find `gdguard.toml` and `.editorconfig`.
         let stdin_path = current_directory.join("stdin.gd");
-        let mut stdin_config = linter_config;
-        gdscript_formatter::editorconfig::apply_editorconfig_to_linter_config(
-            &mut stdin_config,
-            &stdin_path,
-        );
-        if let Some(max_line_length) = options.max_line_length {
-            stdin_config.max_line_length = max_line_length;
-        }
-
-        let mut linter = GDScriptLinter::new(stdin_config)?;
-        let diagnostics = linter.lint(&input_content, "stdin")?;
-        let mut summary = LintSummary::default();
-        summary.add(&diagnostics);
-        for diagnostic in &diagnostics {
-            println!("{}", format_diagnostic_line("stdin", diagnostic));
-        }
-        return Ok(summary);
+        return lint_stdin(input_content, &stdin_path, "stdin", &options);
     }
 
     let input_gdscript_files =
-        find_gdscript_files(&options.input_file_paths, &options.excluded_paths)
+        find_gdscript_files(&command.input_file_paths, &command.excluded_paths)
             .map_err(|error| error.to_string())?;
     if input_gdscript_files.is_empty() {
         return Err(NO_GDSCRIPT_FILES_MESSAGE.to_string());
     }
-    let mut linter = GDScriptLinter::new(linter_config)?;
-    linter.lint_files_with_editorconfig(
-        &input_gdscript_files,
-        options.do_pretty_print,
-        options.max_line_length,
-    )
+    lint_files(&input_gdscript_files, &options)
 }
 
 /// Formats one file after applying its matching editorconfig settings.

@@ -8,8 +8,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::linter::diagnostic::{Diagnostic, Severity};
-use crate::linter::{GDScriptLinter, LinterConfig};
+use crate::linter::config::{self, CliRuleOverrides, CompiledConfig};
+use crate::linter::diagnostic::Diagnostic;
+use crate::linter::{GDScriptLinter, LinterConfig, lint_with_settings};
 
 /// The level of a rule in `gdguard.toml`: `"off"`, `"info"`, `"warning"` or
 /// `"error"`.
@@ -153,42 +154,24 @@ pub struct FixResult {
 }
 
 /// Loads the nearest gdguard.toml for `path` (or defaults) plus custom rules.
-pub fn load_config_for(_path: &Path) -> Result<Config, ConfigError> {
-    Err("not implemented yet".into())
+///
+/// Searches upward from `path` (a file or a folder). Checks every key and
+/// level, and that every rule id is a built-in or custom rule.
+pub fn load_config_for(path: &Path) -> Result<Config, ConfigError> {
+    config::load_config_for(path)
 }
 
 /// Lints one in-memory buffer. `path` is used for config overrides and output.
 ///
-/// Runs the built-in rules with `config.rules` levels (`off` disables a rule,
-/// other levels replace its severity), `max_line_length` and `indent_size`.
-/// Custom rules, overrides and `.editorconfig` are not applied yet (W2).
+/// Applies `config` the same way as the CLI: `[rules]` levels and options,
+/// matching `[[overrides]]`, then `.editorconfig` for the line length and
+/// indent size. `[lint].exclude` is not checked here: the caller asked for
+/// this buffer.
 pub fn lint_source(path: &Path, source: &str, config: &Config) -> Result<LintResult, String> {
-    let mut linter_config = LinterConfig::default();
-    if let Some(max_line_length) = config.max_line_length {
-        linter_config.max_line_length = max_line_length;
-    }
-    if let Some(indent_size) = config.indent_size {
-        linter_config.indent_size = indent_size;
-    }
-    for (rule_id, setting) in &config.rules {
-        if setting.level == Some(RuleLevel::Off) {
-            linter_config.disabled_rules.insert(rule_id.clone());
-        }
-    }
-
-    let mut linter = GDScriptLinter::new(linter_config)?;
-    let mut diagnostics = linter.lint(source, &path.to_string_lossy())?;
-    for diagnostic in &mut diagnostics {
-        let Some(setting) = config.rules.get(&diagnostic.rule) else {
-            continue;
-        };
-        match setting.level {
-            Some(RuleLevel::Error) => diagnostic.severity = Severity::Error,
-            Some(RuleLevel::Warning) => diagnostic.severity = Severity::Warning,
-            Some(RuleLevel::Info) => diagnostic.severity = Severity::Info,
-            Some(RuleLevel::Off) | None => {}
-        }
-    }
+    let compiled_config = CompiledConfig::new(config.clone()).map_err(|error| error.to_string())?;
+    let settings = compiled_config.settings_for_file(path, &CliRuleOverrides::default());
+    let mut linter = GDScriptLinter::new(LinterConfig::default())?;
+    let diagnostics = lint_with_settings(&mut linter, path, source, &settings)?;
     Ok(LintResult { diagnostics })
 }
 
@@ -207,6 +190,7 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use super::*;
+    use crate::linter::diagnostic::Severity;
 
     #[test]
     fn config_can_be_built_by_hand() {
@@ -258,7 +242,6 @@ mod tests {
     fn stubs_return_errors_instead_of_panicking() {
         let path = Path::new("a.gd");
         let config = Config::default();
-        assert!(load_config_for(path).is_err());
         assert!(fix_source(path, "", &config, false).is_err());
     }
 
