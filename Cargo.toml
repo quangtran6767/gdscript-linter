@@ -49,6 +49,10 @@ manual_find = "allow"
 manual_filter_map = "allow"
 manual_flatten = "allow"
 manual_try_fold = "allow"
+# With rust-version >= 1.88, clippy suggests merging nested `if let` blocks into
+# let-chains. Nested blocks are fine and often read better, and rewriting the
+# formatter for this would only create merge noise with upstream.
+collapsible_if = "allow"
 
 [dependencies]
 tree-sitter-gdscript  = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript.git", rev = "872e2e96905892c954da4101c74b884d0155f4d8" }
