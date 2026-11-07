@@ -1,0 +1,3 @@
+tests/lint/input/ignore_gdguard.gd:7:unused-ignore:warning: `gdguard-ignore-next-line` for `signal-name` doesn't suppress any issue
+tests/lint/input/ignore_gdguard.gd:12:unused-ignore:warning: `gdguard-ignore` doesn't suppress any issue
+tests/lint/input/ignore_gdguard.gd:14:unused-ignore:warning: `gdlint-ignore-next-line` for `private-access` doesn't suppress any issue

@@ -673,3 +673,55 @@ fn cli_disable_rejects_ids_that_are_neither_builtin_nor_custom() {
         "Invalid rule names: not-a-rule\nUse --list-rules to see all available rules"
     );
 }
+
+#[test]
+fn gdguard_ignores_apply_to_custom_rules_and_unused_ones_are_reported() {
+    let project = TempProject::new();
+    project.write(
+        "gdguard.toml",
+        "[rules]\nunused-ignore = \"error\"\n\n[custom_rules]\npaths = [\"rules\"]\n",
+    );
+    project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
+    let file = project.write(
+        "a.gd",
+        "# gdguard-ignore-file prefer-is-empty -- generated code\nvar a = len([]) == 0\nvar b = 1 # gdguard-ignore prefer-is-empty\n",
+    );
+
+    let results = lint_project_files(std::slice::from_ref(&file));
+    assert_eq!(
+        results,
+        vec![("unused-ignore".to_string(), Severity::Error, 3)]
+    );
+
+    // The comment for a disabled rule isn't reported.
+    let mut options = LintRunOptions::default();
+    options
+        .cli
+        .disabled_rules
+        .insert("prefer-is-empty".to_string());
+    let report = lint_files(std::slice::from_ref(&file), &options).unwrap();
+    assert!(report.files.is_empty());
+
+    // `unused-ignore = "off"` turns the warning off.
+    project.write(
+        "gdguard.toml",
+        "[rules]\nunused-ignore = \"off\"\n\n[custom_rules]\npaths = [\"rules\"]\n",
+    );
+    assert!(lint_project_files(&[file]).is_empty());
+}
+
+#[test]
+fn fix_removes_unused_ignore_comments() {
+    let project = TempProject::new();
+    let source =
+        "var a = 1 # gdguard-ignore constant-name\n# gdguard-ignore-next-line\nvar b = 2\n";
+    let result = api::fix_source(
+        &project.root.join("a.gd"),
+        source,
+        &Config::default(),
+        false,
+    )
+    .unwrap();
+    assert_eq!(result.output, "var a = 1\nvar b = 2\n");
+    assert_eq!(result.applied, 2);
+}

@@ -34,7 +34,7 @@ mod tests;
 use api::{Config, RuleLevel};
 use config::{CliRuleOverrides, CompiledConfig, FileSettings};
 use diagnostic::{Diagnostic, FileContext, RuleProvider, Severity};
-use ignore_patterns::{parse_ignore_patterns, should_ignore_rule};
+use ignore_patterns::{apply_ignores, parse_ignore_comments};
 use output::{FileDiagnostics, LintReport, display_path};
 use rules::{ALL_RULES, Rule};
 
@@ -99,6 +99,21 @@ impl GDScriptLinter {
         file_path: &str,
         providers: &mut [Box<dyn RuleProvider>],
     ) -> Result<Vec<Diagnostic>, String> {
+        let no_levels = BTreeMap::new();
+        self.lint_with_levels(source_code, file_path, providers, &no_levels)
+    }
+
+    /// Like `lint_with_providers`, and applies the config's rule `levels`
+    /// before ignore comments, so a comment for a rule that is `off` counts
+    /// as unused. `unused-ignore` warnings are reported unless the rule is
+    /// disabled in the linter config.
+    pub fn lint_with_levels(
+        &mut self,
+        source_code: &str,
+        file_path: &str,
+        providers: &mut [Box<dyn RuleProvider>],
+        levels: &BTreeMap<String, RuleLevel>,
+    ) -> Result<Vec<Diagnostic>, String> {
         let tree = self
             .parser
             .parse(source_code, None)
@@ -117,13 +132,25 @@ impl GDScriptLinter {
             }
         }
 
+        apply_rule_levels(levels, &mut diagnostics);
+
         // Inline ignore comments apply to the line where a diagnostic starts.
-        let ignore_map = parse_ignore_patterns(source_code);
-        if !ignore_map.is_empty() {
-            diagnostics.retain(|diagnostic| {
-                !should_ignore_rule(&ignore_map, diagnostic.span.start.line, &diagnostic.rule)
-            });
-        }
+        let ignore_comments = parse_ignore_comments(source_code, &tree);
+        let report_unused = !self
+            .config
+            .disabled_rules
+            .contains(ignore_patterns::UNUSED_IGNORE_RULE_ID);
+        let mut unused_ignores = Vec::new();
+        apply_ignores(
+            source_code,
+            &ignore_comments,
+            report_unused,
+            &self.config.disabled_rules,
+            &mut diagnostics,
+            &mut unused_ignores,
+        );
+        apply_rule_levels(levels, &mut unused_ignores);
+        diagnostics.extend(unused_ignores);
 
         // Sort by position. Rules that run on the source code like the line
         // length check would otherwise appear at the end.
@@ -182,10 +209,12 @@ pub fn lint_with_settings(
     providers: &mut [Box<dyn RuleProvider>],
 ) -> Result<Vec<Diagnostic>, String> {
     linter.set_config(settings.linter_config.clone());
-    let mut diagnostics =
-        linter.lint_with_providers(source_code, &path.to_string_lossy(), providers)?;
-    apply_rule_levels(&settings.levels, &mut diagnostics);
-    Ok(diagnostics)
+    linter.lint_with_levels(
+        source_code,
+        &path.to_string_lossy(),
+        providers,
+        &settings.levels,
+    )
 }
 
 /// What the `lint` command needs besides the files.
