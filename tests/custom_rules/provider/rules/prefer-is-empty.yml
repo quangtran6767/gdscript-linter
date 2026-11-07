@@ -1,0 +1,8 @@
+id: prefer-is-empty
+severity: warning
+message: "Use `$X.is_empty()` instead of `len($X) == 0`"
+help: "`$X.is_empty()` states the intent."
+rule:
+  pattern: len($X) == 0
+fix: $X.is_empty()
+fixSafety: safe

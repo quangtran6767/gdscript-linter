@@ -19,7 +19,9 @@ use std::borrow::Cow;
 
 use ast_grep_core::Language;
 use ast_grep_core::matcher::{Pattern, PatternBuilder, PatternError};
-use ast_grep_core::tree_sitter::{LanguageExt, StrDoc, TSLanguage};
+use tree_sitter::Language as TSLanguage;
+
+use super::doc::GdDoc;
 
 /// The character metavariables use internally. `µ` (U+00B5) is a Unicode
 /// letter (XID_Start), so `µX` parses as a GDScript identifier. Rule authors
@@ -43,23 +45,21 @@ impl Language for GdScript {
     }
 
     fn kind_to_id(&self, kind: &str) -> u16 {
-        self.get_ts_language().id_for_node_kind(kind, true)
+        ts_language().id_for_node_kind(kind, true)
     }
 
     fn field_to_id(&self, field: &str) -> Option<u16> {
-        let id = self.get_ts_language().field_id_for_name(field)?;
+        let id = ts_language().field_id_for_name(field)?;
         Some(id.get())
     }
 
     fn build_pattern(&self, builder: &PatternBuilder) -> Result<Pattern, PatternError> {
-        builder.build(|source| StrDoc::try_new(source, *self))
+        builder.build(GdDoc::parse)
     }
 }
 
-impl LanguageExt for GdScript {
-    fn get_ts_language(&self) -> TSLanguage {
-        tree_sitter_gdscript::LANGUAGE.into()
-    }
+fn ts_language() -> TSLanguage {
+    tree_sitter_gdscript::LANGUAGE.into()
 }
 
 fn is_metavariable_first_char(character: char) -> bool {

@@ -3,3 +3,5 @@
 #![allow(clippy::unwrap_used)]
 
 mod loader_tests;
+mod provider_tests;
+mod rule_tester_tests;

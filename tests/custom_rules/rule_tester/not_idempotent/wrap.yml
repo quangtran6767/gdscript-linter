@@ -1,0 +1,10 @@
+id: wrap-print
+message: "Wrap print"
+rule:
+  pattern: print($A)
+fix: print(str($A))
+fixSafety: unsafe
+tests:
+  invalid:
+    - code: "func f():\n\tprint(1)\n"
+      output: "func f():\n\tprint(str(1))\n"

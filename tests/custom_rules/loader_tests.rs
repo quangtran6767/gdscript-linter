@@ -65,7 +65,7 @@ fn valid_rule_fills_meta_compiled_and_tests() {
         }
     );
     assert_eq!(rule.compiled.fix_safety, FixSafety::Safe);
-    assert!(rule.compiled.fixer.is_some());
+    assert!(rule.compiled.fix.is_some());
     assert_eq!(
         rule.compiled.help.as_deref(),
         Some("is_empty() states the intent and works on Array, Dictionary and String.")
@@ -75,6 +75,7 @@ fn valid_rule_fills_meta_compiled_and_tests() {
         vec![InvalidCase {
             code: "if len(items) == 0:\n\tpass".to_string(),
             output: Some("if items.is_empty():\n\tpass".to_string()),
+            errors: None,
         }]
     );
     assert_eq!(rule.tests.valid, vec!["if items.is_empty():\n\tpass"]);
@@ -86,7 +87,7 @@ fn defaults_for_optional_keys() {
     assert_eq!(rule.meta.default_severity, Severity::Warning);
     assert_eq!(rule.meta.rationale, "");
     assert!(!rule.meta.fixable);
-    assert!(rule.compiled.fixer.is_none());
+    assert!(rule.compiled.fix.is_none());
     assert_eq!(rule.compiled.fix_safety, FixSafety::Suggestion);
     assert!(rule.tests.valid.is_empty());
     assert!(rule.tests.invalid.is_empty());
@@ -96,7 +97,7 @@ fn defaults_for_optional_keys() {
 fn fix_without_safety_is_a_suggestion_and_not_fixable() {
     let rule =
         load("id: my-rule\nmessage: m\nrule:\n  pattern: print($A)\nfix: push_warning($A)\n");
-    assert!(rule.compiled.fixer.is_some());
+    assert!(rule.compiled.fix.is_some());
     assert_eq!(rule.compiled.fix_safety, FixSafety::Suggestion);
     assert!(!rule.meta.fixable);
 }
@@ -149,6 +150,36 @@ fn literal_node_paths_are_fine_in_fix_and_message() {
 }
 
 #[test]
+fn invalid_test_case_with_an_exact_error_count() {
+    let rule = load(
+        "id: my-rule
+message: m
+rule:
+  pattern: print($A)
+tests:
+  invalid:
+    - code: \"f(print(1), print(2))\"
+      errors: 2
+",
+    );
+    assert_eq!(rule.tests.invalid[0].errors, Some(2));
+    assert_eq!(
+        load_error(
+            "id: my-rule
+message: m
+rule:
+  pattern: print($A)
+tests:
+  invalid:
+    - code: print(1)
+      errors: 0
+"
+        ),
+        "rules/test.yml: `tests.invalid[0].errors`: expected a number greater than 0"
+    );
+}
+
+#[test]
 fn invalid_test_case_may_be_a_bare_string() {
     let rule = load(
         "id: my-rule\nmessage: m\nrule:\n  pattern: print($A)\ntests:\n  invalid:\n    - print(1)\n",
@@ -157,7 +188,8 @@ fn invalid_test_case_may_be_a_bare_string() {
         rule.tests.invalid,
         vec![InvalidCase {
             code: "print(1)".to_string(),
-            output: None
+            output: None,
+            errors: None,
         }]
     );
 }
@@ -340,7 +372,7 @@ fn unknown_key_in_tests() {
         load_error(
             "id: my-rule\nmessage: m\nrule:\n  pattern: print($A)\ntests:\n  invalid:\n    - code: print(1)\n      outptu: x\n"
         ),
-        "rules/test.yml: `tests.invalid[0].outptu`: unknown key, expected one of `code`, `output`"
+        "rules/test.yml: `tests.invalid[0].outptu`: unknown key, expected one of `code`, `output`, `errors`"
     );
     assert_eq!(
         load_error("id: my-rule\nmessage: m\nrule:\n  pattern: print($A)\ntests:\n  vaild: []\n"),
@@ -403,11 +435,9 @@ fn nested_pattern_that_does_not_parse() {
 }
 
 #[test]
-fn literal_node_path_in_pattern() {
-    assert_eq!(
-        load_error("id: my-rule\nmessage: m\nrule:\n  pattern: $Player.hide()\n"),
-        "rules/test.yml: `rule.pattern`: pattern `$Player.hide()` contains the node path `$Player`, but patterns match every node path alike; use a metavariable with a constraint instead, for example `$P` and `constraints: { P: { regex: '^\\$Player$' } }`"
-    );
+fn literal_node_paths_are_allowed_in_patterns() {
+    let rule = load("id: my-rule\nmessage: m\nrule:\n  pattern: $Player.hide()\n");
+    assert_eq!(rule.meta.id, "my-rule");
 }
 
 #[test]
@@ -489,7 +519,7 @@ fn templates_may_use_multi_metavariables_and_escapes() {
     let rule = load(
         "id: my-rule\nmessage: \"Call with $$$ARGS on \\\\$HUD\"\nrule:\n  pattern: print($$$ARGS)\nfix: push_warning($$$ARGS)\n",
     );
-    assert!(rule.compiled.fixer.is_some());
+    assert!(rule.compiled.fix.is_some());
 }
 
 // Folders

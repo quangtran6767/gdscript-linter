@@ -1,0 +1,7 @@
+id: print-args
+severity: info
+message: "print called with $$$ARGS"
+rule:
+  pattern: print($$$ARGS)
+fix: push_warning($$$ARGS)
+fixSafety: unsafe

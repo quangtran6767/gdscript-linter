@@ -10,7 +10,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use ast_grep_config::{DeserializeEnv, Fixer, RuleCore, SerializableRule, SerializableRuleCore};
+use ast_grep_config::{DeserializeEnv, RuleCore, SerializableRule, SerializableRuleCore};
 use serde_json::Value;
 
 use super::language::{EXPANDO_CHAR, GdScript, to_internal};
@@ -71,14 +71,18 @@ pub struct InvalidCase {
     /// The expected source after applying the rule's fix. `None` means the
     /// test only checks that the rule reports something.
     pub output: Option<String>,
+    /// The exact number of diagnostics expected. `None` means at least one.
+    pub errors: Option<usize>,
 }
 
 /// The parts of a rule the engine needs to check a file. Templates are kept
 /// in the form ast-grep uses (see `language::to_internal`).
 pub struct CompiledRule {
     pub matcher: RuleCore,
-    /// `None` when the rule has no `fix:`.
-    pub fixer: Option<Fixer>,
+    /// The `fix:` template with metavariables in internal form. `None` when
+    /// the rule has no fix. The provider renders it (see
+    /// `provider::render_fix`).
+    pub fix: Option<String>,
     pub fix_safety: FixSafety,
     /// The `message:` template with metavariables in internal form.
     pub message: String,
@@ -90,7 +94,7 @@ impl std::fmt::Debug for CompiledRule {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("CompiledRule")
-            .field("has_fix", &self.fixer.is_some())
+            .field("fix", &self.fix)
             .field("fix_safety", &self.fix_safety)
             .field("message", &self.message)
             .field("help", &self.help)
@@ -325,16 +329,11 @@ pub fn load_rule_str(path: &Path, text: &str) -> Result<LoadedRule, ConfigError>
         check_metavariables(path, "help", &internal, &defined)?;
         internal_help = Some(internal);
     }
-    let mut fixer = None;
+    let mut internal_fix = None;
     if let Some(fix_template) = &fix {
         let internal = to_internal(fix_template).into_owned();
         check_metavariables(path, "fix", &internal, &defined)?;
-        match Fixer::from_str(&internal, &GdScript) {
-            Ok(parsed) => fixer = Some(parsed),
-            Err(error) => {
-                return Err(error_at(path, Some("fix"), error_chain_message(&error)));
-            }
-        }
+        internal_fix = Some(internal);
     }
 
     let tests = match fields.get("tests") {
@@ -350,7 +349,7 @@ pub fn load_rule_str(path: &Path, text: &str) -> Result<LoadedRule, ConfigError>
     if let Some(first) = tests.valid.first() {
         good_example = first.clone();
     }
-    let fixable = fixer.is_some() && fix_safety != FixSafety::Suggestion;
+    let fixable = internal_fix.is_some() && fix_safety != FixSafety::Suggestion;
     let meta = RuleMeta {
         id,
         description: message.clone(),
@@ -367,7 +366,7 @@ pub fn load_rule_str(path: &Path, text: &str) -> Result<LoadedRule, ConfigError>
         meta,
         compiled: CompiledRule {
             matcher,
-            fixer,
+            fix: internal_fix,
             fix_safety,
             message: internal_message,
             help: internal_help,
@@ -605,8 +604,8 @@ fn validate_pattern_value(path: &Path, value: &Value, key_path: &str) -> Result<
     }
 }
 
-/// Parses a pattern as GDScript. Rejects syntax errors, and literal node
-/// paths, which ast-grep can't tell apart (`$Player` would match `$Enemy`).
+/// Parses a pattern as GDScript and rejects syntax errors, which ast-grep
+/// would otherwise accept silently.
 fn validate_pattern_source(path: &Path, pattern: &str, key_path: &str) -> Result<(), ConfigError> {
     let internal = to_internal(pattern);
     let mut parser = tree_sitter::Parser::new();
@@ -627,40 +626,14 @@ fn validate_pattern_source(path: &Path, pattern: &str, key_path: &str) -> Result
             format!("pattern `{}` doesn't parse as GDScript", pattern),
         ));
     };
-    let root = tree.root_node();
-    if root.has_error() {
+    if tree.root_node().has_error() {
         return Err(error_at(
             path,
             Some(key_path),
             format!("pattern `{}` doesn't parse as GDScript", pattern),
         ));
     }
-    if let Some(node_path) = find_node_path(root, internal.as_ref()) {
-        return Err(error_at(
-            path,
-            Some(key_path),
-            format!(
-                "pattern `{}` contains the node path `{}`, but patterns match every node path alike; use a metavariable with a constraint instead, for example `$P` and `constraints: {{ P: {{ regex: '^\\{}$' }} }}`",
-                pattern, node_path, node_path
-            ),
-        ));
-    }
     Ok(())
-}
-
-/// Returns the text of the first `get_node` node (`$Path`, `%Name`), if any.
-fn find_node_path(root: tree_sitter::Node, source: &str) -> Option<String> {
-    let mut stack = vec![root];
-    while let Some(node) = stack.pop() {
-        if node.kind() == "get_node" {
-            return Some(source[node.byte_range()].to_string());
-        }
-        let mut cursor = node.walk();
-        for child in node.children(&mut cursor) {
-            stack.push(child);
-        }
-    }
-    None
 }
 
 /// Checks that every metavariable in `template` (internal form) is defined
@@ -776,38 +749,57 @@ fn parse_invalid_case(
         return Ok(InvalidCase {
             code: code.clone(),
             output: None,
+            errors: None,
         });
     }
     let Value::Object(fields) = value else {
         return Err(error_at(
             path,
             Some(key_path),
-            "expected `{ code, output }` or a code string".to_string(),
+            "expected `{ code, output, errors }` or a code string".to_string(),
         ));
     };
     let mut code = None;
     let mut output = None;
+    let mut errors = None;
     for (key, child) in fields {
         let child_path = format!("{}.{}", key_path, key);
-        if key != "code" && key != "output" {
-            return Err(unknown_key_error(
-                path,
-                &child_path,
-                key,
-                &["code", "output"],
-            ));
-        }
-        let Value::String(text) = child else {
-            return Err(error_at(
-                path,
-                Some(&child_path),
-                "expected a string".to_string(),
-            ));
-        };
-        if key == "code" {
-            code = Some(text.clone());
-        } else {
-            output = Some(text.clone());
+        match key.as_str() {
+            "code" | "output" => {
+                let Value::String(text) = child else {
+                    return Err(error_at(
+                        path,
+                        Some(&child_path),
+                        "expected a string".to_string(),
+                    ));
+                };
+                if key == "code" {
+                    code = Some(text.clone());
+                } else {
+                    output = Some(text.clone());
+                }
+            }
+            "errors" => {
+                let count = match child.as_u64() {
+                    Some(count) if count > 0 => count,
+                    _ => {
+                        return Err(error_at(
+                            path,
+                            Some(&child_path),
+                            "expected a number greater than 0".to_string(),
+                        ));
+                    }
+                };
+                errors = Some(count as usize);
+            }
+            _ => {
+                return Err(unknown_key_error(
+                    path,
+                    &child_path,
+                    key,
+                    &["code", "output", "errors"],
+                ));
+            }
         }
     }
     let Some(code) = code else {
@@ -818,5 +810,9 @@ fn parse_invalid_case(
             "missing required key".to_string(),
         ));
     };
-    Ok(InvalidCase { code, output })
+    Ok(InvalidCase {
+        code,
+        output,
+        errors,
+    })
 }
