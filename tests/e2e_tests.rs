@@ -36,7 +36,11 @@ fn run_in_sample_project(args: &[&str]) -> CommandOutput {
             .status
             .code()
             .expect("the binary should exit with a code"),
-        stdout: String::from_utf8(output.stdout).expect("stdout should be valid UTF-8"),
+        // Windows prints `.\scripts\a.gd`; snapshots use `/` so they work on
+        // every platform.
+        stdout: String::from_utf8(output.stdout)
+            .expect("stdout should be valid UTF-8")
+            .replace('\\', "/"),
         stderr: String::from_utf8(output.stderr).expect("stderr should be valid UTF-8"),
     }
 }

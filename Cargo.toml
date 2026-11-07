@@ -9,7 +9,7 @@ readme = "README.md"
 keywords = ["godot", "gdscript", "format", "lint"]
 categories = ["command-line-utilities", "development-tools"]
 default-run = "gdscript-formatter"
-rust-version = "1.85"
+rust-version = "1.89"
 
 [workspace]
 members = [
