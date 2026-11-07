@@ -1,0 +1,30 @@
+id: no-godot3-yield
+severity: error
+message: "`yield()` was removed in Godot 4; use `await`"
+help: "`yield(object, \"signal\")` becomes `await object.signal` (the fix writes `await Signal(object, \"signal\")`, which is equivalent)."
+rationale: |
+  Godot 4 replaced coroutines built on `yield()` with `await`. Code that
+  still calls `yield()` doesn't run. The fix handles the common form
+  `yield(object, "signal")` and rewrites it to `await Signal(object,
+  "signal")`, which waits for the same signal; you may then simplify it to
+  `await object.signal`. It is marked unsafe because the caller of the
+  function may also need an `await` now.
+rule:
+  pattern: yield($OBJECT, $SIGNAL)
+constraints:
+  SIGNAL:
+    kind: string
+fix: await Signal($OBJECT, $SIGNAL)
+fixSafety: unsafe
+tests:
+  invalid:
+    - code: "func wait():\n\tyield(get_tree(), \"idle_frame\")\n"
+      output: "func wait():\n\tawait Signal(get_tree(), \"idle_frame\")\n"
+    - code: "func wait():\n\tyield(get_tree().create_timer(1.0), \"timeout\")\n"
+      output: "func wait():\n\tawait Signal(get_tree().create_timer(1.0), \"timeout\")\n"
+    - code: "func open():\n\t$AnimationPlayer.play(\"open\")\n\tyield($AnimationPlayer, \"animation_finished\")\n"
+      output: "func open():\n\t$AnimationPlayer.play(\"open\")\n\tawait Signal($AnimationPlayer, \"animation_finished\")\n"
+  valid:
+    - "func wait():\n\tawait get_tree().process_frame\n"
+    - "func wait():\n\tawait get_tree().create_timer(1.0).timeout\n"
+    - "func wait(sig):\n\tawait sig\n"

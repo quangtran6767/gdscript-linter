@@ -1,0 +1,13 @@
+id: no-print-left
+severity: info
+message: "Remove the debug print"
+help: "Use push_warning() for messages that should stay."
+rationale: |
+  Debug prints left in shipped code clutter the output.
+rule:
+  pattern: print($$$A)
+tests:
+  invalid:
+    - "func f():\n\tprint(1)\n"
+  valid:
+    - "func f():\n\tpush_warning(\"x\")\n"
