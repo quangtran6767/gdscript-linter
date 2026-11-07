@@ -125,28 +125,28 @@ tell the other person.
 ## W2: A and B at the same time
 
 **A: `a/config`, `a/reporters`**
-- [ ] A2. `gdguard.toml`:
+- [x] A2. `gdguard.toml`:
   - upward discovery;
   - `[rules]` levels and options, `[lint].exclude`, `[[overrides]]`;
   - precedence (CLI, then config, then editorconfig, then defaults);
   - unknown keys and unknown rule ids are errors.
   - Fill in the `api::load_config_for` body.
-- [ ] A3. Reporters: `pretty` (snippet and carets), `compact`, `json` v1.
+- [x] A3. Reporters: `pretty` (snippet and carets), `compact`, `json` v1.
       Add snapshot tests per format.
 
 **B: `b/yaml-engine`, `b/test-rules`**
-- [ ] B3. `custom::load_providers` and the YAML `RuleProvider`:
+- [x] B3. `custom::load_providers` and the YAML `RuleProvider`:
   - matches become `Diagnostic`s;
   - metavariables are substituted into `message` and `help`;
   - `fix` templates become `Fix`es with their safety level.
-- [ ] Fixture tests in `tests/custom_rules/`.
-- [ ] B4. `gdguard test-rules`:
+- [x] Fixture tests in `tests/custom_rules/`.
+- [x] B4. `gdguard test-rules`:
   - runs each rule's `valid` and `invalid` cases and checks the expected
     `output`, using `apply_edits` for a single pass;
   - checks idempotency (fixed output has no issue for that rule);
   - prints readable failures.
 
-**Merge session (C1):** calls `custom::load_providers` in
+- [x] **Merge session (C1):** calls `custom::load_providers` in
 `linter.rs`, so custom rule levels come from `gdguard.toml`.
 After C1, `gdguard lint` shows both built-in and custom issues.
 

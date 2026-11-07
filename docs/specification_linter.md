@@ -269,6 +269,23 @@ rules = { private-access = "off" }
 Unknown rule ids and unknown keys are errors (exit code 2) with a message that
 names the file and the key, so typos never fail silently.
 
+A rule's table form may omit `level` to keep the default severity. Built-in
+rules accept these options: `max-line-length.max` (a positive integer).
+Custom rules accept any options. Globs in `exclude` and `overrides.files`
+are relative to the config file's folder; `*` doesn't cross `/`, `**` does,
+and a pattern also matches every file under a matching folder
+(`exclude = ["addons"]`). `exclude` also applies to files named on the
+command line. `--config <PATH>` uses that file for every linted file instead
+of searching. The line length comes from `max-line-length = { max = N }`
+(also inside an override); there is no separate `max_line_length` key.
+
+Custom rules come only from `[custom_rules].paths`; without a config, no
+custom rule runs. They load once per config, run on the same parsed tree
+after the built-in rules, and follow the same rules: `[rules]` and override
+levels (including `off`), inline ignore comments, and `--disable`, which
+accepts built-in and custom ids. A rule file error stops the run with exit
+code 2.
+
 ## Inline ignore comments
 
 ```gdscript
@@ -330,21 +347,13 @@ metavariable is literal: `$Player`, `$"UI/Label"` and `$player` are node
 paths. For an all-caps node path, escape the dollar: `\$HUD`. These rules
 apply the same way in `pattern`, `fix`, `message` and `help`.
 
-Patterns can't contain literal node paths: the GDScript grammar doesn't
-expose the path text as a node, so `$Player` would match every node path.
-The loader rejects them. Match a specific node path with a metavariable and
-a constraint:
-
-```yaml
-rule:
-  pattern: $P.hide()
-constraints:
-  P:
-    regex: ^\$Player$
-```
-
-or with `kind: get_node` and `regex: ^\$Player$`. Unique names (`%Health`)
-are `get_node` nodes too.
+Literal node paths, strings, string names (`&"x"`) and node path literals
+(`^"x"`) in patterns match by their exact text: `get_node("Player")` doesn't
+match `get_node("Enemy")`, and `$Player.hide()` doesn't match
+`$Enemy.hide()`. To match several, use a metavariable with a constraint, for
+example `$P` with `constraints: { P: { regex: '^\$(Player|Enemy)$' } }`, or
+`kind: get_node` with `regex`. Unique names (`%Health`) are `get_node` nodes
+too.
 
 Rule file details:
 
@@ -356,9 +365,28 @@ Rule file details:
 - `RuleMeta` mapping: `description` is the `message` as written,
   `bad_example`/`good_example` are the first invalid/valid test, and
   `fixable` is true when the rule has a `fix` with safety `safe` or `unsafe`.
+- `tests.invalid` entries may set `errors: N` to require exactly N
+  diagnostics (default: at least one).
+- Multi-line `fix` templates are written without the surrounding
+  indentation; every line after the first gets the indentation of the line
+  the match starts on (tabs or spaces).
+- In `message`, `help` and `fix`, `$$$ARGS` renders as the source text of
+  the captured nodes including their separators.
+- A diagnostic's span is the matched node. Its fix is one edit over that
+  span, with safety `fixSafety` (default `suggestion`).
 
 Validation errors (bad YAML, unknown keys, a pattern that doesn't parse as
 GDScript, a duplicate id) report the rule file path and stop with exit code 2.
+
+`gdguard test-rules [RULE_DIR]` loads the rules from `RULE_DIR`, else
+`[custom_rules].paths`, else `.gdguard/rules`, and runs each rule's `tests`:
+`valid` cases must produce no diagnostic for that rule; `invalid` cases at
+least one (or exactly `errors`). When a case has `output`, the rule's fixes
+are applied (any safety level); the result must equal `output`, must parse,
+and must produce no diagnostic when the rule runs again. It prints
+`✓ <id>  N passed` or `✗ <id>  F failed, N passed` with details, then a
+summary line. Exit code 0 when everything passes, 1 on a failing test, 2 when
+rules can't be loaded.
 
 ## Fix engine
 
@@ -392,6 +420,9 @@ gdguard init [--force]                   # write a starter gdguard.toml and .gdg
 gdguard lsp                              # language server on stdin/stdout
 ```
 
+`--pretty` is an alias of `--format pretty`. The compact format is one line
+per issue: `file:line:col: severity [rule] message`.
+
 Until a flag or subcommand is implemented, it prints
 ``"`<flag>` is not implemented yet"`` on stderr and exits with code 2.
 `--list-rules` accepts `--format text` (default) or `--format json`.
@@ -416,7 +447,7 @@ version.
 {
   "version": 1,
   "tool": { "name": "gdguard", "version": "0.29.0" },
-  "summary": { "files": 12, "errors": 1, "warnings": 3, "fixable": 2 },
+  "summary": { "files": 12, "errors": 1, "warnings": 3, "infos": 0, "fixable": 2 },
   "issues": [
     {
       "file": "scripts/enemy.gd",
@@ -445,6 +476,10 @@ version.
   ]
 }
 ```
+
+`summary.files` counts every linted file, `summary.fixable` counts issues
+with a `safe` fix, `origin` is `builtin` or `custom`, `snippet` is the full
+first line of the range, and `help` is `null` when the rule gives none.
 
 ## Baseline
 

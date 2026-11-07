@@ -9,15 +9,21 @@ This file documents the changes made to the formatter with each release.
 - Linter: every built-in rule now reports a precise start and end position and a `help` text with how to fix the issue (naming rules suggest the corrected name).
 - Linter: new `--max-warnings <N>` option: warnings only fail the run when there are more than N.
 - Linter: `lint --pretty` now lists files in a stable, sorted order.
+- Linter: projects can configure the linter with a `gdguard.toml` file (rule levels and options, excluded files, per-folder overrides). The linter uses the nearest one above each file, or the file given with `--config`. Unknown keys and rule ids are reported with the file and key.
+- Linter: new `--format` option with `pretty` (source snippet with carets, help and fix hints, and a summary), `compact` and `json` (stable schema for tools and AI agents).
+- Linter: custom YAML rules in `[custom_rules].paths` run alongside the built-in rules, with metavariables in messages and fixes. Their levels are set in `[rules]` like built-in rules, and `--disable` accepts their ids.
+- Linter: new `gdguard test-rules [RULE_DIR]` command runs the `tests` in custom rule files, including fix output and idempotency checks.
+- Linter: example custom rules in `examples/rules/` (`prefer-is-empty`, `no-get-node-in-process`).
 
 ### Changed
 
 - Linter: `lint` exit codes are now 0 (no problems), 1 (problems found) and 2 (usage, config or file errors). Invalid `--disable` rule names and "no GDScript files found" now exit with 2 instead of 1.
+- Linter: the default output is now `pretty` in a terminal and `compact` (`file:line:col: severity [rule] message`) otherwise. This replaces the old `file:line:rule:severity: message` output; scripts that parse it should use `--format compact` or `--format json`. The Godot addon now uses `--format compact`.
 - The minimum supported Rust version is now 1.89 (needed by the custom rule engine's dependencies).
 
 ### Reserved
 
-- Linter: new `lint` flags `--fix`, `--fix-unsafe`, `--diff`, `--format`, `--config`, `--baseline`, `--update-baseline` and `--stdin-filename`, and new `explain`, `test-rules`, `init` and `lsp` subcommands are reserved; they report "not implemented yet" (exit code 2) until their feature lands.
+- Linter: new `lint` flags `--fix`, `--fix-unsafe`, `--diff`, `--baseline`, `--update-baseline`, `--stdin-filename` and `--format github|sarif`, and new `explain`, `init` and `lsp` subcommands are reserved; they report "not implemented yet" (exit code 2) until their feature lands.
 
 ## Release 0.28.0 (2026-10-31)
 
