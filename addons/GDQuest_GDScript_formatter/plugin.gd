@@ -1013,7 +1013,13 @@ func get_format_mode() -> int:
 func lint_code(script: GDScript) -> Array:
 	var script_path := script.resource_path
 	var output: Array = []
-	var formatter_arguments: Array = ["lint", ProjectSettings.globalize_path(script_path)]
+	# Compact output is stable whatever the terminal, one issue per line.
+	var formatter_arguments: Array = [
+		"lint",
+		"--format",
+		"compact",
+		ProjectSettings.globalize_path(script_path),
+	]
 
 	# Match formatting: a non-default Godot setting overrides .editorconfig;
 	# otherwise let the formatter read max_line_length from .editorconfig.
@@ -1059,16 +1065,17 @@ func lint_code(script: GDScript) -> Array:
 
 ## Parses a lint issue line and returns a dictionary with issue information
 func parse_lint_issue(line: String) -> Dictionary:
-	# Expected format: filename:line:rule:severity: message
+	# Expected format (`lint --format compact`):
+	# file:line:column: severity [rule] message
 	var regex = RegEx.new()
-	regex.compile(r"^(.*\.gd):(\d+):([^:]+):([^:]+):([\s\S]*)$")
+	regex.compile(r"^(.*\.gd):(\d+):(\d+): (\w+) \[([^\]]+)\] (.*)$")
 	var result = regex.search(line)
 	if result:
 		return {
 			"line": int(result.get_string(2)) - 1,
-			"rule": result.get_string(3),
+			"rule": result.get_string(5),
 			"severity": result.get_string(4),
-			"message": result.get_string(5).strip_edges(),
+			"message": result.get_string(6).strip_edges(),
 		}
 	return { }
 
