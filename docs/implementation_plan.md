@@ -72,21 +72,23 @@ tell the other person.
 
 ## W0: core contracts (together, about 2 hours, one PR)
 
-- [ ] Decide the tool name and replace the `gdguard` placeholder in the docs.
-- [ ] Add dependencies: `serde` (derive), `serde_json`, `toml`, `globset`.
-- [ ] `src/linter/diagnostic.rs`: every type from the spec, `RuleProvider`,
+- [x] Decide the tool name and replace the `gdguard` placeholder in the docs.
+- [x] Add dependencies: `serde` (derive), `serde_json`, `toml`, `globset`.
+- [x] `src/linter/diagnostic.rs`: every type from the spec, `RuleProvider`,
       `FileContext`, and `apply_edits` **with unit tests**.
-- [ ] `src/linter/api.rs`: `load_config_for`, `lint_source`, `fix_source`
-      with the final signatures and `todo!()` bodies. Also a `Config` struct
-      with the fields the spec lists, so B can build it by hand in tests.
-- [ ] Empty modules (each with `mod` lines) for every A and B file in the
+- [x] `src/linter/api.rs`: `load_config_for`, `lint_source`, `fix_source`
+      with the final signatures and stub bodies returning
+      `Err("not implemented yet")` (no `todo!()`, so callers don't panic).
+      Also a `Config` struct with the fields the spec lists, so B can build it
+      by hand in tests.
+- [x] Empty modules (each with `mod` lines) for every A and B file in the
       ownership table that W1 to W4 need.
-- [ ] `src/cli.rs`: parse **every** flag and subcommand from the spec (`lint`
+- [x] `src/cli.rs`: parse **every** flag and subcommand from the spec (`lint`
       flags, `explain`, `test-rules`, `init`, `lsp`). B's commands call
       `rule_tester::run`, `explain::run` and `init::run`, which are stubs
       returning exit code 2 for now.
-- [ ] Agree on `custom::load_providers(config: &Config) -> Result<Vec<Box<dyn RuleProvider>>, String>`.
-- [ ] `cargo clippy ... -D warnings` and `cargo test --workspace` pass. Merge,
+- [x] Agree on `custom::load_providers(config: &Config) -> Result<Vec<Box<dyn RuleProvider>>, String>`.
+- [x] `cargo clippy ... -D warnings` and `cargo test --workspace` pass. Merge,
       then both branch off.
 
 ## W1: A and B at the same time

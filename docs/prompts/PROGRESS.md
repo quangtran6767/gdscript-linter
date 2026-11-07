@@ -2,11 +2,11 @@
 
 Only the merge step (`docs/prompts/MERGE.md`) edits this file.
 
-current_wave: w0
+current_wave: w1
 
 | Wave | Who works | Status |
 |------|-----------|--------|
-| w0  | A only | todo |
+| w0  | A only | done |
 | w1  | A and B | todo |
 | w2  | A and B | todo |
 | w3  | A and B | todo |

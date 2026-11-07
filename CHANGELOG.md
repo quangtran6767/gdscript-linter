@@ -2,6 +2,12 @@
 
 This file documents the changes made to the formatter with each release.
 
+## Unreleased
+
+### Added
+
+- Linter: new `lint` flags `--fix`, `--fix-unsafe`, `--diff`, `--format`, `--config`, `--baseline`, `--update-baseline`, `--max-warnings` and `--stdin-filename`, and new `explain`, `test-rules`, `init` and `lsp` subcommands are reserved; they report "not implemented yet" (exit code 2) until their feature lands.
+
 ## Release 0.28.0 (2026-10-31)
 
 ### Added
