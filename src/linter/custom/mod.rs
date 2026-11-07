@@ -1,6 +1,11 @@
 //! Owner: Track B (W1 to W3). Custom YAML rules: loader, matching engine and
 //! the `RuleProvider` that turns matches into `Diagnostic`s.
 
+pub mod language;
+
+#[cfg(test)]
+mod spike_tests;
+
 use crate::linter::api::Config;
 use crate::linter::diagnostic::RuleProvider;
 
