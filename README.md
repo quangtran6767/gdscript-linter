@@ -130,23 +130,100 @@ var matrix = [
 # fmt: on
 ```
 
-## Linting GDScript files
+## Linter
 
-The formatter also includes a linter that checks for style and convention issues according to the official GDScript style guide.
+The formatter includes a linter, gdguard. It checks GDScript for style and
+convention issues from the official GDScript style guide, fixes what it
+safely can, runs your own rules written in YAML, and reports in formats made
+for people, CI and AI agents.
 
-### Basic linting
+The linter commands below are written `gdguard`. Until the binary is renamed,
+run them as `gdscript-formatter`, for example `gdscript-formatter lint .`.
 
-To lint a file, run:
+### Quick start
 
-```bash
-gdscript-formatter lint path/to/file.gd
+Set up a project (run it in your Godot project; it finds `project.godot`):
+
+```console
+$ gdguard init
+Created <project>/gdguard.toml
+Created <project>/.gdguard/rules/prefer-is-empty.yml
+Run `gdguard lint` to check the project, and `gdguard test-rules` to test the rules in .gdguard/rules.
 ```
 
-This will output issues in the format:
+`gdguard.toml` lists every rule with its default level, so you can turn rules
+off or change their level. Lint the project:
 
+```console
+$ gdguard lint .
+scripts/player.gd:6:15: warning [unused-argument] Function argument 'delta' is unused. Consider removing it or prefixing with '_'
+scripts/player.gd:7:5: warning [prefer-is-empty] Use `items.is_empty()` instead of comparing `len(items)` to zero
 ```
-filepath:line:rule:severity: description
+
+Each line is `file:line:column: severity [rule] message`. Apply the safe
+fixes, or preview them first:
+
+```console
+$ gdguard lint --diff .
+--- a/scripts/player.gd
++++ b/scripts/player.gd
+@@ -4,6 +4,6 @@
+ 
+ 
+ func _process(delta):
+-	if len(items) == 0:
++	if items.is_empty():
+ 		return
+ 	get_node("Player").hide()
+$ gdguard lint --fix .
+scripts/player.gd:6:15: warning [unused-argument] Function argument 'delta' is unused. Consider removing it or prefixing with '_'
+Fixed 1 problem in 1 file
 ```
+
+`--fix-unsafe` also applies fixes that are almost always right. To learn why a
+rule exists, with examples:
+
+```console
+$ gdguard explain unnecessary-pass
+unnecessary-pass
+  Origin:   built-in
+  Severity: warning
+  Fixable:  yes
+
+No `pass` in a block that has other statements.
+
+Why:
+  `pass` only exists to fill an empty block. Next to other statements it does nothing.
+
+Bad:
+    func f():
+    	print(1)
+    	pass
+
+Good:
+    func f():
+    	print(1)
+```
+
+Other useful commands and flags:
+
+| Command | What it does |
+|---------|--------------|
+| `gdguard lint --list-rules` | every rule with its severity, fixability and description (`--format json` for JSON) |
+| `gdguard lint --format json .` | machine-readable report (also `pretty` and `compact`) |
+| `gdguard lint --max-warnings 5 .` | exit code 0 with up to 5 warnings (errors always fail) |
+| `gdguard test-rules` | run the tests of your custom rules |
+
+Exit codes: `0` clean, `1` issues found, `2` config, usage or rule-file
+error. Pass the folder to lint (`.`): with no path, `gdguard lint` currently
+lints nothing.
+
+### More documentation
+
+- [Custom rules](docs/custom_rules.md): write your own rules in YAML, with
+  fixes and tests. A tested starter pack is in [`examples/rules/`](examples/rules/).
+- [AI agents](docs/agents.md): the Claude Code hook, the JSON report and the
+  lint-fix loop, and CI setup.
 
 ### Listing available rules
 
