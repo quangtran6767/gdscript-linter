@@ -4,11 +4,29 @@ use std::path::{Path, PathBuf};
 use std::{fs, io::IsTerminal};
 use tree_sitter::{Node, Parser};
 
+// Shared contracts (frozen after W0).
+pub mod api;
+pub mod diagnostic;
+
 pub mod ignore_patterns;
 pub mod lib;
 pub mod regex_patterns;
 pub mod rule_config;
 pub mod rules;
+
+// Track A modules.
+pub mod baseline;
+pub mod cache;
+pub mod config;
+pub mod fix;
+pub mod output;
+
+// Track B modules.
+pub mod custom;
+pub mod explain;
+pub mod init;
+pub mod rule_tester;
+pub mod rules_meta;
 
 #[cfg(test)]
 mod tests;
