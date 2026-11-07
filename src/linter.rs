@@ -33,7 +33,7 @@ mod tests;
 
 use api::{Config, RuleLevel};
 use config::{CliRuleOverrides, CompiledConfig, FileSettings};
-use diagnostic::{Diagnostic, Severity};
+use diagnostic::{Diagnostic, FileContext, RuleProvider, Severity};
 use ignore_patterns::{parse_ignore_patterns, should_ignore_rule};
 use output::{FileDiagnostics, LintReport, display_path};
 use rules::{ALL_RULES, Rule};
@@ -84,9 +84,21 @@ impl GDScriptLinter {
         Ok(Self { config, parser })
     }
 
-    /// Parses and lints one file. Returns the diagnostics left after inline
-    /// ignore comments, sorted by position.
-    pub fn lint(&mut self, source_code: &str, _file_path: &str) -> Result<Vec<Diagnostic>, String> {
+    /// Parses and lints one file with the built-in rules. Returns the
+    /// diagnostics left after inline ignore comments, sorted by position.
+    pub fn lint(&mut self, source_code: &str, file_path: &str) -> Result<Vec<Diagnostic>, String> {
+        self.lint_with_providers(source_code, file_path, &mut [])
+    }
+
+    /// Parses one file once, runs the built-in rules and then every custom
+    /// rule provider on the same tree. Inline ignore comments apply to both.
+    /// Returns the diagnostics sorted by position.
+    pub fn lint_with_providers(
+        &mut self,
+        source_code: &str,
+        file_path: &str,
+        providers: &mut [Box<dyn RuleProvider>],
+    ) -> Result<Vec<Diagnostic>, String> {
         let tree = self
             .parser
             .parse(source_code, None)
@@ -94,6 +106,16 @@ impl GDScriptLinter {
 
         let mut diagnostics = Vec::new();
         run_builtin_rules(&self.config, &tree, source_code, &mut diagnostics);
+        if !providers.is_empty() {
+            let context = FileContext {
+                path: Path::new(file_path),
+                source: source_code,
+                tree: &tree,
+            };
+            for provider in providers.iter_mut() {
+                diagnostics.extend(provider.check_file(&context));
+            }
+        }
 
         // Inline ignore comments apply to the line where a diagnostic starts.
         let ignore_map = parse_ignore_patterns(source_code);
@@ -147,11 +169,11 @@ pub fn lint_with_settings(
     path: &Path,
     source_code: &str,
     settings: &FileSettings,
+    providers: &mut [Box<dyn RuleProvider>],
 ) -> Result<Vec<Diagnostic>, String> {
     linter.set_config(settings.linter_config.clone());
-    // C1 (W2 merge): custom rule providers run here, on the same tree, once
-    // `custom::load_providers` returns them. See `GDScriptLinter::lint`.
-    let mut diagnostics = linter.lint(source_code, &path.to_string_lossy())?;
+    let mut diagnostics =
+        linter.lint_with_providers(source_code, &path.to_string_lossy(), providers)?;
     apply_rule_levels(&settings.levels, &mut diagnostics);
     Ok(diagnostics)
 }
@@ -166,10 +188,16 @@ pub struct LintRunOptions {
     pub cli: CliRuleOverrides,
 }
 
+/// A loaded config with its custom rule providers.
+struct LoadedConfig {
+    compiled: CompiledConfig,
+    providers: Vec<Box<dyn RuleProvider>>,
+}
+
 /// Loads and caches configs during a run, keyed by config file path, so each
-/// `gdguard.toml` is read and validated once.
+/// `gdguard.toml` and its custom rules are read and validated once.
 struct ConfigCache {
-    configs: HashMap<PathBuf, CompiledConfig>,
+    configs: HashMap<PathBuf, LoadedConfig>,
 }
 
 impl ConfigCache {
@@ -179,7 +207,7 @@ impl ConfigCache {
         &mut self,
         file_path: &Path,
         options: &LintRunOptions,
-    ) -> Result<&CompiledConfig, String> {
+    ) -> Result<&mut LoadedConfig, String> {
         let config_path = match &options.config_path {
             Some(config_path) => Some(config_path.clone()),
             None => config::find_config_file(file_path),
@@ -190,20 +218,61 @@ impl ConfigCache {
             None => PathBuf::new(),
         };
         if !self.configs.contains_key(&cache_key) {
-            let config = match &config_path {
+            let (config, providers) = match &config_path {
                 Some(config_path) => {
-                    config::load_and_validate(config_path).map_err(|error| error.to_string())?
+                    config::load_with_providers(config_path).map_err(|error| error.to_string())?
                 }
-                None => Config::default(),
+                None => (Config::default(), Vec::new()),
             };
+            check_disabled_rule_ids(&options.cli, &providers)?;
             let compiled = CompiledConfig::new(config).map_err(|error| error.to_string())?;
-            self.configs.insert(cache_key.clone(), compiled);
+            self.configs.insert(
+                cache_key.clone(),
+                LoadedConfig {
+                    compiled,
+                    providers,
+                },
+            );
         }
-        match self.configs.get(&cache_key) {
-            Some(compiled) => Ok(compiled),
+        match self.configs.get_mut(&cache_key) {
+            Some(loaded) => Ok(loaded),
             None => Err("config cache lost an entry".to_string()),
         }
     }
+}
+
+/// Checks that every `--disable` name is a built-in rule or one of the
+/// config's custom rules.
+fn check_disabled_rule_ids(
+    cli: &CliRuleOverrides,
+    providers: &[Box<dyn RuleProvider>],
+) -> Result<(), String> {
+    let builtin_ids = config::builtin_rule_ids();
+    let mut invalid_ids: Vec<&str> = Vec::new();
+    for rule_id in &cli.disabled_rules {
+        if builtin_ids.contains(&rule_id.as_str()) {
+            continue;
+        }
+        let mut is_custom = false;
+        for provider in providers {
+            for meta in provider.rules() {
+                if meta.id == *rule_id {
+                    is_custom = true;
+                }
+            }
+        }
+        if !is_custom {
+            invalid_ids.push(rule_id);
+        }
+    }
+    if invalid_ids.is_empty() {
+        return Ok(());
+    }
+    invalid_ids.sort();
+    Err(format!(
+        "Invalid rule names: {}\nUse --list-rules to see all available rules",
+        invalid_ids.join(", ")
+    ))
 }
 
 /// Lints files from disk. Each file uses its nearest `gdguard.toml` (or
@@ -216,14 +285,20 @@ pub fn lint_files(files: &[PathBuf], options: &LintRunOptions) -> Result<LintRep
     };
     let mut report = LintReport::default();
     for file_path in files {
-        let compiled_config = config_cache.config_for(file_path, options)?;
-        if compiled_config.is_excluded(file_path) {
+        let loaded = config_cache.config_for(file_path, options)?;
+        if loaded.compiled.is_excluded(file_path) {
             continue;
         }
-        let settings = compiled_config.settings_for_file(file_path, &options.cli);
+        let settings = loaded.compiled.settings_for_file(file_path, &options.cli);
         let source_code = fs::read_to_string(file_path)
             .map_err(|error| format!("Failed to read file {}: {}", file_path.display(), error))?;
-        let diagnostics = lint_with_settings(&mut linter, file_path, &source_code, &settings)?;
+        let diagnostics = lint_with_settings(
+            &mut linter,
+            file_path,
+            &source_code,
+            &settings,
+            &mut loaded.providers,
+        )?;
         report.files_checked += 1;
         if !diagnostics.is_empty() {
             report.files.push(FileDiagnostics {
@@ -248,9 +323,17 @@ pub fn lint_stdin(
     let mut config_cache = ConfigCache {
         configs: HashMap::new(),
     };
-    let compiled_config = config_cache.config_for(config_lookup_path, options)?;
-    let settings = compiled_config.settings_for_file(config_lookup_path, &options.cli);
-    let diagnostics = lint_with_settings(&mut linter, config_lookup_path, &source_code, &settings)?;
+    let loaded = config_cache.config_for(config_lookup_path, options)?;
+    let settings = loaded
+        .compiled
+        .settings_for_file(config_lookup_path, &options.cli);
+    let diagnostics = lint_with_settings(
+        &mut linter,
+        config_lookup_path,
+        &source_code,
+        &settings,
+        &mut loaded.providers,
+    )?;
     let mut report = LintReport {
         files: Vec::with_capacity(1),
         files_checked: 1,

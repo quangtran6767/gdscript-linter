@@ -25,7 +25,7 @@ use std::{
 
 use gdscript_formatter::linter::config::CliRuleOverrides;
 use gdscript_formatter::linter::output::{LintReport, OutputFormat, write_report};
-use gdscript_formatter::linter::rule_config::{parse_disabled_rules, validate_rule_names};
+use gdscript_formatter::linter::rule_config::parse_disabled_rules;
 use gdscript_formatter::linter::{LintRunOptions, lint_files, lint_stdin};
 use gdscript_formatter::linter::{explain, init, rule_tester};
 use gdscript_formatter::{
@@ -450,13 +450,9 @@ fn run_linter(command: LintCommand) -> Result<LintReport, String> {
         ..CliRuleOverrides::default()
     };
     if let Some(disable_str) = command.disabled_linter_rules {
+        // Names are checked against the built-in and custom rules when each
+        // config loads (`lint_files`), since custom rules come from the config.
         cli.disabled_rules = parse_disabled_rules(&disable_str);
-        if let Err(invalid_rules) = validate_rule_names(&cli.disabled_rules) {
-            return Err(format!(
-                "Invalid rule names: {}\nUse --list-rules to see all available rules",
-                invalid_rules.join(", ")
-            ));
-        }
     }
     if let Some(config_path) = &command.config_path
         && !config_path.is_file()

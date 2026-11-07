@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::linter::config::{self, CliRuleOverrides, CompiledConfig};
+use crate::linter::custom;
 use crate::linter::diagnostic::Diagnostic;
 use crate::linter::{GDScriptLinter, LinterConfig, lint_with_settings};
 
@@ -170,8 +171,9 @@ pub fn load_config_for(path: &Path) -> Result<Config, ConfigError> {
 pub fn lint_source(path: &Path, source: &str, config: &Config) -> Result<LintResult, String> {
     let compiled_config = CompiledConfig::new(config.clone()).map_err(|error| error.to_string())?;
     let settings = compiled_config.settings_for_file(path, &CliRuleOverrides::default());
+    let mut providers = custom::load_providers(config)?;
     let mut linter = GDScriptLinter::new(LinterConfig::default())?;
-    let diagnostics = lint_with_settings(&mut linter, path, source, &settings)?;
+    let diagnostics = lint_with_settings(&mut linter, path, source, &settings, &mut providers)?;
     Ok(LintResult { diagnostics })
 }
 

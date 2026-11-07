@@ -13,6 +13,7 @@ use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use crate::linter::LinterConfig;
 use crate::linter::api::{Config, ConfigError, ConfigOverride, RuleLevel, RuleSetting};
 use crate::linter::custom;
+use crate::linter::diagnostic::RuleProvider;
 use crate::linter::rules::ALL_RULES;
 
 pub const CONFIG_FILE_NAME: &str = "gdguard.toml";
@@ -419,16 +420,30 @@ fn compile_globs(
 /// Checks that every rule id in `[rules]` and in the overrides is a built-in
 /// rule or a custom rule loaded from `config.custom_rule_paths`.
 pub fn validate_rule_ids(config: &Config) -> Result<(), ConfigError> {
+    let providers = load_custom_providers(config)?;
+    validate_rule_ids_with_providers(config, &providers)
+}
+
+/// Loads the custom rule providers of `config`, turning loader errors into a
+/// `ConfigError`.
+pub fn load_custom_providers(config: &Config) -> Result<Vec<Box<dyn RuleProvider>>, ConfigError> {
+    custom::load_providers(config).map_err(|message| ConfigError {
+        path: None,
+        key: None,
+        message,
+    })
+}
+
+/// Same as `validate_rule_ids`, with providers that are already loaded.
+pub fn validate_rule_ids_with_providers(
+    config: &Config,
+    providers: &[Box<dyn RuleProvider>],
+) -> Result<(), ConfigError> {
     let mut known_ids: Vec<String> = Vec::new();
     for id in builtin_rule_ids() {
         known_ids.push(id.to_string());
     }
-    let providers = custom::load_providers(config).map_err(|message| ConfigError {
-        path: None,
-        key: None,
-        message,
-    })?;
-    for provider in &providers {
+    for provider in providers {
         for meta in provider.rules() {
             known_ids.push(meta.id.clone());
         }
@@ -521,6 +536,18 @@ pub fn load_and_validate(config_path: &Path) -> Result<Config, ConfigError> {
     let config = load_config_file(config_path)?;
     validate_rule_ids(&config)?;
     Ok(config)
+}
+
+/// Loads one config file and its custom rule providers, and validates its
+/// rule ids against both. The lint pipeline uses this so custom rules load
+/// once per config.
+pub fn load_with_providers(
+    config_path: &Path,
+) -> Result<(Config, Vec<Box<dyn RuleProvider>>), ConfigError> {
+    let config = load_config_file(config_path)?;
+    let providers = load_custom_providers(&config)?;
+    validate_rule_ids_with_providers(&config, &providers)?;
+    Ok((config, providers))
 }
 
 /// A config with its glob patterns compiled, ready to answer per-file

@@ -13,6 +13,7 @@ use gdscript_formatter::linter::config::{
     parse_config,
 };
 use gdscript_formatter::linter::diagnostic::Severity;
+use gdscript_formatter::linter::{LintRunOptions, lint_files};
 
 /// A new empty folder under the system temp folder. Removed on drop.
 struct TempProject {
@@ -527,4 +528,148 @@ fn lint_source_applies_overrides_and_options() {
 
     let test_result = api::lint_source(&project.root.join("tests/a.gd"), source, &config).unwrap();
     assert!(test_result.diagnostics.is_empty());
+}
+
+// Custom rules in the lint pipeline (C1, W2 merge)
+
+const PREFER_IS_EMPTY_RULE: &str = "id: prefer-is-empty\nseverity: warning\nmessage: \"Use `$X.is_empty()`\"\nrule:\n  pattern: len($X) == 0\nfix: $X.is_empty()\nfixSafety: safe\n";
+
+/// Lints every listed file with the nearest config, like `gdguard lint`.
+/// Returns `(rule, severity, line)` per diagnostic, in output order.
+fn lint_project_files(files: &[PathBuf]) -> Vec<(String, Severity, usize)> {
+    let report = lint_files(files, &LintRunOptions::default()).unwrap();
+    let mut results = Vec::new();
+    for file in &report.files {
+        for diagnostic in &file.diagnostics {
+            results.push((
+                diagnostic.rule.clone(),
+                diagnostic.severity,
+                diagnostic.span.start.line,
+            ));
+        }
+    }
+    results
+}
+
+#[test]
+fn lint_files_runs_custom_rules_with_builtin_rules_sorted_by_position() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "[custom_rules]\npaths = [\"rules\"]\n");
+    project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
+    let file = project.write(
+        "a.gd",
+        "func f(items):\n\tif len(items) == 0:\n\t\tpass\n\nfunc badName():\n\tpass\n",
+    );
+
+    let results = lint_project_files(&[file]);
+    assert_eq!(
+        results,
+        vec![
+            ("prefer-is-empty".to_string(), Severity::Warning, 2),
+            ("function-name".to_string(), Severity::Error, 5),
+        ]
+    );
+}
+
+#[test]
+fn custom_rule_levels_come_from_rules_and_overrides() {
+    let project = TempProject::new();
+    project.write(
+        "gdguard.toml",
+        "[rules]\nprefer-is-empty = \"error\"\n\n[custom_rules]\npaths = [\"rules\"]\n\n[[overrides]]\nfiles = [\"tests/**\"]\nrules = { prefer-is-empty = \"off\" }\n",
+    );
+    project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
+    let source = "var empty = len([]) == 0\n";
+    let game_file = project.write("game/a.gd", source);
+    let test_file = project.write("tests/a.gd", source);
+
+    let results = lint_project_files(&[game_file, test_file]);
+    assert_eq!(
+        results,
+        vec![("prefer-is-empty".to_string(), Severity::Error, 1)]
+    );
+}
+
+#[test]
+fn cli_disable_and_inline_ignores_apply_to_custom_rules() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "[custom_rules]\npaths = [\"rules\"]\n");
+    project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
+    let file = project.write(
+        "a.gd",
+        "var a = len([]) == 0  # gdlint-ignore prefer-is-empty\nvar b = len([]) == 0\n",
+    );
+
+    let results = lint_project_files(std::slice::from_ref(&file));
+    assert_eq!(
+        results,
+        vec![("prefer-is-empty".to_string(), Severity::Warning, 2)]
+    );
+
+    let mut options = LintRunOptions::default();
+    options
+        .cli
+        .disabled_rules
+        .insert("prefer-is-empty".to_string());
+    let report = lint_files(&[file], &options).unwrap();
+    assert!(report.files.is_empty());
+}
+
+#[test]
+fn invalid_custom_rule_file_is_a_lint_error() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "[custom_rules]\npaths = [\"rules\"]\n");
+    project.write("rules/broken.yml", "id: broken\nmessage: x\n");
+    let file = project.write("a.gd", "var a = 1\n");
+
+    let error = lint_files(&[file], &LintRunOptions::default()).unwrap_err();
+    assert!(error.contains("broken.yml"), "error: {}", error);
+}
+
+#[test]
+fn lint_source_runs_custom_rules_from_the_config() {
+    let project = TempProject::new();
+    let config_path = project.write(
+        "gdguard.toml",
+        "[rules]\nprefer-is-empty = \"info\"\n\n[custom_rules]\npaths = [\"rules\"]\n",
+    );
+    project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
+    let config = load_and_validate(&config_path).unwrap();
+
+    let result = api::lint_source(
+        &project.root.join("a.gd"),
+        "var empty = len([]) == 0\n",
+        &config,
+    )
+    .unwrap();
+    assert_eq!(result.diagnostics.len(), 1);
+    assert_eq!(result.diagnostics[0].rule, "prefer-is-empty");
+    assert_eq!(result.diagnostics[0].severity, Severity::Info);
+    assert_eq!(result.diagnostics[0].fixes.len(), 1);
+}
+
+#[test]
+fn cli_disable_rejects_ids_that_are_neither_builtin_nor_custom() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "[custom_rules]\npaths = [\"rules\"]\n");
+    project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
+    let file = project.write("a.gd", "var a = 1\n");
+
+    let mut options = LintRunOptions::default();
+    options
+        .cli
+        .disabled_rules
+        .insert("prefer-is-empty".to_string());
+    options
+        .cli
+        .disabled_rules
+        .insert("unused-argument".to_string());
+    assert!(lint_files(std::slice::from_ref(&file), &options).is_ok());
+
+    options.cli.disabled_rules.insert("not-a-rule".to_string());
+    let error = lint_files(&[file], &options).unwrap_err();
+    assert_eq!(
+        error,
+        "Invalid rule names: not-a-rule\nUse --list-rules to see all available rules"
+    );
 }
