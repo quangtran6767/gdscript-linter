@@ -1,13 +1,12 @@
-use crate::linter::lib::get_line_column;
+use crate::linter::diagnostic::{Diagnostic, Severity, Span};
 use crate::linter::rules::Rule;
-use crate::linter::{LintIssue, LintSeverity};
 use crate::node_kind::GDScriptNodeKind;
 use tree_sitter::Node;
 
 pub struct NoElseReturnRule;
 
 impl NoElseReturnRule {
-    fn body_ends_with_return(body_node: &Node, _source_code: &str) -> bool {
+    fn body_ends_with_return(body_node: &Node) -> bool {
         let mut cursor = body_node.walk();
         let mut last_statement = None;
 
@@ -33,6 +32,15 @@ impl NoElseReturnRule {
 
         false
     }
+
+    /// The span of the `elif` or `else` keyword that starts a clause, so
+    /// reporters underline the keyword and not the whole block.
+    fn keyword_span(clause_node: &Node) -> Span {
+        match clause_node.child(0) {
+            Some(keyword_node) => Span::from_node(&keyword_node),
+            None => Span::from_node(clause_node),
+        }
+    }
 }
 
 impl Rule for NoElseReturnRule {
@@ -40,60 +48,58 @@ impl Rule for NoElseReturnRule {
         &[GDScriptNodeKind::IfStatement]
     }
 
-    fn check_node(&mut self, node: &Node, source_code: &str) -> Vec<LintIssue> {
-        let mut issues = Vec::new();
-
+    fn check_node(&mut self, node: &Node, _source_code: &str, diagnostics: &mut Vec<Diagnostic>) {
         let mut if_body_ends_with_return = false;
         if let Some(body_node) = node.child_by_field_name("body") {
-            if_body_ends_with_return = Self::body_ends_with_return(&body_node, source_code);
+            if_body_ends_with_return = Self::body_ends_with_return(&body_node);
         }
 
         let mut all_branches_return = if_body_ends_with_return;
 
         let mut stmt_cursor = node.walk();
-        if stmt_cursor.goto_first_child() {
-            loop {
-                let child_node = stmt_cursor.node();
-                if GDScriptNodeKind::get_kind_from_ast_node(child_node)
-                    == GDScriptNodeKind::ElifStatement
-                {
-                    if if_body_ends_with_return {
-                        let (line, column) = get_line_column(&child_node);
-                        issues.push(LintIssue::new(
-                            line,
-                            column,
-                            "no-else-return".to_string(),
-                            LintSeverity::Warning,
-                            "Unnecessary 'elif' after 'if' block that ends with 'return'. Use 'if' instead".to_string(),
-                        ));
-                    }
-
-                    if let Some(elif_body) = child_node.child_by_field_name("body")
-                        && !Self::body_ends_with_return(&elif_body, source_code)
-                    {
-                        all_branches_return = false;
-                    }
-                } else if GDScriptNodeKind::get_kind_from_ast_node(child_node)
-                    == GDScriptNodeKind::ElseStatement
-                {
-                    let (line, column) = get_line_column(&child_node);
-                    if all_branches_return {
-                        issues.push(LintIssue::new(
-                            line,
-                            column,
-                            "no-else-return".to_string(),
-                            LintSeverity::Warning,
-                            "Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'"
+        if !stmt_cursor.goto_first_child() {
+            return;
+        }
+        loop {
+            let child_node = stmt_cursor.node();
+            let child_kind = GDScriptNodeKind::get_kind_from_ast_node(child_node);
+            if child_kind == GDScriptNodeKind::ElifStatement {
+                if if_body_ends_with_return {
+                    diagnostics.push(Diagnostic {
+                        rule: "no-else-return".to_string(),
+                        severity: Severity::Warning,
+                        message: "Unnecessary 'elif' after 'if' block that ends with 'return'. Use 'if' instead".to_string(),
+                        help: Some(
+                            "Replace 'elif' with 'if': the block before it always returns."
                                 .to_string(),
-                        ));
-                    }
+                        ),
+                        span: Self::keyword_span(&child_node),
+                        fixes: Vec::new(),
+                    });
                 }
-                if !stmt_cursor.goto_next_sibling() {
-                    break;
+
+                if let Some(elif_body) = child_node.child_by_field_name("body")
+                    && !Self::body_ends_with_return(&elif_body)
+                {
+                    all_branches_return = false;
                 }
+            } else if child_kind == GDScriptNodeKind::ElseStatement && all_branches_return {
+                diagnostics.push(Diagnostic {
+                    rule: "no-else-return".to_string(),
+                    severity: Severity::Warning,
+                    message: "Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'"
+                        .to_string(),
+                    help: Some(
+                        "Remove the 'else' line and dedent its body: the blocks before it always return."
+                            .to_string(),
+                    ),
+                    span: Self::keyword_span(&child_node),
+                    fixes: Vec::new(),
+                });
+            }
+            if !stmt_cursor.goto_next_sibling() {
+                break;
             }
         }
-
-        issues
     }
 }

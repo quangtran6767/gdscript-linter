@@ -8,7 +8,8 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::linter::diagnostic::Diagnostic;
+use crate::linter::diagnostic::{Diagnostic, Severity};
+use crate::linter::{GDScriptLinter, LinterConfig};
 
 /// The level of a rule in `gdguard.toml`: `"off"`, `"info"`, `"warning"` or
 /// `"error"`.
@@ -157,8 +158,38 @@ pub fn load_config_for(_path: &Path) -> Result<Config, ConfigError> {
 }
 
 /// Lints one in-memory buffer. `path` is used for config overrides and output.
-pub fn lint_source(_path: &Path, _source: &str, _config: &Config) -> Result<LintResult, String> {
-    Err("not implemented yet".into())
+///
+/// Runs the built-in rules with `config.rules` levels (`off` disables a rule,
+/// other levels replace its severity), `max_line_length` and `indent_size`.
+/// Custom rules, overrides and `.editorconfig` are not applied yet (W2).
+pub fn lint_source(path: &Path, source: &str, config: &Config) -> Result<LintResult, String> {
+    let mut linter_config = LinterConfig::default();
+    if let Some(max_line_length) = config.max_line_length {
+        linter_config.max_line_length = max_line_length;
+    }
+    if let Some(indent_size) = config.indent_size {
+        linter_config.indent_size = indent_size;
+    }
+    for (rule_id, setting) in &config.rules {
+        if setting.level == Some(RuleLevel::Off) {
+            linter_config.disabled_rules.insert(rule_id.clone());
+        }
+    }
+
+    let mut linter = GDScriptLinter::new(linter_config)?;
+    let mut diagnostics = linter.lint(source, &path.to_string_lossy())?;
+    for diagnostic in &mut diagnostics {
+        let Some(setting) = config.rules.get(&diagnostic.rule) else {
+            continue;
+        };
+        match setting.level {
+            Some(RuleLevel::Error) => diagnostic.severity = Severity::Error,
+            Some(RuleLevel::Warning) => diagnostic.severity = Severity::Warning,
+            Some(RuleLevel::Info) => diagnostic.severity = Severity::Info,
+            Some(RuleLevel::Off) | None => {}
+        }
+    }
+    Ok(LintResult { diagnostics })
 }
 
 /// Runs the fix engine on one buffer without touching the disk.
@@ -228,7 +259,94 @@ mod tests {
         let path = Path::new("a.gd");
         let config = Config::default();
         assert!(load_config_for(path).is_err());
-        assert!(lint_source(path, "", &config).is_err());
         assert!(fix_source(path, "", &config, false).is_err());
+    }
+
+    fn rule_level(rule_id: &str, level: RuleLevel) -> Config {
+        let mut rules = BTreeMap::new();
+        rules.insert(
+            rule_id.to_string(),
+            RuleSetting {
+                level: Some(level),
+                options: toml::Table::new(),
+            },
+        );
+        Config {
+            rules,
+            ..Config::default()
+        }
+    }
+
+    #[test]
+    fn lint_source_reports_builtin_rules_with_spans() {
+        let source = "func badName(unused):\n\tpass\n";
+        let result = lint_source(Path::new("a.gd"), source, &Config::default()).unwrap();
+        assert_eq!(result.diagnostics.len(), 2);
+
+        let function_name = &result.diagnostics[0];
+        assert_eq!(function_name.rule, "function-name");
+        assert_eq!(function_name.severity, Severity::Error);
+        assert_eq!(
+            &source[function_name.span.start_byte..function_name.span.end_byte],
+            "badName"
+        );
+        assert_eq!(
+            function_name.help.as_deref(),
+            Some("Rename it to 'bad_name'.")
+        );
+
+        let unused_argument = &result.diagnostics[1];
+        assert_eq!(unused_argument.rule, "unused-argument");
+        assert_eq!(unused_argument.severity, Severity::Warning);
+        assert_eq!(unused_argument.span.start.line, 1);
+        assert_eq!(unused_argument.span.start.column, 14);
+    }
+
+    #[test]
+    fn lint_source_applies_rule_levels() {
+        let source = "func badName(unused):\n\tpass\n";
+        let path = Path::new("a.gd");
+
+        let disabled =
+            lint_source(path, source, &rule_level("function-name", RuleLevel::Off)).unwrap();
+        assert_eq!(disabled.diagnostics.len(), 1);
+        assert_eq!(disabled.diagnostics[0].rule, "unused-argument");
+
+        let as_error = lint_source(
+            path,
+            source,
+            &rule_level("unused-argument", RuleLevel::Error),
+        )
+        .unwrap();
+        assert_eq!(as_error.diagnostics[1].rule, "unused-argument");
+        assert_eq!(as_error.diagnostics[1].severity, Severity::Error);
+
+        let as_info =
+            lint_source(path, source, &rule_level("function-name", RuleLevel::Info)).unwrap();
+        assert_eq!(as_info.diagnostics[0].severity, Severity::Info);
+    }
+
+    #[test]
+    fn lint_source_uses_max_line_length() {
+        let source = "var text = \"0123456789\"\n";
+        let path = Path::new("a.gd");
+        let default_result = lint_source(path, source, &Config::default()).unwrap();
+        assert!(default_result.diagnostics.is_empty());
+
+        let config = Config {
+            max_line_length: Some(20),
+            ..Config::default()
+        };
+        let short_result = lint_source(path, source, &config).unwrap();
+        assert_eq!(short_result.diagnostics.len(), 1);
+        assert_eq!(short_result.diagnostics[0].rule, "max-line-length");
+        assert_eq!(short_result.diagnostics[0].span.start.column, 21);
+    }
+
+    #[test]
+    fn lint_source_respects_ignore_comments() {
+        let source = "# gdlint-ignore-next-line function-name\nfunc badName():\n\tpass\n";
+        let result = lint_source(Path::new("a.gd"), source, &Config::default()).unwrap();
+        assert!(result.diagnostics.is_empty());
     }
 }

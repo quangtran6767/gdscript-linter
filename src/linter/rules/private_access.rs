@@ -1,8 +1,9 @@
-use crate::linter::lib::{get_line_column, get_node_text};
+use crate::linter::diagnostic::{Diagnostic, Severity, Span};
+use crate::linter::lib::get_node_text;
 use crate::linter::rules::Rule;
-use crate::linter::{LintIssue, LintSeverity};
 use crate::node_kind::GDScriptNodeKind;
 use tree_sitter::Node;
+
 pub struct PrivateAccessRule;
 
 impl Rule for PrivateAccessRule {
@@ -10,56 +11,66 @@ impl Rule for PrivateAccessRule {
         &[GDScriptNodeKind::Attribute]
     }
 
-    fn check_node(&mut self, node: &Node, source_code: &str) -> Vec<LintIssue> {
-        let mut issues = Vec::new();
-
+    fn check_node(&mut self, node: &Node, source_code: &str, diagnostics: &mut Vec<Diagnostic>) {
         let mut attr_cursor = node.walk();
-        if attr_cursor.goto_first_child() {
-            let object_node = attr_cursor.node();
-            let object_name = get_node_text(&object_node, source_code);
-
-            if attr_cursor.goto_next_sibling() && attr_cursor.goto_next_sibling() {
-                let method_node = attr_cursor.node();
-                if GDScriptNodeKind::get_kind_from_ast_node(method_node)
-                    == GDScriptNodeKind::AttributeCall
-                {
-                    if let Some(method_name_node) = method_node.child(0) {
-                        let method_name = get_node_text(&method_name_node, source_code);
-                        if method_name.starts_with('_')
-                            && object_name != "super"
-                            && object_name != "self"
-                        {
-                            let (line, column) = get_line_column(&method_name_node);
-                            issues.push(LintIssue::new(
-                                line,
-                                column,
-                                "private-access".to_string(),
-                                LintSeverity::Error,
-                                format!("Private method '{}' should not be called from outside its class", method_name),
-                            ));
-                        }
-                    }
-                } else if GDScriptNodeKind::get_kind_from_ast_node(method_node)
-                    == GDScriptNodeKind::Identifier
-                {
-                    let method_name = get_node_text(&method_node, source_code);
-                    if method_name.starts_with('_')
-                        && object_name != "super"
-                        && object_name != "self"
-                    {
-                        let (line, column) = get_line_column(&method_node);
-                        issues.push(LintIssue::new(
-                            line,
-                            column,
-                            "private-access".to_string(),
-                            LintSeverity::Error,
-                            format!("Private variable '{}' should not be accessed from outside its class", method_name),
-                        ));
-                    }
-                }
-            }
+        if !attr_cursor.goto_first_child() {
+            return;
         }
-
-        issues
+        let object_node = attr_cursor.node();
+        let object_name = get_node_text(&object_node, source_code);
+        if object_name == "super" || object_name == "self" {
+            return;
+        }
+        // Skip the `.` to reach the accessed member.
+        if !(attr_cursor.goto_next_sibling() && attr_cursor.goto_next_sibling()) {
+            return;
+        }
+        let member_node = attr_cursor.node();
+        match GDScriptNodeKind::get_kind_from_ast_node(member_node) {
+            GDScriptNodeKind::AttributeCall => {
+                let Some(method_name_node) = member_node.child(0) else {
+                    return;
+                };
+                let method_name = get_node_text(&method_name_node, source_code);
+                if !method_name.starts_with('_') {
+                    return;
+                }
+                diagnostics.push(Diagnostic {
+                    rule: "private-access".to_string(),
+                    severity: Severity::Error,
+                    message: format!(
+                        "Private method '{}' should not be called from outside its class",
+                        method_name
+                    ),
+                    help: Some(
+                        "Call a public method instead, or make this one public by removing the leading underscore."
+                            .to_string(),
+                    ),
+                    span: Span::from_node(&method_name_node),
+                    fixes: Vec::new(),
+                });
+            }
+            GDScriptNodeKind::Identifier => {
+                let variable_name = get_node_text(&member_node, source_code);
+                if !variable_name.starts_with('_') {
+                    return;
+                }
+                diagnostics.push(Diagnostic {
+                    rule: "private-access".to_string(),
+                    severity: Severity::Error,
+                    message: format!(
+                        "Private variable '{}' should not be accessed from outside its class",
+                        variable_name
+                    ),
+                    help: Some(
+                        "Use a public property or method instead, or make this one public by removing the leading underscore."
+                            .to_string(),
+                    ),
+                    span: Span::from_node(&member_node),
+                    fixes: Vec::new(),
+                });
+            }
+            _ => {}
+        }
     }
 }

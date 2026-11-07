@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod linter_tests {
     #![allow(clippy::unwrap_used)]
-    use crate::linter::{LintIssue, LintSeverity, LinterConfig, lint_gdscript_with_config};
+    use crate::linter::diagnostic::{Diagnostic, Position, Severity, Span};
+    use crate::linter::{LinterConfig, format_diagnostic_line, lint_gdscript_with_config};
 
     #[test]
     fn test_lint_basic_functionality() {
@@ -58,16 +59,28 @@ signal BadSignal
     }
 
     #[test]
-    fn test_lint_issue_format() {
-        let issue = LintIssue::new(
-            10,
-            5,
-            "test-rule".to_string(),
-            LintSeverity::Error,
-            "Test message".to_string(),
-        );
+    fn test_diagnostic_text_line_format() {
+        let diagnostic = Diagnostic {
+            rule: "test-rule".to_string(),
+            severity: Severity::Error,
+            message: "Test message".to_string(),
+            help: None,
+            span: Span {
+                start_byte: 0,
+                end_byte: 1,
+                start: Position {
+                    line: 10,
+                    column: 5,
+                },
+                end: Position {
+                    line: 10,
+                    column: 6,
+                },
+            },
+            fixes: Vec::new(),
+        };
 
-        let formatted = issue.format("test.gd");
+        let formatted = format_diagnostic_line("test.gd", &diagnostic);
         assert_eq!(formatted, "test.gd:10:test-rule:error: Test message");
     }
 

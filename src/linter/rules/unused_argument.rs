@@ -1,14 +1,14 @@
-use crate::linter::lib::{get_line_column, get_node_text};
+use crate::linter::diagnostic::{Diagnostic, Severity, Span};
+use crate::linter::lib::get_node_text;
 use crate::linter::rules::Rule;
-use crate::linter::{LintIssue, LintSeverity};
 use crate::node_kind::GDScriptNodeKind;
 use tree_sitter::Node;
 
+/// This rule checks for unused function arguments: if a function argument is
+/// not used in the function body, it suggests removing it or prefixing it with
+/// an underscore (_). Arguments that start with an underscore are ignored.
 pub struct UnusedArgumentRule;
 
-/// This rule checks for unused function arguments: if a function argument is not used in the function body,
-/// it suggests removing it or prefixing it with an underscore (_).
-/// Arguments that start with an underscore are ignored by this rule.
 impl UnusedArgumentRule {
     fn is_identifier_used_in_node(node: &Node, identifier: &str, source_code: &str) -> bool {
         let mut cursor = node.walk();
@@ -51,30 +51,26 @@ impl Rule for UnusedArgumentRule {
         &[GDScriptNodeKind::Function]
     }
 
-    fn check_node(&mut self, node: &Node, source_code: &str) -> Vec<LintIssue> {
-        let mut issues = Vec::new();
-        let mut parameters = Vec::new();
+    fn check_node(&mut self, node: &Node, source_code: &str, diagnostics: &mut Vec<Diagnostic>) {
+        // Parameter name nodes that don't start with an underscore.
+        let mut parameter_name_nodes = Vec::new();
 
         if let Some(params_node) = node.child_by_field_name("parameters") {
             let mut params_cursor = params_node.walk();
             if params_cursor.goto_first_child() {
                 loop {
                     let param_node = params_cursor.node();
-                    let param_kind = GDScriptNodeKind::get_kind_from_ast_node(param_node);
-                    if matches!(
-                        param_kind,
-                        GDScriptNodeKind::Identifier | GDScriptNodeKind::Parameter
-                    ) {
-                        let param_name = if param_kind == GDScriptNodeKind::Identifier {
-                            get_node_text(&param_node, source_code)
-                        } else if let Some(name_child) = param_node.child(0) {
-                            get_node_text(&name_child, source_code)
-                        } else {
-                            ""
-                        };
-
+                    // A parameter is either a plain identifier or a node whose
+                    // first child is the name (typed and default parameters).
+                    let name_node = match GDScriptNodeKind::get_kind_from_ast_node(param_node) {
+                        GDScriptNodeKind::Identifier => Some(param_node),
+                        GDScriptNodeKind::Parameter => param_node.child(0),
+                        _ => None,
+                    };
+                    if let Some(name_node) = name_node {
+                        let param_name = get_node_text(&name_node, source_code);
                         if !param_name.is_empty() && !param_name.starts_with('_') {
-                            parameters.push((param_name.to_string(), param_node));
+                            parameter_name_nodes.push(name_node);
                         }
                     }
                     if !params_cursor.goto_next_sibling() {
@@ -84,21 +80,28 @@ impl Rule for UnusedArgumentRule {
             }
         }
 
-        if let Some(body_node) = node.child_by_field_name("body") {
-            for (param_name, param_node) in parameters {
-                if !Self::is_identifier_used_in_node(&body_node, &param_name, source_code) {
-                    let (line, column) = get_line_column(&param_node);
-                    issues.push(LintIssue::new(
-                        line,
-                        column,
-                        "unused-argument".to_string(),
-                        LintSeverity::Warning,
-                        format!("Function argument '{}' is unused. Consider removing it or prefixing with '_'", param_name),
-                    ));
-                }
+        let Some(body_node) = node.child_by_field_name("body") else {
+            return;
+        };
+        for name_node in parameter_name_nodes {
+            let param_name = get_node_text(&name_node, source_code);
+            if Self::is_identifier_used_in_node(&body_node, param_name, source_code) {
+                continue;
             }
+            diagnostics.push(Diagnostic {
+                rule: "unused-argument".to_string(),
+                severity: Severity::Warning,
+                message: format!(
+                    "Function argument '{}' is unused. Consider removing it or prefixing with '_'",
+                    param_name
+                ),
+                help: Some(format!(
+                    "Remove '{}', or rename it to '_{}' if the function signature must stay the same.",
+                    param_name, param_name
+                )),
+                span: Span::from_node(&name_node),
+                fixes: Vec::new(),
+            });
         }
-
-        issues
     }
 }

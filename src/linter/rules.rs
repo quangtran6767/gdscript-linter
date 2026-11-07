@@ -16,38 +16,37 @@ pub mod unnecessary_pass;
 pub mod unused_argument;
 pub mod variable_name;
 
-use crate::linter::{LintIssue, LinterConfig};
+use crate::linter::LinterConfig;
+use crate::linter::diagnostic::Diagnostic;
 use crate::node_kind::GDScriptNodeKind;
 use tree_sitter::Node;
 
+/// A built-in rule. The linter walks the tree once and calls each rule only on
+/// the node kinds it targets. Rules append what they find to `diagnostics`;
+/// the pipeline applies ignore comments and sorts afterwards.
 pub trait Rule {
-    /// Returns the list of node kinds this rule is runs on/is interested in.
-    /// This is used to only call this rule on specific nodes. Return an empty
-    /// list if the rule doesn't work with individual AST nodes.
+    /// Returns the list of node kinds this rule runs on. This is used to only
+    /// call this rule on specific nodes. Return an empty list if the rule
+    /// doesn't work with individual AST nodes.
     fn get_target_ast_nodes(&self) -> &[GDScriptNodeKind] {
         &[]
     }
 
     /// This is called once before traversing the AST node tree for rules that
     /// work on source text directly, like checking line length.
-    fn check_source(&mut self, _source_code: &str) -> Vec<LintIssue> {
-        Vec::new()
-    }
+    fn check_source(&mut self, _source_code: &str, _diagnostics: &mut Vec<Diagnostic>) {}
 
     /// The linter calls this function for each node matching the nodes in
     /// get_target_ast_nodes when traversing the AST. This is the main method
-    /// rules should use if possible to check for issue.
-    fn check_node(&mut self, _node: &Node, _source_code: &str) -> Vec<LintIssue> {
-        Vec::new()
+    /// rules should use if possible to check for issues.
+    fn check_node(&mut self, _node: &Node, _source_code: &str, _diagnostics: &mut Vec<Diagnostic>) {
     }
 
     /// This is called after traversing the AST for rules that collect data
     /// during traversal and need to process it afterwards. For example,
     /// detecting duplicated loads by collecting all load paths first, then
     /// reporting which ones are duplicated.
-    fn finalize(&mut self, _source_code: &str) -> Vec<LintIssue> {
-        Vec::new()
-    }
+    fn finalize(&mut self, _source_code: &str, _diagnostics: &mut Vec<Diagnostic>) {}
 }
 
 use class_name::ClassNameRule;
