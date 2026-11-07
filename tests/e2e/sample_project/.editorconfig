@@ -1,0 +1,6 @@
+# Stop the EditorConfig search here so the repository's settings never change
+# the end-to-end snapshots.
+root = true
+
+[*.gd]
+indent_style = tab

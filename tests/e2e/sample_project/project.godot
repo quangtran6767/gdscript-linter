@@ -1,0 +1,13 @@
+; Engine configuration file.
+; Minimal Godot 4 project used by the linter end-to-end tests.
+
+config_version=5
+
+[application]
+
+config/name="gdguard sample project"
+config/features=PackedStringArray("4.5")
+
+[autoload]
+
+GameState="*res://autoload/game_state.gd"
