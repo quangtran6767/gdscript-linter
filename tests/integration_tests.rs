@@ -239,3 +239,74 @@ fn editorconfig_applies_quote_style() {
 
     assert_eq!(config.quote_style, QuoteStyle::Single);
 }
+
+/// Checks the span of every built-in rule on one fixture. Each expected line is
+/// `start_line:start_column-end_line:end_column rule 'covered text'`, so a
+/// reviewer can see that the span covers the right code. Columns are 1-based
+/// UTF-8 byte columns. Set UPDATE_SNAPSHOTS=1 to rewrite the expected file.
+#[test]
+fn builtin_rule_spans() {
+    use gdscript_formatter::linter::diagnostic::Span;
+    use gdscript_formatter::linter::rule_config::get_all_rule_names;
+
+    let fixture_path = Path::new("tests/lint/spans/all_rules.gd");
+    let expected_path = Path::new("tests/lint/spans/all_rules.txt");
+    let source = fs::read_to_string(fixture_path).unwrap();
+
+    let mut linter = GDScriptLinter::new(LinterConfig::default()).unwrap();
+    let diagnostics = linter.lint(&source, "all_rules.gd").unwrap();
+
+    let mut actual_output = String::new();
+    for diagnostic in &diagnostics {
+        let span = diagnostic.span;
+        // Byte offsets are authoritative: the line and column must match them.
+        assert_eq!(
+            span,
+            Span::from_byte_range(&source, span.start_byte, span.end_byte),
+            "positions don't match byte offsets for {}",
+            diagnostic.rule
+        );
+        assert!(
+            span.start_byte < span.end_byte,
+            "empty span for {}",
+            diagnostic.rule
+        );
+        actual_output.push_str(&format!(
+            "{}:{}-{}:{} {} '{}'\n",
+            span.start.line,
+            span.start.column,
+            span.end.line,
+            span.end.column,
+            diagnostic.rule,
+            &source[span.start_byte..span.end_byte]
+        ));
+    }
+
+    // The fixture must exercise every built-in rule.
+    for rule_name in get_all_rule_names() {
+        let mut is_reported = false;
+        for diagnostic in &diagnostics {
+            if diagnostic.rule == rule_name {
+                is_reported = true;
+                break;
+            }
+        }
+        assert!(
+            is_reported,
+            "{} has no diagnostic in the fixture",
+            rule_name
+        );
+    }
+
+    if std::env::var_os("UPDATE_SNAPSHOTS").is_some() {
+        fs::write(expected_path, &actual_output).unwrap();
+        return;
+    }
+    let expected_output = fs::read_to_string(expected_path).unwrap();
+    assert_formatted_eq(
+        &actual_output,
+        &expected_output,
+        fixture_path,
+        "Built-in rule spans don't match",
+    );
+}
