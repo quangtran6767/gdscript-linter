@@ -2,6 +2,7 @@ use crate::node_kind::GDScriptNodeKind;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tree_sitter::{Node, Parser, Tree};
 
 // Shared contracts (frozen after W0).
@@ -225,6 +226,9 @@ pub struct LintRunOptions {
     pub config_path: Option<PathBuf>,
     /// `--disable` and `--max-line-length`.
     pub cli: CliRuleOverrides,
+    /// The lint cache file (`.gdguard/cache/lint.json`), or None to lint
+    /// every file (`--no-cache`, stdin, no config). Only `lint_files` uses it.
+    pub cache_path: Option<PathBuf>,
 }
 
 /// A loaded config with its custom rule providers.
@@ -254,6 +258,16 @@ impl ConfigCache {
         metas.sort_by(|left, right| left.id.cmp(&right.id));
         metas.dedup_by(|left, right| left.id == right.id);
         metas
+    }
+
+    /// A copy of every loaded config, for worker threads (the providers stay
+    /// here: they aren't `Send`).
+    fn configs_by_key(&self) -> HashMap<PathBuf, Config> {
+        let mut configs = HashMap::with_capacity(self.configs.len());
+        for (key, loaded) in &self.configs {
+            configs.insert(key.clone(), loaded.compiled.config.clone());
+        }
+        configs
     }
 
     /// Returns the config that applies to `file_path`: the `--config` file,
@@ -330,41 +344,302 @@ fn check_disabled_rule_ids(
     ))
 }
 
-/// Lints files from disk. Each file uses its nearest `gdguard.toml` (or
-/// `--config`); files matching `[lint].exclude` are skipped. Config errors
-/// and unreadable files return an error (exit code 2).
+/// Lints files from disk, in parallel. Each file uses its nearest
+/// `gdguard.toml` (or `--config`); files matching `[lint].exclude` are
+/// skipped. With `options.cache_path`, unchanged files reuse their cached
+/// result. Output order follows `files`, whatever the thread timing. Config
+/// errors and unreadable files return an error (exit code 2).
 pub fn lint_files(files: &[PathBuf], options: &LintRunOptions) -> Result<LintReport, String> {
-    let mut linter = GDScriptLinter::new(LinterConfig::default())?;
     let mut config_cache = ConfigCache {
         configs: HashMap::new(),
     };
+    let mut lint_cache = None;
+    if let Some(cache_path) = &options.cache_path {
+        lint_cache = Some(cache::LintCache::load(cache_path));
+    }
+    let jobs = prepare_jobs(files, options, &mut config_cache, lint_cache.is_some())?;
+    let configs = config_cache.configs_by_key();
+    let outcomes = run_jobs(&jobs, &configs, JobMode::Lint, lint_cache.as_ref())?;
+
     let mut report = LintReport::default();
+    for (job, outcome) in jobs.iter().zip(outcomes) {
+        let JobOutcome::Linted {
+            source,
+            diagnostics,
+            new_cache_entry,
+        } = outcome
+        else {
+            return Err("the lint worker returned a fix result".to_string());
+        };
+        if let (Some(lint_cache), Some((file_key, cache_key))) = (&mut lint_cache, new_cache_entry)
+        {
+            lint_cache.insert(file_key, cache_key, &diagnostics);
+        }
+        report.files_checked += 1;
+        if !diagnostics.is_empty() {
+            report.files.push(FileDiagnostics {
+                path: display_path(&job.path),
+                source,
+                diagnostics,
+            });
+        }
+    }
+    if let Some(lint_cache) = &mut lint_cache {
+        // A cache that can't be written only costs speed on the next run.
+        let _ = lint_cache.save();
+    }
+    report.rule_metas = config_cache.custom_rule_metas();
+    Ok(report)
+}
+
+/// The `ConfigCache` key of the config for `file_path`: its path, or an
+/// empty path for the defaults.
+fn config_key_for(file_path: &Path, options: &LintRunOptions) -> PathBuf {
+    let config_path = match &options.config_path {
+        Some(config_path) => Some(config_path.clone()),
+        None => config::find_config_file(file_path),
+    };
+    match config_path {
+        Some(config_path) => config_path,
+        None => PathBuf::new(),
+    }
+}
+
+/// One file to lint or fix, prepared on the main thread.
+struct FileJob {
+    path: PathBuf,
+    /// The key of its config in `ConfigCache`.
+    config_key: PathBuf,
+    settings: FileSettings,
+    /// `(file key, settings hash, rules hash)` when the cache is on.
+    cache_inputs: Option<(String, String, String)>,
+}
+
+#[derive(Clone, Copy)]
+enum JobMode {
+    Lint,
+    Fix { allow_unsafe: bool },
+}
+
+enum JobOutcome {
+    Linted {
+        source: String,
+        diagnostics: Vec<Diagnostic>,
+        /// Set on a cache miss, to store the result.
+        new_cache_entry: Option<(String, cache::CacheKey)>,
+    },
+    Fixed {
+        source: String,
+        fixed: fix::FixedSource,
+    },
+}
+
+/// Resolves the config and settings of every file, in order, skipping
+/// excluded files. Loads and validates each config once.
+fn prepare_jobs(
+    files: &[PathBuf],
+    options: &LintRunOptions,
+    config_cache: &mut ConfigCache,
+    with_cache: bool,
+) -> Result<Vec<FileJob>, String> {
+    let mut rules_hashes: HashMap<PathBuf, String> = HashMap::new();
+    let mut jobs = Vec::with_capacity(files.len());
     for file_path in files {
+        let config_key = config_key_for(file_path, options);
         let loaded = config_cache.config_for(file_path, options)?;
         if loaded.compiled.is_excluded(file_path) {
             continue;
         }
         let settings = loaded.compiled.settings_for_file(file_path, &options.cli);
-        let source_code = fs::read_to_string(file_path)
-            .map_err(|error| format!("Failed to read file {}: {}", file_path.display(), error))?;
-        let diagnostics = lint_with_settings(
-            &mut linter,
-            file_path,
-            &source_code,
-            &settings,
-            &mut loaded.providers,
-        )?;
-        report.files_checked += 1;
-        if !diagnostics.is_empty() {
-            report.files.push(FileDiagnostics {
-                path: display_path(file_path),
-                source: source_code,
-                diagnostics,
-            });
+        let cache_inputs = if with_cache {
+            if !rules_hashes.contains_key(&config_key) {
+                rules_hashes.insert(
+                    config_key.clone(),
+                    cache::rules_hash(&loaded.compiled.config),
+                );
+            }
+            let rules_hash = match rules_hashes.get(&config_key) {
+                Some(rules_hash) => rules_hash.clone(),
+                None => String::new(),
+            };
+            Some((
+                cache::file_key(file_path),
+                cache::settings_hash(&settings),
+                rules_hash,
+            ))
+        } else {
+            None
+        };
+        jobs.push(FileJob {
+            path: file_path.clone(),
+            config_key,
+            settings,
+            cache_inputs,
+        });
+    }
+    Ok(jobs)
+}
+
+/// Runs the jobs on as many threads as there are cores, and returns their
+/// outcomes in job order. The first error in job order wins.
+fn run_jobs(
+    jobs: &[FileJob],
+    configs: &HashMap<PathBuf, Config>,
+    mode: JobMode,
+    lint_cache: Option<&cache::LintCache>,
+) -> Result<Vec<JobOutcome>, String> {
+    let core_count = match std::thread::available_parallelism() {
+        Ok(count) => count.get(),
+        Err(_) => 1,
+    };
+    let worker_count = core_count.min(jobs.len()).max(1);
+    let next_job = AtomicUsize::new(0);
+
+    let mut slots: Vec<Option<Result<JobOutcome, String>>> = Vec::with_capacity(jobs.len());
+    for _ in 0..jobs.len() {
+        slots.push(None);
+    }
+    if worker_count == 1 {
+        for (index, result) in run_worker(jobs, configs, mode, lint_cache, &next_job) {
+            slots[index] = Some(result);
+        }
+    } else {
+        let mut worker_results = Vec::with_capacity(worker_count);
+        std::thread::scope(|scope| {
+            let mut handles = Vec::with_capacity(worker_count);
+            for _ in 0..worker_count {
+                handles
+                    .push(scope.spawn(|| run_worker(jobs, configs, mode, lint_cache, &next_job)));
+            }
+            for handle in handles {
+                worker_results.push(handle.join());
+            }
+        });
+        for worker_result in worker_results {
+            let Ok(results) = worker_result else {
+                return Err("a lint worker thread panicked".to_string());
+            };
+            for (index, result) in results {
+                slots[index] = Some(result);
+            }
         }
     }
-    report.rule_metas = config_cache.custom_rule_metas();
-    Ok(report)
+
+    let mut outcomes = Vec::with_capacity(jobs.len());
+    for (index, slot) in slots.into_iter().enumerate() {
+        match slot {
+            Some(Ok(outcome)) => outcomes.push(outcome),
+            Some(Err(error)) => return Err(error),
+            None => return Err(format!("no result for {}", jobs[index].path.display())),
+        }
+    }
+    Ok(outcomes)
+}
+
+/// One worker: takes the next job until none are left. Each worker has its
+/// own linter and its own custom rule providers (they aren't `Send`).
+fn run_worker(
+    jobs: &[FileJob],
+    configs: &HashMap<PathBuf, Config>,
+    mode: JobMode,
+    lint_cache: Option<&cache::LintCache>,
+    next_job: &AtomicUsize,
+) -> Vec<(usize, Result<JobOutcome, String>)> {
+    let mut results = Vec::new();
+    let mut linter = match GDScriptLinter::new(LinterConfig::default()) {
+        Ok(linter) => linter,
+        Err(error) => {
+            let index = next_job.fetch_add(1, Ordering::Relaxed);
+            if index < jobs.len() {
+                results.push((index, Err(error)));
+            }
+            return results;
+        }
+    };
+    let mut providers_by_config: HashMap<PathBuf, Vec<Box<dyn RuleProvider>>> = HashMap::new();
+    loop {
+        let index = next_job.fetch_add(1, Ordering::Relaxed);
+        if index >= jobs.len() {
+            break;
+        }
+        let result = run_job(
+            &mut linter,
+            &mut providers_by_config,
+            &jobs[index],
+            configs,
+            mode,
+            lint_cache,
+        );
+        results.push((index, result));
+    }
+    results
+}
+
+fn run_job(
+    linter: &mut GDScriptLinter,
+    providers_by_config: &mut HashMap<PathBuf, Vec<Box<dyn RuleProvider>>>,
+    job: &FileJob,
+    configs: &HashMap<PathBuf, Config>,
+    mode: JobMode,
+    lint_cache: Option<&cache::LintCache>,
+) -> Result<JobOutcome, String> {
+    let source = fs::read_to_string(&job.path)
+        .map_err(|error| format!("Failed to read file {}: {}", job.path.display(), error))?;
+
+    let mut cache_key: Option<(String, cache::CacheKey)> = None;
+    if let JobMode::Lint = mode
+        && let Some((file_key, settings_hash, rules_hash)) = &job.cache_inputs
+    {
+        let key = cache::CacheKey {
+            file_hash: cache::file_hash(&source),
+            settings_hash: settings_hash.clone(),
+            rules_hash: rules_hash.clone(),
+        };
+        if let Some(lint_cache) = lint_cache
+            && let Some(diagnostics) = lint_cache.get(file_key, &key, &source)
+        {
+            return Ok(JobOutcome::Linted {
+                source,
+                diagnostics,
+                new_cache_entry: None,
+            });
+        }
+        cache_key = Some((file_key.clone(), key));
+    }
+
+    if !providers_by_config.contains_key(&job.config_key) {
+        let providers = match configs.get(&job.config_key) {
+            Some(config) => custom::load_providers(config)?,
+            None => Vec::new(),
+        };
+        providers_by_config.insert(job.config_key.clone(), providers);
+    }
+    let Some(providers) = providers_by_config.get_mut(&job.config_key) else {
+        return Err("lost the custom rules of a config".to_string());
+    };
+
+    match mode {
+        JobMode::Lint => {
+            let diagnostics =
+                lint_with_settings(linter, &job.path, &source, &job.settings, providers)?;
+            Ok(JobOutcome::Linted {
+                source,
+                diagnostics,
+                new_cache_entry: cache_key,
+            })
+        }
+        JobMode::Fix { allow_unsafe } => {
+            let fixed = fix::fix_source_with_settings(
+                linter,
+                &job.path,
+                &source,
+                &job.settings,
+                providers,
+                allow_unsafe,
+            )?;
+            Ok(JobOutcome::Fixed { source, fixed })
+        }
+    }
 }
 
 /// Lints source read from stdin. `config_lookup_path` is the path used to
@@ -443,38 +718,29 @@ impl FixRunReport {
     }
 }
 
-/// Runs the fix engine on files from disk without writing them. Files
-/// matching `[lint].exclude` are skipped, like in `lint_files`.
+/// Runs the fix engine on files from disk, in parallel, without writing
+/// them. Files matching `[lint].exclude` are skipped, like in `lint_files`.
+/// The cache isn't used.
 pub fn fix_files(
     files: &[PathBuf],
     options: &LintRunOptions,
     allow_unsafe: bool,
 ) -> Result<FixRunReport, String> {
-    let mut linter = GDScriptLinter::new(LinterConfig::default())?;
     let mut config_cache = ConfigCache {
         configs: HashMap::new(),
     };
+    let jobs = prepare_jobs(files, options, &mut config_cache, false)?;
+    let configs = config_cache.configs_by_key();
+    let outcomes = run_jobs(&jobs, &configs, JobMode::Fix { allow_unsafe }, None)?;
     let mut fix_report = FixRunReport::default();
-    for file_path in files {
-        let loaded = config_cache.config_for(file_path, options)?;
-        if loaded.compiled.is_excluded(file_path) {
-            continue;
-        }
-        let settings = loaded.compiled.settings_for_file(file_path, &options.cli);
-        let source_code = fs::read_to_string(file_path)
-            .map_err(|error| format!("Failed to read file {}: {}", file_path.display(), error))?;
-        let fixed = fix::fix_source_with_settings(
-            &mut linter,
-            file_path,
-            &source_code,
-            &settings,
-            &mut loaded.providers,
-            allow_unsafe,
-        )?;
+    for (job, outcome) in jobs.iter().zip(outcomes) {
+        let JobOutcome::Fixed { source, fixed } = outcome else {
+            return Err("the fix worker returned a lint result".to_string());
+        };
         add_fixed_source(
-            file_path,
-            &display_path(file_path),
-            source_code,
+            &job.path,
+            &display_path(&job.path),
+            source,
             fixed,
             &mut fix_report,
         );

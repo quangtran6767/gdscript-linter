@@ -71,6 +71,7 @@ Options:
       --config <PATH>          Use this gdguard.toml instead of searching for one
       --baseline <PATH>        Hide the issues listed in this baseline file
       --update-baseline        Write all current issues to the baseline file
+      --no-cache               Lint every file, don't read or write .gdguard/cache
       --max-warnings <NUM>     Fail when there are more than NUM warnings
       --stdin-filename <PATH>  Read the source from stdin, report it as PATH
   -h, --help                   Print help
@@ -187,6 +188,8 @@ pub enum Command {
         baseline_path: Option<PathBuf>,
         /// `--update-baseline`: write all current issues to the baseline file.
         do_update_baseline: bool,
+        /// `--no-cache`: don't read or write the lint cache.
+        no_cache: bool,
         /// `--max-warnings`: warnings only fail when there are more than this.
         max_warnings: Option<usize>,
         /// `--stdin-filename`: read the source from stdin and use this path
@@ -240,6 +243,7 @@ pub fn parse_args() -> CliArguments {
     let mut lint_config_path: Option<PathBuf> = None;
     let mut lint_baseline_path: Option<PathBuf> = None;
     let mut lint_do_update_baseline = false;
+    let mut lint_no_cache = false;
     let mut lint_max_warnings: Option<usize> = None;
     let mut lint_stdin_filename: Option<PathBuf> = None;
 
@@ -500,6 +504,10 @@ pub fn parse_args() -> CliArguments {
                         require_no_value(assigned_value, "--update-baseline");
                         lint_do_update_baseline = true;
                     }
+                    "no-cache" => {
+                        require_no_value(assigned_value, "--no-cache");
+                        lint_no_cache = true;
+                    }
                     "max-warnings" => {
                         let value = consume_flag_value(
                             assigned_value,
@@ -642,6 +650,7 @@ pub fn parse_args() -> CliArguments {
                     config_path: lint_config_path,
                     baseline_path: lint_baseline_path,
                     do_update_baseline: lint_do_update_baseline,
+                    no_cache: lint_no_cache,
                     max_warnings: lint_max_warnings,
                     stdin_filename: lint_stdin_filename,
                 },

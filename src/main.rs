@@ -104,6 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config_path,
         baseline_path,
         do_update_baseline,
+        no_cache,
         max_warnings,
         stdin_filename,
     } = parsed_cli_args.command
@@ -153,6 +154,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             max_line_length,
             config_path,
             stdin_filename,
+            no_cache,
         };
         if do_update_baseline {
             std::process::exit(run_update_baseline(
@@ -480,6 +482,8 @@ struct LintCommand {
     /// `--stdin-filename`: read the source from stdin and report it as this
     /// path, which also finds the config.
     stdin_filename: Option<PathBuf>,
+    /// `--no-cache`: lint every file.
+    no_cache: bool,
 }
 
 /// Where `lint` reads its source from.
@@ -511,9 +515,10 @@ fn prepare_lint_input(command: LintCommand) -> Result<(LintInput, LintRunOptions
     {
         return Err(format!("--config: {} is not a file", config_path.display()));
     }
-    let options = LintRunOptions {
+    let mut options = LintRunOptions {
         config_path: command.config_path,
         cli,
+        cache_path: None,
     };
 
     let is_dash_only =
@@ -558,7 +563,30 @@ fn prepare_lint_input(command: LintCommand) -> Result<(LintInput, LintRunOptions
     if input_gdscript_files.is_empty() {
         return Err(NO_GDSCRIPT_FILES_MESSAGE.to_string());
     }
+    if !command.no_cache {
+        options.cache_path = find_cache_path(&options, &input_gdscript_files);
+    }
     Ok((LintInput::Files(input_gdscript_files), options))
+}
+
+/// The lint cache sits next to the run's `gdguard.toml`: `--config`, the one
+/// found from the current directory, or the one of the first file. Without a
+/// config there is no cache, so lint runs never litter random folders.
+fn find_cache_path(options: &LintRunOptions, files: &[PathBuf]) -> Option<PathBuf> {
+    let mut config_path = options.config_path.clone();
+    if config_path.is_none()
+        && let Ok(current_directory) = env::current_dir()
+    {
+        config_path = gdscript_formatter::linter::config::find_config_file(&current_directory);
+    }
+    if config_path.is_none()
+        && let Some(first_file) = files.first()
+    {
+        config_path = gdscript_formatter::linter::config::find_config_file(first_file);
+    }
+    let config_path = std::path::absolute(config_path?).ok()?;
+    let config_directory = config_path.parent()?;
+    Some(config_directory.join(gdscript_formatter::linter::cache::CACHE_PATH))
 }
 
 fn read_stdin() -> Result<String, String> {
