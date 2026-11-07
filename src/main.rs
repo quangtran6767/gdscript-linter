@@ -23,9 +23,8 @@ use std::{
     thread,
 };
 
-use gdscript_formatter::linter::rule_config::{
-    get_all_rule_names, parse_disabled_rules, validate_rule_names,
-};
+use gdscript_formatter::linter::rule_config::{parse_disabled_rules, validate_rule_names};
+use gdscript_formatter::linter::{explain, init, rule_tester};
 use gdscript_formatter::{
     FormatErrors, FormatterConfiguration, QuoteStyle, RenderElement, format_gdscript,
     format_gdscript_with_buffers, linter::LinterConfig,
@@ -71,19 +70,68 @@ struct FormatterConfigOverrides {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let parsed_cli_args = parse_args();
 
+    // The linter tool subcommands live in the library so their owners can
+    // implement them without touching the CLI. Each returns an exit code.
+    match &parsed_cli_args.command {
+        Command::Explain(explain_args) => std::process::exit(explain::run(explain_args)),
+        Command::TestRules(test_rules_args) => {
+            std::process::exit(rule_tester::run(test_rules_args))
+        }
+        Command::Init(init_args) => std::process::exit(init::run(init_args)),
+        Command::Lsp => exit_not_implemented("lsp"),
+        Command::Format { .. } | Command::Lint { .. } => {}
+    }
+
     if let Command::Lint {
         disabled_linter_rules,
         max_line_length,
         do_list_rules,
         do_pretty_print,
+        list_rules_format,
+        do_fix,
+        do_fix_unsafe,
+        do_diff,
+        output_format,
+        config_path,
+        baseline_path,
+        do_update_baseline,
+        max_warnings,
+        stdin_filename,
     } = parsed_cli_args.command
     {
         if do_list_rules {
-            println!("Available linting rules:");
-            for rule in get_all_rule_names() {
-                println!("  {}", rule);
-            }
-            return Ok(());
+            std::process::exit(explain::list_rules(list_rules_format));
+        }
+
+        // Flags from the linter spec that later waves implement. They fail
+        // loudly instead of being ignored, so scripts don't silently get the
+        // wrong behavior.
+        if do_fix {
+            exit_not_implemented("--fix");
+        }
+        if do_fix_unsafe {
+            exit_not_implemented("--fix-unsafe");
+        }
+        if do_diff {
+            exit_not_implemented("--diff");
+        }
+        if output_format.is_some() {
+            exit_not_implemented("--format");
+        }
+        if config_path.is_some() {
+            exit_not_implemented("--config");
+        }
+        if baseline_path.is_some() {
+            exit_not_implemented("--baseline");
+        }
+        if do_update_baseline {
+            exit_not_implemented("--update-baseline");
+        }
+        if max_warnings.is_some() {
+            exit_not_implemented("--max-warnings");
+        }
+        if stdin_filename.is_some() {
+            exit_not_implemented("--stdin-filename");
         }
 
         let disabled_rules = if let Some(disable_str) = disabled_linter_rules {
@@ -399,6 +447,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+/// Prints that a command or flag from the linter spec isn't implemented yet and
+/// exits with the usage error code.
+fn exit_not_implemented(name: &str) -> ! {
+    eprintln!("`{}` is not implemented yet", name);
+    std::process::exit(2);
 }
 
 fn run_linter(

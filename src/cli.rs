@@ -6,6 +6,10 @@
 //! NB: do not replace with a dependency like clap: it brings too many
 //! dependencies only to save a little straightforward code.
 use gdscript_formatter::QuoteStyle;
+use gdscript_formatter::linter::explain::{ExplainArgs, ListRulesFormat};
+use gdscript_formatter::linter::init::InitArgs;
+use gdscript_formatter::linter::output::OutputFormat;
+use gdscript_formatter::linter::rule_tester::TestRulesArgs;
 use std::path::PathBuf;
 
 const HELP_FORMATTER: &str = "\
@@ -37,6 +41,10 @@ const HELP_FORMATTER: &str = "\
 
 	Subcommands:
 	  lint                     Lint GDScript files for style issues
+	  explain <RULE>           Explain a lint rule, with examples
+	  test-rules [RULE_DIR]    Run the tests of custom lint rules
+	  init                     Write a starter gdguard.toml and .gdguard/ folder
+	  lsp                      Start the linter language server
 
 	Run 'gdscript-formatter lint --help' for lint options.
 ";
@@ -51,11 +59,54 @@ Arguments:
 
 Options:
   -x, --exclude <PATH>         Exclude a file or directory (may be repeated)
-      --disable <RULES>       Disable specific rules (comma-separated)
+      --disable <RULES>        Disable specific rules (comma-separated)
       --max-line-length <NUM>  Maximum line length allowed (default: 100)
-      --list-rules            List all available linting rules
-      --pretty                Use pretty formatting for lint output
-  -h, --help                  Print help
+      --list-rules             List all available linting rules (--format text|json)
+      --pretty                 Use pretty formatting for lint output
+      --fix                    Apply safe fixes
+      --fix-unsafe             Apply safe and unsafe fixes
+      --diff                   Print the fixes as a unified diff, don't write files
+      --format <FORMAT>        Output format: pretty, compact, json, github, sarif
+      --config <PATH>          Use this gdguard.toml instead of searching for one
+      --baseline <PATH>        Hide the issues listed in this baseline file
+      --update-baseline        Write all current issues to the baseline file
+      --max-warnings <NUM>     Fail when there are more than NUM warnings
+      --stdin-filename <PATH>  Read the source from stdin, report it as PATH
+  -h, --help                   Print help
+
+Exit codes: 0 no problems, 1 lint problems found, 2 usage, config or rule-file error.
+";
+
+const HELP_EXPLAIN: &str = "\
+Explain a lint rule: rationale, examples and whether it can be fixed.
+
+Usage: gdscript-formatter explain <RULE>
+";
+
+const HELP_TEST_RULES: &str = "\
+Run the tests written inside custom rule files.
+
+Usage: gdscript-formatter test-rules [RULE_DIR]
+
+Arguments:
+  [RULE_DIR]  Folder of rule files (default: the custom rule paths from
+              gdguard.toml, or .gdguard/rules)
+";
+
+const HELP_INIT: &str = "\
+Write a starter gdguard.toml and .gdguard/rules/ folder.
+
+Usage: gdscript-formatter init [OPTIONS]
+
+Options:
+      --force  Overwrite existing files
+  -h, --help   Print help
+";
+
+const HELP_LSP: &str = "\
+Start the linter language server on stdin and stdout.
+
+Usage: gdscript-formatter lsp
 ";
 
 /// Represents the parsed command-line arguments for the GDScript formatter. You
@@ -119,7 +170,36 @@ pub enum Command {
         /// If true, the linter program will print the list of available linting
         /// rules in a human-readable format.
         do_pretty_print: bool,
+        /// `--format` value when used with `--list-rules`.
+        list_rules_format: ListRulesFormat,
+        /// `--fix`: apply safe fixes.
+        do_fix: bool,
+        /// `--fix-unsafe`: apply safe and unsafe fixes.
+        do_fix_unsafe: bool,
+        /// `--diff`: print fixes as a unified diff instead of writing files.
+        do_diff: bool,
+        /// `--format`. `None` means: pretty on a TTY, compact otherwise.
+        output_format: Option<OutputFormat>,
+        /// `--config`: use this config file instead of searching for one.
+        config_path: Option<PathBuf>,
+        /// `--baseline`: hide the issues in this baseline file.
+        baseline_path: Option<PathBuf>,
+        /// `--update-baseline`: write all current issues to the baseline file.
+        do_update_baseline: bool,
+        /// `--max-warnings`: warnings only fail when there are more than this.
+        max_warnings: Option<usize>,
+        /// `--stdin-filename`: read the source from stdin and use this path
+        /// for config lookup and output.
+        stdin_filename: Option<PathBuf>,
     },
+    /// Explain one lint rule. Implemented by `linter::explain::run`.
+    Explain(ExplainArgs),
+    /// Run the tests of custom rules. Implemented by `linter::rule_tester::run`.
+    TestRules(TestRulesArgs),
+    /// Write a starter config. Implemented by `linter::init::run`.
+    Init(InitArgs),
+    /// Start the language server.
+    Lsp,
 }
 
 /// Internal discriminator used during parsing to track which command's flags
@@ -152,13 +232,30 @@ pub fn parse_args() -> CliArguments {
     let mut lint_max_line_length: Option<usize> = None;
     let mut lint_list_rules = false;
     let mut lint_pretty_print = false;
+    let mut lint_do_fix = false;
+    let mut lint_do_fix_unsafe = false;
+    let mut lint_do_diff = false;
+    let mut lint_format_name: Option<String> = None;
+    let mut lint_config_path: Option<PathBuf> = None;
+    let mut lint_baseline_path: Option<PathBuf> = None;
+    let mut lint_do_update_baseline = false;
+    let mut lint_max_warnings: Option<usize> = None;
+    let mut lint_stdin_filename: Option<PathBuf> = None;
 
     // The first positional argument optionally selects a command. If it is
     // "lint", we run the linter program. Defaults to the formatter.
     let mut current_argument_index = 1;
-    if argument_list.len() > 1 && argument_list[1] == "lint" {
-        active_command = ActiveCommand::Lint;
-        current_argument_index = 2;
+    if argument_list.len() > 1 {
+        match argument_list[1].as_str() {
+            "lint" => {
+                active_command = ActiveCommand::Lint;
+                current_argument_index = 2;
+            }
+            "explain" | "test-rules" | "init" | "lsp" => {
+                return parse_tool_subcommand(&argument_list[1], &argument_list[2..]);
+            }
+            _ => {}
+        }
     }
 
     while current_argument_index < argument_list.len() {
@@ -359,6 +456,73 @@ pub fn parse_args() -> CliArguments {
                         require_no_value(assigned_value, "--pretty");
                         lint_pretty_print = true;
                     }
+                    "fix" => {
+                        require_no_value(assigned_value, "--fix");
+                        lint_do_fix = true;
+                    }
+                    "fix-unsafe" => {
+                        require_no_value(assigned_value, "--fix-unsafe");
+                        lint_do_fix_unsafe = true;
+                    }
+                    "diff" => {
+                        require_no_value(assigned_value, "--diff");
+                        lint_do_diff = true;
+                    }
+                    "format" => {
+                        let value = consume_flag_value(
+                            assigned_value,
+                            &argument_list,
+                            &mut current_argument_index,
+                            "--format",
+                        );
+                        lint_format_name = Some(value);
+                    }
+                    "config" => {
+                        let value = consume_flag_value(
+                            assigned_value,
+                            &argument_list,
+                            &mut current_argument_index,
+                            "--config",
+                        );
+                        lint_config_path = Some(PathBuf::from(value));
+                    }
+                    "baseline" => {
+                        let value = consume_flag_value(
+                            assigned_value,
+                            &argument_list,
+                            &mut current_argument_index,
+                            "--baseline",
+                        );
+                        lint_baseline_path = Some(PathBuf::from(value));
+                    }
+                    "update-baseline" => {
+                        require_no_value(assigned_value, "--update-baseline");
+                        lint_do_update_baseline = true;
+                    }
+                    "max-warnings" => {
+                        let value = consume_flag_value(
+                            assigned_value,
+                            &argument_list,
+                            &mut current_argument_index,
+                            "--max-warnings",
+                        );
+                        lint_max_warnings = match value.parse::<usize>() {
+                            Ok(n) => Some(n),
+                            Err(_) => print_error_invalid_argument(&format!(
+                                "--max-warnings expects a number, got '{}'",
+                                value
+                            )),
+                        };
+                    }
+                    "stdin-filename" => {
+                        let value = consume_flag_value(
+                            assigned_value,
+                            &argument_list,
+                            &mut current_argument_index,
+                            "--stdin-filename",
+                        );
+                        lint_stdin_filename = Some(PathBuf::from(value));
+                    }
                     _ => print_error_invalid_argument(&format!(
                         "unexpected argument '--{}'",
                         flag_name
@@ -435,16 +599,131 @@ pub fn parse_args() -> CliArguments {
                 quote_style: format_quote_style,
             },
         },
-        ActiveCommand::Lint => CliArguments {
-            input_file_paths,
-            excluded_paths,
-            command: Command::Lint {
-                disabled_linter_rules: lint_disabled_rules,
-                max_line_length: lint_max_line_length,
-                do_list_rules: lint_list_rules,
-                do_pretty_print: lint_pretty_print,
-            },
-        },
+        ActiveCommand::Lint => {
+            // `--list-rules` accepts `text` or `json`; linting accepts the
+            // reporter names. We check after parsing because the flags can
+            // come in any order.
+            let mut list_rules_format = ListRulesFormat::Text;
+            let mut output_format: Option<OutputFormat> = None;
+            if let Some(format_name) = lint_format_name {
+                if lint_list_rules {
+                    list_rules_format = match format_name.as_str() {
+                        "text" => ListRulesFormat::Text,
+                        "json" => ListRulesFormat::Json,
+                        _ => print_error_invalid_argument(&format!(
+                            "--format with --list-rules expects text or json, got '{}'",
+                            format_name
+                        )),
+                    };
+                } else {
+                    output_format = match OutputFormat::from_name(&format_name) {
+                        Some(format) => Some(format),
+                        None => print_error_invalid_argument(&format!(
+                            "--format expects pretty, compact, json, github or sarif, got '{}'",
+                            format_name
+                        )),
+                    };
+                }
+            }
+            CliArguments {
+                input_file_paths,
+                excluded_paths,
+                command: Command::Lint {
+                    disabled_linter_rules: lint_disabled_rules,
+                    max_line_length: lint_max_line_length,
+                    do_list_rules: lint_list_rules,
+                    do_pretty_print: lint_pretty_print,
+                    list_rules_format,
+                    do_fix: lint_do_fix,
+                    do_fix_unsafe: lint_do_fix_unsafe,
+                    do_diff: lint_do_diff,
+                    output_format,
+                    config_path: lint_config_path,
+                    baseline_path: lint_baseline_path,
+                    do_update_baseline: lint_do_update_baseline,
+                    max_warnings: lint_max_warnings,
+                    stdin_filename: lint_stdin_filename,
+                },
+            }
+        }
+    }
+}
+
+/// Parses the arguments of the linter tool subcommands (`explain`,
+/// `test-rules`, `init`, `lsp`). They take few arguments, so they have their
+/// own small loop instead of sharing the formatter and lint flag parser.
+fn parse_tool_subcommand(subcommand_name: &str, arguments: &[String]) -> CliArguments {
+    let help_text = match subcommand_name {
+        "explain" => HELP_EXPLAIN,
+        "test-rules" => HELP_TEST_RULES,
+        "init" => HELP_INIT,
+        _ => HELP_LSP,
+    };
+
+    let mut positional_arguments: Vec<&str> = Vec::with_capacity(arguments.len());
+    let mut do_force = false;
+    let mut current_argument_index = 0;
+    while current_argument_index < arguments.len() {
+        let current_argument = arguments[current_argument_index].as_str();
+        current_argument_index += 1;
+        if current_argument == "--help" || current_argument == "-h" {
+            print!("{}", help_text);
+            std::process::exit(0);
+        }
+        if current_argument == "--" {
+            while current_argument_index < arguments.len() {
+                positional_arguments.push(arguments[current_argument_index].as_str());
+                current_argument_index += 1;
+            }
+            break;
+        }
+        if current_argument == "--force" && subcommand_name == "init" {
+            do_force = true;
+            continue;
+        }
+        if current_argument.starts_with('-') && current_argument.len() > 1 {
+            print_error_invalid_argument(&format!(
+                "unexpected argument '{}' for '{}'",
+                current_argument, subcommand_name
+            ));
+        }
+        positional_arguments.push(current_argument);
+    }
+
+    let maximum_positional_arguments = match subcommand_name {
+        "explain" | "test-rules" => 1,
+        _ => 0,
+    };
+    if positional_arguments.len() > maximum_positional_arguments {
+        print_error_invalid_argument(&format!(
+            "unexpected argument '{}' for '{}'",
+            positional_arguments[maximum_positional_arguments], subcommand_name
+        ));
+    }
+
+    let command = match subcommand_name {
+        "explain" => {
+            if positional_arguments.is_empty() {
+                print_error_invalid_argument("explain requires a rule id: explain <RULE>");
+            }
+            Command::Explain(ExplainArgs {
+                rule: positional_arguments[0].to_string(),
+            })
+        }
+        "test-rules" => {
+            let mut rule_dir = None;
+            if !positional_arguments.is_empty() {
+                rule_dir = Some(PathBuf::from(positional_arguments[0]));
+            }
+            Command::TestRules(TestRulesArgs { rule_dir })
+        }
+        "init" => Command::Init(InitArgs { force: do_force }),
+        _ => Command::Lsp,
+    };
+    CliArguments {
+        input_file_paths: Vec::new(),
+        excluded_paths: Vec::new(),
+        command,
     }
 }
 
