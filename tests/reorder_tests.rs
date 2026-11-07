@@ -19,9 +19,16 @@ fn test_reorder(file_path: &std::path::Path) {
     let output_first_formatting_pass = format_gdscript(&input, &config)
         .unwrap_or_else(|e| panic!("Failed to format {}: {}", file_path.display(), e));
 
-    let expected_path = file_path.to_str().unwrap().replace("/input/", "/expected/");
+    // Built from path components so it also works with `\` on Windows.
+    let expected_path = file_path
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("expected")
+        .join(file_path.file_name().unwrap());
     let expected = fs::read_to_string(&expected_path)
-        .unwrap_or_else(|e| panic!("Failed to read expected {}: {}", expected_path, e));
+        .unwrap_or_else(|e| panic!("Failed to read expected {}: {}", expected_path.display(), e));
 
     assert_eq!(
         output_first_formatting_pass,
