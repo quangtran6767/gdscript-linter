@@ -1,0 +1,29 @@
+id: no-get-node-in-process
+severity: warning
+message: "Don't call `get_node()` in `$FUNC()`; cache the node in an `@onready` variable"
+help: "Add `@onready var node := get_node(...)` at the top of the script and use the variable."
+rationale: |
+  `_process()` and `_physics_process()` run every frame. Looking a node up by
+  path each time costs time and hides the dependency. An `@onready` variable
+  looks it up once and documents what the script needs.
+rule:
+  pattern: get_node($$$ARGS)
+  inside:
+    kind: function_definition
+    has:
+      field: name
+      pattern: $FUNC
+    stopBy: end
+constraints:
+  FUNC:
+    regex: ^_(physics_)?process$
+tests:
+  invalid:
+    - code: "func _process(delta):\n\tget_node(\"Player\").hide()\n"
+    - code: "func _physics_process(delta):\n\tif delta > 0:\n\t\tvar enemy = get_node(\"Enemy\")\n"
+    - code: "func _process(delta):\n\tget_node(\"A\").show()\n\tget_node(\"B\").show()\n"
+      errors: 2
+  valid:
+    - "@onready var player := get_node(\"Player\")\n\nfunc _process(delta):\n\tplayer.hide()\n"
+    - "func _ready():\n\tget_node(\"Player\").hide()\n"
+    - "func process_items():\n\tget_node(\"Items\").show()\n"

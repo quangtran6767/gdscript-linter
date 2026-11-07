@@ -292,3 +292,28 @@ fn multi_line_fix_keeps_space_indentation() {
         "func f():\n    if true:\n        if OS.is_debug_build():\n            print(1)\n"
     );
 }
+
+#[test]
+fn message_uses_metavariable_captured_in_a_relational_rule() {
+    let examples = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("examples")
+        .join("rules");
+    let config = Config {
+        custom_rule_paths: vec![examples],
+        ..Config::default()
+    };
+    let mut providers = load_providers(&config).unwrap();
+    let source = "func _physics_process(delta):\n\tget_node(\"A\").show()\n";
+    let tree = parse(source);
+    let context = FileContext {
+        path: Path::new("a.gd"),
+        source,
+        tree: &tree,
+    };
+    let diagnostics = providers[0].check_file(&context);
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(
+        diagnostics[0].message,
+        "Don't call `get_node()` in `_physics_process()`; cache the node in an `@onready` variable"
+    );
+}

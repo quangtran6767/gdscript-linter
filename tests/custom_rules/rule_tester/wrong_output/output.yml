@@ -1,0 +1,12 @@
+id: prefer-is-empty
+message: "Use `$X.is_empty()`"
+rule:
+  pattern: len($X) == 0
+fix: $X.is_empty()
+fixSafety: safe
+tests:
+  invalid:
+    - code: "func f(items):\n\tif len(items) == 0:\n\t\tpass\n"
+      output: "func f(items):\n\tif items.empty():\n\t\tpass\n"
+    - code: "var a = len(b) == 0\n"
+      output: "var a = b.is_empty()\n"

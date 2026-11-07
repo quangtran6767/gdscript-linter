@@ -1,0 +1,5 @@
+id: bad-rule
+message: "m"
+rule:
+  pattern: print($A)
+fixSafety: safe

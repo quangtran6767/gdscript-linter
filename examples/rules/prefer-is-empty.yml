@@ -1,0 +1,24 @@
+id: prefer-is-empty
+severity: warning
+message: "Use `$X.is_empty()` instead of `len($X) == 0`"
+help: "`is_empty()` states the intent and works on Array, Dictionary and String."
+rationale: |
+  Comparing `len()` to zero hides the intent of the check. `is_empty()` reads
+  as a question about the collection and avoids counting its elements.
+rule:
+  pattern: len($X) == 0
+fix: $X.is_empty()
+fixSafety: safe
+tests:
+  invalid:
+    - code: "func f(items):\n\tif len(items) == 0:\n\t\tpass\n"
+      output: "func f(items):\n\tif items.is_empty():\n\t\tpass\n"
+    - code: "var empty = len(get_children()) == 0\n"
+      output: "var empty = get_children().is_empty()\n"
+    - code: "func f(a, b):\n\treturn len(a) == 0 and len(b) == 0\n"
+      output: "func f(a, b):\n\treturn a.is_empty() and b.is_empty()\n"
+      errors: 2
+  valid:
+    - "func f(items):\n\tif items.is_empty():\n\t\tpass\n"
+    - "func f(items):\n\tif len(items) == 1:\n\t\tpass\n"
+    - "func f(items):\n\tif len(items) > 0:\n\t\tpass\n"

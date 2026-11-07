@@ -1,0 +1,12 @@
+id: no-print
+message: "Remove print($$$A)"
+rule:
+  pattern: print($$$A)
+tests:
+  invalid:
+    - code: "func f():\n\tprint(1)\n"
+      errors: 2
+    - code: "func f():\n\tpass\n"
+  valid:
+    - "func f():\n\tprint(2)\n"
+    - "func f():\n\tpush_warning(2)\n"
