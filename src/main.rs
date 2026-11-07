@@ -23,9 +23,13 @@ use std::{
     thread,
 };
 
+use gdscript_formatter::linter::baseline::{
+    Baseline, BaselineTarget, apply_baseline, entries_for_report as baseline_entries_for_report,
+    load_target, resolve_baseline, write_baseline,
+};
 use gdscript_formatter::linter::config::CliRuleOverrides;
 use gdscript_formatter::linter::fix::unified_diff;
-use gdscript_formatter::linter::output::{LintReport, OutputFormat, write_report};
+use gdscript_formatter::linter::output::{LintReport, OutputFormat, display_path, write_report};
 use gdscript_formatter::linter::rule_config::parse_disabled_rules;
 use gdscript_formatter::linter::{
     FixRunReport, LintRunOptions, fix_files, fix_stdin, lint_files, lint_stdin,
@@ -116,12 +120,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         {
             exit_not_implemented(&format!("--format {}", format.as_str()));
         }
-        if baseline_path.is_some() {
-            exit_not_implemented("--baseline");
+        if do_update_baseline && (do_fix || do_fix_unsafe || do_diff) {
+            eprintln!(
+                "Error: --update-baseline can't be combined with --fix, --fix-unsafe or --diff"
+            );
+            std::process::exit(2);
         }
-        if do_update_baseline {
-            exit_not_implemented("--update-baseline");
-        }
+        let current_directory = match env::current_dir() {
+            Ok(directory) => directory,
+            Err(error) => {
+                eprintln!("Error: Failed to get current directory: {}", error);
+                std::process::exit(2);
+            }
+        };
+        let baseline_target = match resolve_baseline(
+            baseline_path.as_deref(),
+            config_path.as_deref(),
+            &current_directory,
+            do_update_baseline,
+        ) {
+            Ok(target) => target,
+            Err(error) => {
+                eprintln!("Error: {}", error);
+                std::process::exit(2);
+            }
+        };
 
         // `--format` wins; the old `--pretty` flag means `--format pretty`.
         // Otherwise: pretty for people at a terminal, compact for tools.
@@ -139,6 +162,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             config_path,
             stdin_filename,
         };
+        if do_update_baseline {
+            std::process::exit(run_update_baseline(
+                lint_command,
+                baseline_target,
+                &current_directory,
+            ));
+        }
+        let baseline = match load_run_baseline(baseline_target) {
+            Ok(baseline) => baseline,
+            Err(error) => {
+                eprintln!("Error: {}", error);
+                std::process::exit(2);
+            }
+        };
         if do_fix || do_fix_unsafe || do_diff {
             let fix_command = FixCommand {
                 allow_unsafe: do_fix_unsafe,
@@ -146,17 +183,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 format,
                 is_terminal,
                 max_warnings,
+                baseline,
+                current_directory,
             };
             std::process::exit(run_fix_command(lint_command, &fix_command));
         }
         // Exit codes: 0 clean, 1 lint problems, 2 usage or config errors.
-        let report = match run_linter(lint_command) {
+        let mut report = match run_linter(lint_command) {
             Ok(report) => report,
             Err(error) => {
                 eprintln!("Error: {}", error);
                 std::process::exit(2);
             }
         };
+        if let Some((baseline, root)) = &baseline {
+            report.baseline_hidden =
+                apply_baseline(baseline, &mut report, &current_directory, root);
+        }
         let mut output = String::new();
         if let Err(error) = write_report(format, &report, is_terminal, &mut output) {
             eprintln!("Error: {}", error);
@@ -543,6 +586,54 @@ struct FixCommand {
     format: OutputFormat,
     is_terminal: bool,
     max_warnings: Option<usize>,
+    /// The baseline to hide issues with, and its root folder.
+    baseline: Option<(Baseline, PathBuf)>,
+    current_directory: PathBuf,
+}
+
+/// Loads the baseline for a lint or fix run, with the folder its paths are
+/// relative to.
+fn load_run_baseline(
+    target: Option<BaselineTarget>,
+) -> Result<Option<(Baseline, PathBuf)>, String> {
+    let Some(target) = target else {
+        return Ok(None);
+    };
+    let baseline = load_target(&target)?;
+    Ok(Some((baseline, target.root)))
+}
+
+/// `lint --update-baseline`: lints, writes every issue to the baseline file
+/// and returns the exit code (0, or 2 on errors).
+fn run_update_baseline(
+    lint_command: LintCommand,
+    target: Option<BaselineTarget>,
+    current_directory: &Path,
+) -> i32 {
+    let Some(target) = target else {
+        eprintln!("Error: no baseline path");
+        return 2;
+    };
+    let report = match run_linter(lint_command) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("Error: {}", error);
+            return 2;
+        }
+    };
+    let entries = baseline_entries_for_report(&report, current_directory, &target.root);
+    let entry_count = entries.len();
+    if let Err(error) = write_baseline(&target.path, entries) {
+        eprintln!("Error: {}", error);
+        return 2;
+    }
+    let shown_path = match target.path.strip_prefix(current_directory) {
+        Ok(relative) => display_path(relative),
+        Err(_) => display_path(&target.path),
+    };
+    let issue_word = if entry_count == 1 { "issue" } else { "issues" };
+    println!("Wrote {} {} to {}", entry_count, issue_word, shown_path);
+    0
 }
 
 /// Runs the fix engine and returns the exit code.
@@ -555,13 +646,21 @@ struct FixCommand {
 ///
 /// The exit code of a fix run follows the issues left after fixing.
 fn run_fix_command(lint_command: LintCommand, fix_command: &FixCommand) -> i32 {
-    let fix_report = match run_fixer(lint_command, fix_command.allow_unsafe) {
+    let mut fix_report = match run_fixer(lint_command, fix_command.allow_unsafe) {
         Ok(fix_report) => fix_report,
         Err(error) => {
             eprintln!("Error: {}", error);
             return 2;
         }
     };
+    if let Some((baseline, root)) = &fix_command.baseline {
+        fix_report.report.baseline_hidden = apply_baseline(
+            baseline,
+            &mut fix_report.report,
+            &fix_command.current_directory,
+            root,
+        );
+    }
 
     if fix_command.diff_only {
         let mut diff_output = String::new();

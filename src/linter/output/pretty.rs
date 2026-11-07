@@ -63,6 +63,12 @@ pub fn write_pretty(report: &LintReport, with_colors: bool, output: &mut String)
     let summary = report.summary();
     let problem_count = summary.errors + summary.warnings + summary.infos;
     if problem_count == 0 {
+        if report.baseline_hidden > 0 {
+            output.push_str(&format!(
+                "No problems found. {} hidden by baseline.\n",
+                plural(report.baseline_hidden, "issue")
+            ));
+        }
         return;
     }
     let mut counts: Vec<String> = Vec::with_capacity(3);
@@ -81,6 +87,12 @@ pub fn write_pretty(report: &LintReport, with_colors: bool, output: &mut String)
     ));
     if summary.fixable > 0 {
         output.push_str(&format!(" {} fixable with --fix.", summary.fixable));
+    }
+    if report.baseline_hidden > 0 {
+        output.push_str(&format!(
+            " {} hidden by baseline.",
+            plural(report.baseline_hidden, "issue")
+        ));
     }
     output.push('\n');
 }

@@ -59,6 +59,8 @@ pub struct LintReport {
     pub files: Vec<FileDiagnostics>,
     /// How many files were linted, including clean ones.
     pub files_checked: usize,
+    /// How many issues the baseline hid. They are not in `files`.
+    pub baseline_hidden: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

@@ -376,6 +376,7 @@ pub fn lint_stdin(
     let mut report = LintReport {
         files: Vec::with_capacity(1),
         files_checked: 1,
+        baseline_hidden: 0,
     };
     if !diagnostics.is_empty() {
         report.files.push(FileDiagnostics {

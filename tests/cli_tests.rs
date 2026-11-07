@@ -137,11 +137,9 @@ fn unimplemented_lint_flags_exit_with_code_2_and_name_the_flag() {
     let directory = test_directory();
     fs::write(directory.join("a.gd"), "var a = 1\n").expect("should write input file");
 
-    let cases: [(&[&str], &str); 4] = [
+    let cases: [(&[&str], &str); 2] = [
         (&["lint", "--format", "github", "a.gd"], "--format github"),
         (&["lint", "--format=sarif", "a.gd"], "--format sarif"),
-        (&["lint", "--baseline=baseline.json", "a.gd"], "--baseline"),
-        (&["lint", "--update-baseline", "a.gd"], "--update-baseline"),
     ];
     for (args, flag) in cases {
         let (exit_code, stderr) = run_and_capture_stderr(&directory, args);

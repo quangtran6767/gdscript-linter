@@ -31,6 +31,8 @@ struct JsonSummary {
     warnings: usize,
     infos: usize,
     fixable: usize,
+    /// Added in W4; optional for readers of version 1.
+    baseline_hidden: usize,
 }
 
 #[derive(Serialize)]
@@ -161,6 +163,7 @@ pub fn write_json(report: &LintReport, output: &mut String) -> Result<(), String
             warnings: summary.warnings,
             infos: summary.infos,
             fixable: summary.fixable,
+            baseline_hidden: report.baseline_hidden,
         },
         issues,
     };

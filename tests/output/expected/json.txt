@@ -9,7 +9,8 @@
     "errors": 2,
     "warnings": 2,
     "infos": 1,
-    "fixable": 1
+    "fixable": 1,
+    "baseline_hidden": 0
   },
   "issues": [
     {

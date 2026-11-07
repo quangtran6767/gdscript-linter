@@ -114,6 +114,7 @@ fn sample_report() -> LintReport {
             },
         ],
         files_checked: 3,
+        baseline_hidden: 0,
     }
 }
 
@@ -176,6 +177,7 @@ fn empty_report_prints_nothing_except_json() {
     let report = LintReport {
         files: Vec::new(),
         files_checked: 2,
+        baseline_hidden: 0,
     };
     assert_eq!(render(OutputFormat::Pretty, &report, false), "");
     assert_eq!(render(OutputFormat::Compact, &report, false), "");
