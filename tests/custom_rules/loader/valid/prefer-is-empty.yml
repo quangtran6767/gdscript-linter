@@ -1,0 +1,16 @@
+id: prefer-is-empty
+severity: warning
+message: "Use `$X.is_empty()` instead of `len($X) == 0`"
+help: "is_empty() states the intent and works on Array, Dictionary and String."
+rationale: |
+  Comparing len() to zero hides the intent of the check.
+rule:
+  pattern: len($X) == 0
+fix: $X.is_empty()
+fixSafety: safe
+tests:
+  invalid:
+    - code: "if len(items) == 0:\n\tpass"
+      output: "if items.is_empty():\n\tpass"
+  valid:
+    - "if items.is_empty():\n\tpass"

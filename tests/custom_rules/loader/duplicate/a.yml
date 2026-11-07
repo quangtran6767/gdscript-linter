@@ -1,0 +1,4 @@
+id: same-id
+message: "First"
+rule:
+  pattern: print($$$A)

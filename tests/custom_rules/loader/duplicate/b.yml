@@ -1,0 +1,4 @@
+id: same-id
+message: "Second"
+rule:
+  pattern: push_warning($$$A)
