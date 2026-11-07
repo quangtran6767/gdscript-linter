@@ -154,11 +154,7 @@ fn unimplemented_lint_flags_exit_with_code_2_and_name_the_flag() {
 #[test]
 fn unimplemented_subcommands_exit_with_code_2_and_name_the_command() {
     let directory = test_directory();
-    let cases: [(&[&str], &str); 3] = [
-        (&["explain", "unused-argument"], "explain"),
-        (&["init", "--force"], "init"),
-        (&["lsp"], "lsp"),
-    ];
+    let cases: [(&[&str], &str); 1] = [(&["lsp"], "lsp")];
     for (args, command) in cases {
         let (exit_code, stderr) = run_and_capture_stderr(&directory, args);
         assert_eq!(exit_code, 2, "{:?} should exit with code 2", args);
@@ -168,28 +164,15 @@ fn unimplemented_subcommands_exit_with_code_2_and_name_the_command() {
 }
 
 #[test]
-fn list_rules_json_is_not_implemented_yet() {
-    let directory = test_directory();
-    let (exit_code, stderr) =
-        run_and_capture_stderr(&directory, &["lint", "--list-rules", "--format", "json"]);
-    assert_eq!(exit_code, 2);
-    assert_eq!(
-        stderr,
-        "`--list-rules --format json` is not implemented yet\n"
-    );
-    fs::remove_dir_all(directory).expect("should remove temporary test directory");
-}
-
-#[test]
-fn list_rules_text_output_is_unchanged() {
+fn list_rules_text_output_lists_rules_sorted_by_id() {
     let directory = test_directory();
     let output = formatter_command(&directory, &["lint", "--list-rules"])
         .output()
         .expect("should list rules");
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
-    assert!(stdout.starts_with("Available linting rules:\n  duplicated-load\n"));
-    assert!(stdout.contains("  constant-name\n"));
+    assert!(stdout.starts_with("Available linting rules:\n  class-name "));
+    assert!(stdout.contains("\n  duplicated-load "));
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
 }
 
