@@ -73,19 +73,12 @@ fn rule_folders(args: &TestRulesArgs) -> Result<Vec<PathBuf>, String> {
     if let Some(folder) = &args.rule_dir {
         return Ok(vec![folder.clone()]);
     }
-    match load_config_for(Path::new(".")) {
-        Ok(config) => {
-            if !config.custom_rule_paths.is_empty() {
-                return Ok(config.custom_rule_paths);
-            }
-        }
-        Err(error) => {
-            // Until W2-A lands, the config loader is a stub; fall back to the
-            // default folder instead of failing.
-            if error.message != "not implemented yet" {
-                return Err(error.to_string());
-            }
-        }
+    let config = match load_config_for(Path::new(".")) {
+        Ok(config) => config,
+        Err(error) => return Err(error.to_string()),
+    };
+    if !config.custom_rule_paths.is_empty() {
+        return Ok(config.custom_rule_paths);
     }
     Ok(vec![PathBuf::from(DEFAULT_RULE_DIR)])
 }
