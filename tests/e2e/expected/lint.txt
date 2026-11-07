@@ -1,0 +1,16 @@
+./scripts/enemies/enemy.gd:3:signal-name:error: Signal name 'OnDefeated' should be in snake_case format
+./scripts/enemies/enemy.gd:5:enum-name:error: Enum name 'state' should be in PascalCase format
+./scripts/enemies/enemy.gd:7:enum-member-name:error: Enum element name 'chase_player' should be in CONSTANT_CASE format
+./scripts/enemies/enemy.gd:11:variable-name:error: Variable name 'targetName' should be in snake_case or _private_snake_case format
+./scripts/enemies/enemy.gd:14:function-name:error: Function name 'moveTowards' should be in snake_case, _private_snake_case format
+./scripts/enemies/enemy.gd:15:comparison-with-itself:warning: Redundant comparison 'target == target' - comparing expression with itself
+./scripts/enemies/enemy.gd:23:no-else-return:warning: Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'
+./scripts/enemies/enemy.gd:28:private-access:error: Private variable '_health' should not be accessed from outside its class
+./scripts/enemies/enemy.gd:33:unnecessary-pass:warning: Unnecessary 'pass' statement when other statements are present
+./scripts/player.gd:12:unused-argument:warning: Function argument 'delta' is unused. Consider removing it or prefixing with '_'
+./scripts/player.gd:20:unused-argument:warning: Function argument 'source' is unused. Consider removing it or prefixing with '_'
+./scripts/ui/hud.gd:5:duplicated-load:warning: Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
+./scripts/ui/hud.gd:6:duplicated-load:warning: Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
+./scripts/ui/hud.gd:11:loop-variable-name:error: Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format
+./scripts/ui/hud.gd:16:standalone-expression:warning: Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect
+./scripts/ui/hud.gd:17:max-line-length:warning: Line is too long. Found 118 characters, maximum allowed is 100

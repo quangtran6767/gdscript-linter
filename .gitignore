@@ -10,3 +10,6 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# Linter cache (gdguard)
+.gdguard/cache/

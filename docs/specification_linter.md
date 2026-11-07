@@ -5,8 +5,10 @@ what the linter does, the shared data contracts every part of the code relies
 on, and the file formats users and AI agents see. The work split
 lives in `docs/implementation_plan.md`.
 
-Working name: **`gdguard`** (placeholder until the name is decided in M0 of the
-plan; rename with a project-wide find and replace). Don't use `gdlint` because
+Tool name: **`gdguard`** (decided in W0). The binary, the config file
+`gdguard.toml`, the rules folder `.gdguard/` and the ignore prefix
+`gdguard-ignore` all use it. The Cargo package and binary keep the name
+`gdscript-formatter` until W8 renames them. Don't use `gdlint` because
 gdtoolkit's Python linter already uses that name.
 
 ## Goals
@@ -54,7 +56,7 @@ built-in rule or a custom rule.
 
 ## Shared contracts (`src/linter/diagnostic.rs`)
 
-This module is **frozen after M0**. Changes must be additive (new optional
+This module is **frozen after W0**. Changes must be additive (new optional
 fields) and need a PR approved by both developers.
 
 ### Positions
@@ -136,10 +138,32 @@ pub trait RuleProvider {
 pub fn apply_edits(source: &str, edits: &[Edit]) -> Result<String, String>;
 ```
 
+`apply_edits` details: edits are sorted by `(start_byte, end_byte)`, so an
+insertion at the start of a replaced range goes first, and edits with the same
+range keep their input order. Two edits overlap when one starts before the
+previous one ends; touching edits are fine. Ranges past the end of the source
+or not on UTF-8 character boundaries are errors too.
+
+Helpers added in W0 (additive):
+
+```rust
+impl Position { pub fn from_byte(source: &str, byte: usize) -> Position; }
+impl Span {
+    pub fn from_node(node: &tree_sitter::Node) -> Span;
+    pub fn from_byte_range(source: &str, start_byte: usize, end_byte: usize) -> Span;
+}
+impl Severity  { pub fn as_str(self) -> &'static str; pub fn from_name(name: &str) -> Option<Severity>; }
+impl FixSafety { pub fn as_str(self) -> &'static str; pub fn from_name(name: &str) -> Option<FixSafety>; }
+```
+
+All contract types derive `Debug`, `Clone` and `PartialEq` (`Position`, `Span`,
+`Severity` and `FixSafety` are also `Copy`), except `FileContext`, which only
+borrows.
+
 ### Library API (`src/linter/api.rs`)
 
 The CLI, the LSP server and the Godot gdextension all go through this API, so
-none of them depend on CLI internals. Signatures are frozen in M0; the bodies
+none of them depend on CLI internals. Signatures are frozen in W0; the bodies
 are filled in by Track A.
 
 ```rust
@@ -157,6 +181,60 @@ pub struct FixResult { pub output: String, pub applied: usize, pub remaining: Ve
 pub fn fix_source(path: &Path, source: &str, config: &Config, unsafe_fixes: bool)
     -> Result<FixResult, String>;
 ```
+
+The config types. Every field is `pub` and `Config` derives `Default`, so
+tests build it by hand (`Config { custom_rule_paths: vec![dir], ..Config::default() }`).
+Maps are `BTreeMap` so iteration order and the config hash are stable.
+
+```rust
+pub enum RuleLevel { Off, Info, Warning, Error }   // as_str() / from_name()
+
+pub struct RuleSetting {
+    pub level: Option<RuleLevel>,   // None keeps the rule's default severity
+    pub options: toml::Table,       // every key of the table form except `level`
+}
+
+pub struct ConfigOverride {
+    pub files: Vec<String>,                       // globs, relative to the config folder
+    pub rules: BTreeMap<String, RuleSetting>,
+}
+
+pub struct Config {
+    pub config_path: Option<PathBuf>,             // None: no gdguard.toml found
+    pub rules: BTreeMap<String, RuleSetting>,     // [rules], built-in and custom ids
+    pub custom_rule_paths: Vec<PathBuf>,          // [custom_rules].paths, resolved
+    pub exclude: Vec<String>,                     // [lint].exclude globs
+    pub baseline: Option<PathBuf>,                // [lint].baseline, resolved
+    pub overrides: Vec<ConfigOverride>,           // [[overrides]], later entries win
+    pub max_line_length: Option<usize>,           // None: .editorconfig, then 100
+    pub indent_size: Option<usize>,               // None: .editorconfig, then 4
+}
+
+/// Displays as "<path>: `<key>`: <message>", leaving out the parts that are None.
+pub struct ConfigError { pub path: Option<PathBuf>, pub key: Option<String>, pub message: String }
+```
+
+Entry points owned by Track B, called by the CLI (frozen in W0 so B never
+edits `src/cli.rs` or `src/main.rs`). Each returns the process exit code.
+
+```rust
+// src/linter/custom/mod.rs
+pub fn load_providers(config: &Config) -> Result<Vec<Box<dyn RuleProvider>>, String>;
+// src/linter/explain.rs
+pub struct ExplainArgs { pub rule: String }
+pub enum ListRulesFormat { Text, Json }
+pub fn run(args: &ExplainArgs) -> i32;
+pub fn list_rules(format: ListRulesFormat) -> i32;
+// src/linter/rule_tester.rs
+pub struct TestRulesArgs { pub rule_dir: Option<PathBuf> }
+pub fn run(args: &TestRulesArgs) -> i32;
+// src/linter/init.rs
+pub struct InitArgs { pub force: bool }
+pub fn run(args: &InitArgs) -> i32;
+```
+
+`lint --format` parses into `output::OutputFormat { Pretty, Compact, Json,
+Github, Sarif }` (`src/linter/output/mod.rs`, Track A).
 
 ## Configuration (`gdguard.toml`)
 
@@ -233,7 +311,7 @@ metavariables.
 Metavariables: `$X` matches one node, `$$$ARGS` matches zero or more. GDScript
 already uses `$` for node paths (`$Player`). The engine parses a pattern's
 `$UPPERCASE` names as metavariables. To match a literal node path, write
-`$$Player` (escaped) or use `kind: get_node` with a `regex`. M0/B1 confirms the
+`$$Player` (escaped) or use `kind: get_node` with a `regex`. W1/B1 confirms the
 exact escape after the engine spike.
 
 Validation errors (bad YAML, unknown keys, a pattern that doesn't parse as
@@ -267,8 +345,13 @@ gdguard lint [FILES...]                 # default: whole project
   --list-rules [--format json]
 gdguard explain <RULE>                   # rationale, examples, fixability
 gdguard test-rules [RULE_DIR]            # run YAML rule tests
-gdguard init                             # write a starter gdguard.toml and .gdguard/
+gdguard init [--force]                   # write a starter gdguard.toml and .gdguard/
+gdguard lsp                              # language server on stdin/stdout
 ```
+
+Until a flag or subcommand is implemented, it prints
+``"`<flag>` is not implemented yet"`` on stderr and exits with code 2.
+`--list-rules` accepts `--format text` (default) or `--format json`.
 
 Exit codes:
 

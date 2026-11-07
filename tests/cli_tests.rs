@@ -117,3 +117,118 @@ fn stdin_and_file_modes_apply_editorconfig_and_cli_overrides() {
 
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
 }
+
+/// Runs the binary and returns its exit code and stderr.
+fn run_and_capture_stderr(directory: &std::path::Path, args: &[&str]) -> (i32, String) {
+    let output = formatter_command(directory, args)
+        .stdin(Stdio::null())
+        .output()
+        .expect("should run the binary");
+    let exit_code = output
+        .status
+        .code()
+        .expect("the binary should exit with a code");
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be valid UTF-8");
+    (exit_code, stderr)
+}
+
+#[test]
+fn unimplemented_lint_flags_exit_with_code_2_and_name_the_flag() {
+    let directory = test_directory();
+    fs::write(directory.join("a.gd"), "var a = 1\n").expect("should write input file");
+
+    let cases: [(&[&str], &str); 9] = [
+        (&["lint", "--fix", "a.gd"], "--fix"),
+        (&["lint", "--fix-unsafe", "a.gd"], "--fix-unsafe"),
+        (&["lint", "--diff", "a.gd"], "--diff"),
+        (&["lint", "--format", "json", "a.gd"], "--format"),
+        (&["lint", "--config", "gdguard.toml", "a.gd"], "--config"),
+        (&["lint", "--baseline=baseline.json", "a.gd"], "--baseline"),
+        (&["lint", "--update-baseline", "a.gd"], "--update-baseline"),
+        (&["lint", "--max-warnings", "0", "a.gd"], "--max-warnings"),
+        (&["lint", "--stdin-filename", "a.gd"], "--stdin-filename"),
+    ];
+    for (args, flag) in cases {
+        let (exit_code, stderr) = run_and_capture_stderr(&directory, args);
+        assert_eq!(exit_code, 2, "{:?} should exit with code 2", args);
+        assert_eq!(stderr, format!("`{}` is not implemented yet\n", flag));
+    }
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn unimplemented_subcommands_exit_with_code_2_and_name_the_command() {
+    let directory = test_directory();
+    let cases: [(&[&str], &str); 5] = [
+        (&["explain", "unused-argument"], "explain"),
+        (&["test-rules"], "test-rules"),
+        (&["test-rules", "rules"], "test-rules"),
+        (&["init", "--force"], "init"),
+        (&["lsp"], "lsp"),
+    ];
+    for (args, command) in cases {
+        let (exit_code, stderr) = run_and_capture_stderr(&directory, args);
+        assert_eq!(exit_code, 2, "{:?} should exit with code 2", args);
+        assert_eq!(stderr, format!("`{}` is not implemented yet\n", command));
+    }
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn list_rules_json_is_not_implemented_yet() {
+    let directory = test_directory();
+    let (exit_code, stderr) =
+        run_and_capture_stderr(&directory, &["lint", "--list-rules", "--format", "json"]);
+    assert_eq!(exit_code, 2);
+    assert_eq!(
+        stderr,
+        "`--list-rules --format json` is not implemented yet\n"
+    );
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn list_rules_text_output_is_unchanged() {
+    let directory = test_directory();
+    let output = formatter_command(&directory, &["lint", "--list-rules"])
+        .output()
+        .expect("should list rules");
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+    assert!(stdout.starts_with("Available linting rules:\n  duplicated-load\n"));
+    assert!(stdout.contains("  constant-name\n"));
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn bad_subcommand_and_format_arguments_are_usage_errors() {
+    let directory = test_directory();
+    let cases: [(&[&str], &str); 5] = [
+        (
+            &["lint", "--format", "xml", "a.gd"],
+            "gdscript-formatter: error: --format expects pretty, compact, json, github or sarif, got 'xml'\n",
+        ),
+        (
+            &["lint", "--list-rules", "--format", "sarif"],
+            "gdscript-formatter: error: --format with --list-rules expects text or json, got 'sarif'\n",
+        ),
+        (
+            &["explain"],
+            "gdscript-formatter: error: explain requires a rule id: explain <RULE>\n",
+        ),
+        (
+            &["test-rules", "a", "b"],
+            "gdscript-formatter: error: unexpected argument 'b' for 'test-rules'\n",
+        ),
+        (
+            &["init", "--oops"],
+            "gdscript-formatter: error: unexpected argument '--oops' for 'init'\n",
+        ),
+    ];
+    for (args, expected_stderr) in cases {
+        let (exit_code, stderr) = run_and_capture_stderr(&directory, args);
+        assert_eq!(exit_code, 2, "{:?} should exit with code 2", args);
+        assert_eq!(stderr, expected_stderr);
+    }
+    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
