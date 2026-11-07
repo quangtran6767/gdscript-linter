@@ -1,0 +1,11 @@
+id: no-get-node-in-process
+severity: info
+message: "Cache the node in `_ready()` instead of calling `get_node()` every frame"
+rule:
+  pattern: get_node($$$ARGS)
+  inside:
+    kind: function_definition
+    has:
+      field: name
+      regex: ^_(physics_)?process$
+    stopBy: end

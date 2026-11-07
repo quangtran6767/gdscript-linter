@@ -2,6 +2,7 @@
 //! the `RuleProvider` that turns matches into `Diagnostic`s.
 
 pub mod language;
+pub mod loader;
 
 #[cfg(test)]
 mod spike_tests;
