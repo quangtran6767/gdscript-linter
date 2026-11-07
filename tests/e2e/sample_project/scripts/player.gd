@@ -10,7 +10,7 @@ var _health := 100
 
 
 func _process(delta: float) -> void:
-	# Looked up every frame: the planned `no-get-node-in-process` rule flags it.
+	# Looked up every frame: the custom `no-get-node-in-process` rule flags it.
 	var health_bar = get_node("HealthBar")
 	health_bar.value = _health
 	if len(inventory) == 0:
@@ -24,5 +24,5 @@ func take_damage(amount: int, source: Node) -> void:
 
 
 func has_items() -> bool:
-	# The planned `prefer-is-empty` rule flags `len(...) > 0` too.
+	# `prefer-is-empty` only flags `len(...) == 0`, so this line is clean.
 	return len(inventory) > 0

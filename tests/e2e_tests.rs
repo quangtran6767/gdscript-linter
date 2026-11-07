@@ -23,8 +23,20 @@ struct CommandOutput {
     stderr: String,
 }
 
-/// Runs the binary inside the sample project with `args`.
+/// Runs the binary inside the sample project with `args`. Backslashes in
+/// stdout become `/`, so text snapshots match on Windows.
 fn run_in_sample_project(args: &[&str]) -> CommandOutput {
+    let mut output = run_in_sample_project_raw(args);
+    // Windows prints `.\scripts\a.gd`; snapshots use `/` so they work on
+    // every platform.
+    output.stdout = output.stdout.replace('\\', "/");
+    output
+}
+
+/// Runs the binary inside the sample project with `args`, leaving stdout as
+/// is. JSON output needs this: its escapes contain backslashes, and its paths
+/// already use `/`.
+fn run_in_sample_project_raw(args: &[&str]) -> CommandOutput {
     let output = Command::new(env!("CARGO_BIN_EXE_gdscript-formatter"))
         .current_dir(sample_project_path())
         .args(args)
@@ -36,11 +48,7 @@ fn run_in_sample_project(args: &[&str]) -> CommandOutput {
             .status
             .code()
             .expect("the binary should exit with a code"),
-        // Windows prints `.\scripts\a.gd`; snapshots use `/` so they work on
-        // every platform.
-        stdout: String::from_utf8(output.stdout)
-            .expect("stdout should be valid UTF-8")
-            .replace('\\', "/"),
+        stdout: String::from_utf8(output.stdout).expect("stdout should be valid UTF-8"),
         stderr: String::from_utf8(output.stderr).expect("stderr should be valid UTF-8"),
     }
 }
@@ -94,15 +102,31 @@ fn lint_exit_codes_on_sample_project() {
     let clean = run_in_sample_project(&["lint", "scripts/clean.gd"]);
     assert_eq!(clean.exit_code, 0, "stdout: {}", clean.stdout);
 
-    // player.gd has 2 warnings and no errors.
-    let player_strict = run_in_sample_project(&["lint", "scripts/player.gd"]);
+    // player.gd has one error (the custom `no-get-node-in-process`, raised to
+    // `error` in gdguard.toml), one warning and two infos. Without the error,
+    // only the warning counts against `--max-warnings`; infos never fail.
+    let player = run_in_sample_project(&["lint", "scripts/player.gd"]);
+    assert_eq!(player.exit_code, 1);
+    let player_allowed = run_in_sample_project(&[
+        "lint",
+        "--disable",
+        "no-get-node-in-process",
+        "--max-warnings",
+        "1",
+        "scripts/player.gd",
+    ]);
+    assert_eq!(
+        player_allowed.exit_code, 0,
+        "stderr: {}",
+        player_allowed.stderr
+    );
+    let player_strict = run_in_sample_project(&[
+        "lint",
+        "--disable",
+        "no-get-node-in-process",
+        "scripts/player.gd",
+    ]);
     assert_eq!(player_strict.exit_code, 1);
-    let player_allowed =
-        run_in_sample_project(&["lint", "--max-warnings", "2", "scripts/player.gd"]);
-    assert_eq!(player_allowed.exit_code, 0);
-    let player_one_allowed =
-        run_in_sample_project(&["lint", "--max-warnings", "1", "scripts/player.gd"]);
-    assert_eq!(player_one_allowed.exit_code, 1);
 
     // enemy.gd has errors, which always fail.
     let enemy =
@@ -120,4 +144,47 @@ fn lint_sample_project_pretty_output() {
     let output = run_in_sample_project(&["lint", "--pretty", "."]);
     assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
     assert_snapshot("lint_pretty.txt", &output.stdout);
+}
+
+// W2: custom YAML rules from `.gdguard/rules/` run with the built-in rules,
+// with levels from `gdguard.toml`. JSON output is snapshotted.
+#[test]
+fn lint_sample_project_json_output() {
+    let output = run_in_sample_project_raw(&["lint", "--format", "json", "."]);
+    assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
+    assert_eq!(output.stderr, "");
+    let report: serde_json::Value =
+        serde_json::from_str(&output.stdout).expect("json output should parse");
+    assert_eq!(report["version"], 1);
+    // The tool version changes with each release; the snapshot doesn't.
+    let stdout = output.stdout.replace(
+        &format!("\"version\": \"{}\"", env!("CARGO_PKG_VERSION")),
+        "\"version\": \"<version>\"",
+    );
+    assert_snapshot("lint.json", &stdout);
+}
+
+#[test]
+fn custom_rules_report_with_config_levels() {
+    let output = run_in_sample_project(&["lint", "--format", "compact", "scripts/player.gd"]);
+    assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
+    assert!(output.stdout.contains(
+        "scripts/player.gd:14:19: error [no-get-node-in-process] Don't call `get_node()` in `_process()`"
+    ));
+    assert!(output.stdout.contains(
+        "scripts/player.gd:16:5: warning [prefer-is-empty] Use `inventory.is_empty()` instead of `len(inventory) == 0`"
+    ));
+    assert!(output.stdout.contains("info [unused-argument]"));
+}
+
+#[test]
+fn test_rules_passes_on_sample_project_rules() {
+    let output = run_in_sample_project(&["test-rules"]);
+    assert_eq!(
+        output.exit_code, 0,
+        "stdout: {}\nstderr: {}",
+        output.stdout, output.stderr
+    );
+    assert!(output.stdout.contains("prefer-is-empty"));
+    assert!(output.stdout.contains("no-get-node-in-process"));
 }

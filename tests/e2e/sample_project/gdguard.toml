@@ -1,0 +1,9 @@
+# Config for the end-to-end tests. Covers custom rules, a custom rule level
+# and a built-in rule level.
+
+[rules]
+no-get-node-in-process = "error"
+unused-argument = "info"
+
+[custom_rules]
+paths = [".gdguard/rules"]

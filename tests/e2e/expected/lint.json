@@ -1,0 +1,448 @@
+{
+  "version": 1,
+  "tool": {
+    "name": "gdguard",
+    "version": "<version>"
+  },
+  "summary": {
+    "files": 5,
+    "errors": 8,
+    "warnings": 8,
+    "infos": 2,
+    "fixable": 1
+  },
+  "issues": [
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "signal-name",
+      "origin": "builtin",
+      "severity": "error",
+      "message": "Signal name 'OnDefeated' should be in snake_case format",
+      "help": "Rename it to 'on_defeated'.",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 8,
+          "byte": 23
+        },
+        "end": {
+          "line": 3,
+          "column": 18,
+          "byte": 33
+        }
+      },
+      "snippet": "signal OnDefeated",
+      "explain": "gdguard explain signal-name",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "enum-name",
+      "origin": "builtin",
+      "severity": "error",
+      "message": "Enum name 'state' should be in PascalCase format",
+      "help": "Rename it to 'State'.",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 6,
+          "byte": 40
+        },
+        "end": {
+          "line": 5,
+          "column": 11,
+          "byte": 45
+        }
+      },
+      "snippet": "enum state {",
+      "explain": "gdguard explain enum-name",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "enum-member-name",
+      "origin": "builtin",
+      "severity": "error",
+      "message": "Enum element name 'chase_player' should be in CONSTANT_CASE format",
+      "help": "Rename it to 'CHASE_PLAYER'.",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 2,
+          "byte": 56
+        },
+        "end": {
+          "line": 7,
+          "column": 14,
+          "byte": 68
+        }
+      },
+      "snippet": "\tchase_player,",
+      "explain": "gdguard explain enum-member-name",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "variable-name",
+      "origin": "builtin",
+      "severity": "error",
+      "message": "Variable name 'targetName' should be in snake_case or _private_snake_case format",
+      "help": "Rename it to 'target_name'.",
+      "range": {
+        "start": {
+          "line": 11,
+          "column": 5,
+          "byte": 96
+        },
+        "end": {
+          "line": 11,
+          "column": 15,
+          "byte": 106
+        }
+      },
+      "snippet": "var targetName := \"\"",
+      "explain": "gdguard explain variable-name",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "function-name",
+      "origin": "builtin",
+      "severity": "error",
+      "message": "Function name 'moveTowards' should be in snake_case, _private_snake_case format",
+      "help": "Rename it to 'move_towards'.",
+      "range": {
+        "start": {
+          "line": 14,
+          "column": 6,
+          "byte": 120
+        },
+        "end": {
+          "line": 14,
+          "column": 17,
+          "byte": 131
+        }
+      },
+      "snippet": "func moveTowards(target: Node2D) -> void:",
+      "explain": "gdguard explain function-name",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "comparison-with-itself",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Redundant comparison 'target == target' - comparing expression with itself",
+      "help": "The result never changes. Compare with the value you meant to check, or remove the condition.",
+      "range": {
+        "start": {
+          "line": 15,
+          "column": 5,
+          "byte": 161
+        },
+        "end": {
+          "line": 15,
+          "column": 21,
+          "byte": 177
+        }
+      },
+      "snippet": "\tif target == target:",
+      "explain": "gdguard explain comparison-with-itself",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "no-else-return",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'",
+      "help": "Remove the 'else' line and dedent its body: the blocks before it always return.",
+      "range": {
+        "start": {
+          "line": 23,
+          "column": 2,
+          "byte": 303
+        },
+        "end": {
+          "line": 23,
+          "column": 6,
+          "byte": 307
+        }
+      },
+      "snippet": "\telse:",
+      "explain": "gdguard explain no-else-return",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "private-access",
+      "origin": "builtin",
+      "severity": "error",
+      "message": "Private variable '_health' should not be accessed from outside its class",
+      "help": "Use a public property or method instead, or make this one public by removing the leading underscore.",
+      "range": {
+        "start": {
+          "line": 28,
+          "column": 16,
+          "byte": 371
+        },
+        "end": {
+          "line": 28,
+          "column": 23,
+          "byte": 378
+        }
+      },
+      "snippet": "\treturn player._health",
+      "explain": "gdguard explain private-access",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "unnecessary-pass",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Unnecessary 'pass' statement when other statements are present",
+      "help": "Remove the 'pass' statement.",
+      "range": {
+        "start": {
+          "line": 33,
+          "column": 2,
+          "byte": 416
+        },
+        "end": {
+          "line": 33,
+          "column": 6,
+          "byte": 420
+        }
+      },
+      "snippet": "\tpass",
+      "explain": "gdguard explain unnecessary-pass",
+      "fixes": []
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "unused-argument",
+      "origin": "builtin",
+      "severity": "info",
+      "message": "Function argument 'delta' is unused. Consider removing it or prefixing with '_'",
+      "help": "Remove 'delta', or rename it to '_delta' if the function signature must stay the same.",
+      "range": {
+        "start": {
+          "line": 12,
+          "column": 15,
+          "byte": 138
+        },
+        "end": {
+          "line": 12,
+          "column": 20,
+          "byte": 143
+        }
+      },
+      "snippet": "func _process(delta: float) -> void:",
+      "explain": "gdguard explain unused-argument",
+      "fixes": []
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "no-get-node-in-process",
+      "origin": "custom",
+      "severity": "error",
+      "message": "Don't call `get_node()` in `_process()`; cache the node in an `@onready` variable",
+      "help": "Add `@onready var node := get_node(...)` at the top of the script and use the variable.",
+      "range": {
+        "start": {
+          "line": 14,
+          "column": 19,
+          "byte": 256
+        },
+        "end": {
+          "line": 14,
+          "column": 40,
+          "byte": 277
+        }
+      },
+      "snippet": "\tvar health_bar = get_node(\"HealthBar\")",
+      "explain": "gdguard explain no-get-node-in-process",
+      "fixes": []
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "prefer-is-empty",
+      "origin": "custom",
+      "severity": "warning",
+      "message": "Use `inventory.is_empty()` instead of `len(inventory) == 0`",
+      "help": "`is_empty()` states the intent and works on Array, Dictionary and String.",
+      "range": {
+        "start": {
+          "line": 16,
+          "column": 5,
+          "byte": 310
+        },
+        "end": {
+          "line": 16,
+          "column": 24,
+          "byte": 329
+        }
+      },
+      "snippet": "\tif len(inventory) == 0:",
+      "explain": "gdguard explain prefer-is-empty",
+      "fixes": [
+        {
+          "description": "Replace with `inventory.is_empty()`",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 310
+                },
+                "end": {
+                  "byte": 329
+                }
+              },
+              "replacement": "inventory.is_empty()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "unused-argument",
+      "origin": "builtin",
+      "severity": "info",
+      "message": "Function argument 'source' is unused. Consider removing it or prefixing with '_'",
+      "help": "Remove 'source', or rename it to '_source' if the function signature must stay the same.",
+      "range": {
+        "start": {
+          "line": 20,
+          "column": 31,
+          "byte": 393
+        },
+        "end": {
+          "line": 20,
+          "column": 37,
+          "byte": 399
+        }
+      },
+      "snippet": "func take_damage(amount: int, source: Node) -> void:",
+      "explain": "gdguard explain unused-argument",
+      "fixes": []
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "duplicated-load",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Duplicated load of '\"res://icon.svg\"'. Consider extracting to a constant.",
+      "help": "Load it once at the top of the script, for example `const Resource = preload(\"res://icon.svg\")`, and reuse the constant.",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 25,
+          "byte": 103
+        },
+        "end": {
+          "line": 5,
+          "column": 41,
+          "byte": 119
+        }
+      },
+      "snippet": "var icon_texture = load(\"res://icon.svg\")",
+      "explain": "gdguard explain duplicated-load",
+      "fixes": []
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "duplicated-load",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Duplicated load of '\"res://icon.svg\"'. Consider extracting to a constant.",
+      "help": "Load it once at the top of the script, for example `const Resource = preload(\"res://icon.svg\")`, and reuse the constant.",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 31,
+          "byte": 151
+        },
+        "end": {
+          "line": 6,
+          "column": 47,
+          "byte": 167
+        }
+      },
+      "snippet": "var other_icon_texture = load(\"res://icon.svg\")",
+      "explain": "gdguard explain duplicated-load",
+      "fixes": []
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "loop-variable-name",
+      "origin": "builtin",
+      "severity": "error",
+      "message": "Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format",
+      "help": "Rename it to 'my_index'.",
+      "range": {
+        "start": {
+          "line": 11,
+          "column": 6,
+          "byte": 251
+        },
+        "end": {
+          "line": 11,
+          "column": 13,
+          "byte": 258
+        }
+      },
+      "snippet": "\tfor MyIndex in range(3):",
+      "explain": "gdguard explain loop-variable-name",
+      "fixes": []
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "standalone-expression",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect",
+      "help": "Assign or use the value, or remove the line.",
+      "range": {
+        "start": {
+          "line": 16,
+          "column": 2,
+          "byte": 340
+        },
+        "end": {
+          "line": 16,
+          "column": 15,
+          "byte": 353
+        }
+      },
+      "snippet": "\tnew_score + 1",
+      "explain": "gdguard explain standalone-expression",
+      "fixes": []
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "max-line-length",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Line is too long. Found 118 characters, maximum allowed is 100",
+      "help": "Split the line, for example by wrapping arguments in parentheses or extracting a variable.",
+      "range": {
+        "start": {
+          "line": 17,
+          "column": 98,
+          "byte": 451
+        },
+        "end": {
+          "line": 17,
+          "column": 116,
+          "byte": 469
+        }
+      },
+      "snippet": "\t$ScoreLabel.text = \"Score: %d. This line is deliberately long so the max-line-length rule reports it.\" % new_score",
+      "explain": "gdguard explain max-line-length",
+      "fixes": []
+    }
+  ]
+}
