@@ -138,6 +138,16 @@ impl GDScriptLinter {
         Ok(diagnostics)
     }
 
+    /// Returns true when `source_code` has a syntax error: an `ERROR` or
+    /// `MISSING` node in its tree.
+    pub fn has_syntax_errors(&mut self, source_code: &str) -> Result<bool, String> {
+        let tree = self
+            .parser
+            .parse(source_code, None)
+            .ok_or("Failed to parse GDScript code")?;
+        Ok(tree.root_node().has_error())
+    }
+
     /// Replaces the built-in rule settings, for example when the next file
     /// has a different config.
     pub fn set_config(&mut self, config: LinterConfig) {
@@ -346,6 +356,146 @@ pub fn lint_stdin(
         });
     }
     Ok(report)
+}
+
+/// A file the fix engine changed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FixedFile {
+    /// The path to write the fixed source to. For stdin, the lookup path.
+    pub path: PathBuf,
+    /// The path as shown to the user, like in `FileDiagnostics`.
+    pub display_path: String,
+    pub original: String,
+    pub fixed: String,
+    /// How many fixes were applied to this file.
+    pub applied: usize,
+}
+
+/// The result of `lint --fix`, `--fix-unsafe` or `--diff`, before anything is
+/// written.
+#[derive(Debug, Clone, Default)]
+pub struct FixRunReport {
+    /// Diagnostics left after fixing. Each file's `source` is the fixed text.
+    pub report: LintReport,
+    /// Files whose text changed, in the order they were processed.
+    pub changed_files: Vec<FixedFile>,
+    /// For stdin: the fixed source, even when it didn't change.
+    pub stdin_output: Option<String>,
+}
+
+impl FixRunReport {
+    /// The number of fixes applied over every file.
+    pub fn applied(&self) -> usize {
+        let mut applied = 0;
+        for changed_file in &self.changed_files {
+            applied += changed_file.applied;
+        }
+        applied
+    }
+}
+
+/// Runs the fix engine on files from disk without writing them. Files
+/// matching `[lint].exclude` are skipped, like in `lint_files`.
+pub fn fix_files(
+    files: &[PathBuf],
+    options: &LintRunOptions,
+    allow_unsafe: bool,
+) -> Result<FixRunReport, String> {
+    let mut linter = GDScriptLinter::new(LinterConfig::default())?;
+    let mut config_cache = ConfigCache {
+        configs: HashMap::new(),
+    };
+    let mut fix_report = FixRunReport::default();
+    for file_path in files {
+        let loaded = config_cache.config_for(file_path, options)?;
+        if loaded.compiled.is_excluded(file_path) {
+            continue;
+        }
+        let settings = loaded.compiled.settings_for_file(file_path, &options.cli);
+        let source_code = fs::read_to_string(file_path)
+            .map_err(|error| format!("Failed to read file {}: {}", file_path.display(), error))?;
+        let fixed = fix::fix_source_with_settings(
+            &mut linter,
+            file_path,
+            &source_code,
+            &settings,
+            &mut loaded.providers,
+            allow_unsafe,
+        )?;
+        add_fixed_source(
+            file_path,
+            &display_path(file_path),
+            source_code,
+            fixed,
+            &mut fix_report,
+        );
+    }
+    Ok(fix_report)
+}
+
+/// Runs the fix engine on source read from stdin. `config_lookup_path` finds
+/// the config; `display_name` is shown in output and diffs.
+pub fn fix_stdin(
+    source_code: String,
+    config_lookup_path: &Path,
+    display_name: &str,
+    options: &LintRunOptions,
+    allow_unsafe: bool,
+) -> Result<FixRunReport, String> {
+    let mut linter = GDScriptLinter::new(LinterConfig::default())?;
+    let mut config_cache = ConfigCache {
+        configs: HashMap::new(),
+    };
+    let loaded = config_cache.config_for(config_lookup_path, options)?;
+    let settings = loaded
+        .compiled
+        .settings_for_file(config_lookup_path, &options.cli);
+    let fixed = fix::fix_source_with_settings(
+        &mut linter,
+        config_lookup_path,
+        &source_code,
+        &settings,
+        &mut loaded.providers,
+        allow_unsafe,
+    )?;
+    let mut fix_report = FixRunReport {
+        stdin_output: Some(fixed.output.clone()),
+        ..FixRunReport::default()
+    };
+    add_fixed_source(
+        config_lookup_path,
+        display_name,
+        source_code,
+        fixed,
+        &mut fix_report,
+    );
+    Ok(fix_report)
+}
+
+fn add_fixed_source(
+    path: &Path,
+    display_name: &str,
+    original: String,
+    fixed: fix::FixedSource,
+    fix_report: &mut FixRunReport,
+) {
+    fix_report.report.files_checked += 1;
+    if !fixed.remaining.is_empty() {
+        fix_report.report.files.push(FileDiagnostics {
+            path: display_name.to_string(),
+            source: fixed.output.clone(),
+            diagnostics: fixed.remaining,
+        });
+    }
+    if fixed.output != original {
+        fix_report.changed_files.push(FixedFile {
+            path: path.to_path_buf(),
+            display_path: display_name.to_string(),
+            original,
+            fixed: fixed.output,
+            applied: fixed.applied,
+        });
+    }
 }
 
 /// Runs every enabled built-in rule on a parsed file and appends their

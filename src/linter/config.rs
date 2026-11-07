@@ -19,13 +19,15 @@ use crate::linter::rules::ALL_RULES;
 pub const CONFIG_FILE_NAME: &str = "gdguard.toml";
 
 /// Diagnostic ids reported by built-in rules. `load-variable-name` is reported
-/// by the `variable-name` rule for variables holding a loaded resource.
+/// by the `variable-name` rule for variables holding a loaded resource, and
+/// `fix-failed` by the fix engine when a fix would break the code.
 pub fn builtin_rule_ids() -> Vec<&'static str> {
-    let mut ids = Vec::with_capacity(ALL_RULES.len() + 1);
+    let mut ids = Vec::with_capacity(ALL_RULES.len() + 2);
     for rule in ALL_RULES {
         ids.push(rule.name);
     }
     ids.push("load-variable-name");
+    ids.push(crate::linter::fix::FIX_FAILED_RULE_ID);
     ids
 }
 
