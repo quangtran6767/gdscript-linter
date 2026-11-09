@@ -1,123 +1,44 @@
-# Session rules (every Claude Code session reads this first)
+# Session rules: solo continuation
 
-You are one of two Claude Code sessions building this linter **at the same
-time**, in separate branches. Another session is working on the other track
-right now. When you both finish, a merge session merges both branches into
-`main` and tests the result. Everything below exists so that merge is easy.
+The user now works alone (2026-11-09). Historical A/B prompts are task
+checklists for one session. Follow `START.md`; never wait for another person.
 
-## 1. Read before you code
+## Read first
 
-1. `CLAUDE.md`
-2. `docs/specification_linter.md`: the sections your wave prompt names, plus
-   "Shared contracts".
-3. `docs/implementation_plan.md`: your wave's section and the "File
-   ownership" table.
-4. `docs/rust_coding_guidelines.md`: follow it strictly (plain loops, no
-   closures where a loop works, no `unwrap()` outside tests, `with_capacity`
-   when you know the size).
-5. Every file in `docs/handoff/` from earlier waves, especially the "Public
-   API added" sections, which tell you what you can now use.
+- `CLAUDE.md`, `PROGRESS.md`, and the current wave's prompts.
+- Relevant specification sections and shared contracts.
+- The wave in `docs/implementation_plan.md`.
+- `docs/rust_coding_guidelines.md`.
+- Earlier handoffs, particularly public APIs and integration requests.
 
-## 2. Branch rules
+## Scope and branches
 
-- `START.md` already created your branch (`wN-a`, `wN-b`, or `w0`/`sm0`).
-  Check it with `git branch --show-current`. If you're on `main`, stop and
-  tell the user.
-- Commit only to that branch. Never commit to `main`, merge, rebase onto the
-  other track's branch, or force-push.
-- Don't push until your whole task is finished. Your partner's session
-  treats a pushed handoff note as "done".
-- Commit after each finished task with this message format:
-  `[w2-a] A2: config file discovery and precedence`.
+Continue the current branch. The solo session owns both historical tracks
+and integration files, including specs, plan, changelog and e2e tests. Keep
+user changes. Do not reset, force-push, or create release tags. Do not create
+branches or merges merely to imitate the former two-person workflow.
 
-## 3. Scope rules (these prevent merge conflicts)
+Frozen signatures and schemas must remain compatible; use additive changes
+where the wave authorizes them. Add dependencies only where the wave calls
+for them, with a reason in its handoff. Keep formatter behavior unchanged.
 
-- **Edit only the files your wave prompt lists under "You may edit".** You
-  may read anything.
-- **Never edit these.** The merge session owns them:
-  - `CHANGELOG.md`
-  - `docs/specification_linter.md`
-  - `docs/implementation_plan.md`
-  - `CLAUDE.md`
-  - `tests/e2e/`
-  - the other track's files
-- **Frozen contracts** must not change: `src/linter/diagnostic.rs`, the
-  signatures in `src/linter/api.rs`, the `src/semantic/` and `src/project/`
-  signatures, and `integrations/types/gdguard.d.ts`. If a contract is
-  genuinely missing something, work around it with a local helper, and
-  describe the needed additive change in your handoff under "Requests".
-- **Dependencies:** don't add crates unless your prompt allows it. If you add
-  one, say why in the handoff.
-- **If you need something from the other track,** don't build it yourself.
-  Use a minimal local stub or a test double, and record the request in the
-  handoff.
+## Implementation and checks
 
-## 4. How to work
+Briefly identify the tasks, files and tests, then implement without waiting
+for approval. Choose spec-consistent defaults and record decisions. New
+behavior needs meaningful tests and docs. Do not weaken existing tests.
 
-1. **Plan:** list the tasks from your prompt, the files you'll touch, and the
-   tests you'll write. Keep it short, then start. Don't wait for approval
-   unless the prompt says to.
-2. **Implement** one task at a time. After each task:
-   - `cargo fmt`
-   - `cargo clippy --workspace --all-targets -- -D warnings`
-   - `cargo test --workspace`
-   - commit
-3. **Tests are part of the task.** Every new behavior gets tests: unit tests
-   next to the code, fixtures in the `tests/` folder your prompt names.
-4. **Never weaken tests to pass.** Never delete or loosen an existing test to
-   make it pass. If an expected output has to change because of your task,
-   change it and explain why in the handoff.
-5. **When something is unclear,** pick the option most consistent with the
-   spec, write it down under "Decisions" in the handoff, and keep going. Stop
-   and ask the user only when you're truly blocked, for example a contract
-   that can't work, or a spike result that changes the plan.
-6. **Keep the formatter unchanged.** Its tests must still pass.
+Run `cargo fmt --check`,
+`cargo clippy --workspace --all-targets -- -D warnings`,
+`cargo test --workspace`, release build and applicable feature-off checks.
+Check the CLI using the sample project, applying fixes only to temp copies.
+Commit completed tasks as `[<wave>-solo] <task>: <description>` when git
+writes are available. A handoff alone does not prove tests pass.
 
-## 5. Finishing
+## Handoffs
 
-You're done only when:
-
-- [ ] every task in your prompt is done, or listed as not done with a reason;
-- [ ] `cargo fmt --check`, clippy (`-D warnings`) and `cargo test --workspace`
-      all pass;
-- [ ] `docs/handoff/<branch>.md` is written using the template below and
-      committed;
-- [ ] the branch is pushed with `git push -u origin <branch>`.
-
-Then print a five-line summary for the user: what's done, what's not, and
-anything the merge session must do.
-
-## 6. Handoff template (`docs/handoff/<branch>.md`)
-
-```markdown
-# Handoff <branch>
-
-## Summary
-Two or three sentences.
-
-## Tasks
-| Task | Status (done/partial/not done) | Notes |
-
-## Files changed
-- path: one line on what changed
-
-## Public API added
-Exact signatures other code may call (functions, structs, CLI flags, JSON fields).
-
-## Decisions
-Choices you made where the spec was silent or unclear, and why.
-
-## Requests for the merge session
-Contract additions, wiring, or spec text to apply. Be exact.
-
-## Spec updates
-Text the merge session should add to or change in docs/specification_linter.md.
-
-## CHANGELOG lines
-- One line per user-visible change.
-
-## How to test manually
-Commands that show the feature working.
-
-## Known issues / follow-ups
-```
+Use `docs/handoff/<wave>-a.md`, `<wave>-b.md` and `<wave>-merge.md` (or the
+single-wave name for SM0). Include summary, task status, changed files,
+exact added public APIs, decisions, integration requests, spec updates,
+changelog lines, manual test commands, and known issues. Keep any remaining
+work explicit. `PROGRESS.md` advances only after wave acceptance passes.

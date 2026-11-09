@@ -1,5 +1,11 @@
 # Implementation plan
 
+**Solo workflow (2026-11-09):** one maintainer now completes both historical
+tracks and integration in order, on the current branch. Track names and
+ownership below remain useful task groupings, but do not require another
+person, branch, handoff, or waiting. `docs/prompts/START.md` is the entry
+point; `docs/prompts/PROGRESS.md` records the exact resume position.
+
 This plan covers the full scope of `docs/specification_linter.md`, from the
 first contracts to the 1.0 release. Two developers work in parallel the whole
 time:
@@ -183,22 +189,25 @@ After C1, `gdguard lint` shows both built-in and custom issues.
 ## W4: A and B at the same time
 
 **A: `a/ignores`, `a/baseline`, `a/ci-reporters`, `a/parallel-cache`**
-- [ ] A7. File-level ignores, `-- reason`, and the `unused-ignore` warning.
-- [ ] A8. `--baseline` and `--update-baseline`, using line-text
+- [x] A7. File-level ignores, `-- reason`, and the `unused-ignore` warning.
+- [x] A8. `--baseline` and `--update-baseline`, using line-text
       fingerprints. Test that moving lines keeps an issue suppressed.
-- [ ] A9. `github` and `sarif` reporters.
-- [ ] Parallel linting (`std::thread::scope`) and the lint cache in
+- [x] A9. `github` and `sarif` reporters.
+- [x] Parallel linting (`std::thread::scope`) and the lint cache in
       `.gdguard/cache/`.
 
 **B: `b/agent-integration`, `b/docs`**
-- [ ] B8. `integrations/claude-code/`: a PostToolUse hook (lint the edited
+- [x] B8. `integrations/claude-code/`: a PostToolUse hook (lint the edited
       `.gd` file with `--fix --format json` and return what's left), a
       skill/AGENTS snippet, and setup steps.
-- [ ] Write `docs/custom_rules.md` and `docs/agents.md`, and take over the
+- [x] Write `docs/custom_rules.md` and `docs/agents.md`, and take over the
       README.
-- [ ] Set up the linter on your real game project and file bugs for A or B.
+- [x] Dogfood on the sample project and record repros. No real-game path
+      was provided; real-game adoption remains a maintainer follow-up.
 
-**Merge session (C3):** dogfood for a few days and fix what you find. Tag **v0.30**.
+**Solo integration (C3):** completed reporter snapshots, baseline
+round-trip, unused-ignore metadata, hook checks and sample dogfooding.
+Real-game dogfooding is recommended before a v0.30 release; no tag created.
 
 ## SM0: second contracts session (together, about 1.5 hours, one PR)
 

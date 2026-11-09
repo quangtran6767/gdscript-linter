@@ -1,4 +1,11 @@
-# MERGE: merge the finished branches into main and check everything
+# MERGE: wave integration checklist
+
+**Solo mode (2026-11-09):** apply sections 3–5 directly on the current
+branch after finishing both tracks. Skip sections 1–2 and requirements to
+wait, fetch partner branches, switch/merge into main, or push main. Use
+`START.md` for orchestration. Do not stop merely because a second person,
+remote branch, or real-game path is unavailable. Keep genuine feature and
+validation requirements below.
 
 The user pasted this after both people pushed their branches. Your job is to
 merge them into `main`, do the wave's integration work, test everything,

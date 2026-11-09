@@ -21,6 +21,30 @@ This project aims to follow the official [GDScript style guide](https://docs.god
 - Exclude code from formatting with `# fmt: off` and `# fmt: on` comments
 - Safe mode that prevents overwriting a file if formatting would change the meaning of the code
 
+## Linter
+
+This fork includes a linter with YAML custom rules, safe automatic fixes,
+configuration, baselines and CI output. The executable is still
+`gdscript-formatter` (`gdguard` is the planned name).
+
+```sh
+gdscript-formatter init
+gdscript-formatter lint .
+gdscript-formatter lint --fix .
+gdscript-formatter test-rules
+```
+
+`--fix` applies safe changes and reports the issues left. Use `--diff` to
+preview, `--fix-unsafe` after review, and `--format json` for tools.
+`lint --update-baseline` records existing issues; load it with `--baseline
+.gdguard/baseline.json` or `[lint].baseline`. `github` and `sarif` formats
+support CI. `--no-cache` skips `.gdguard/cache/`.
+
+- [Configuration, ignore comments and baselines](docs/configuration.md)
+- [Writing and testing custom rules](docs/custom_rules.md)
+- [Coding agent hooks, JSON and CI](docs/agents.md)
+- [Example rule pack](examples/rules/)
+
 ## Learn how to use
 
 For detailed documentation and guides, check out these pages:

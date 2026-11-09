@@ -6,6 +6,12 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
+- Linter: ignore comments support `gdguard-ignore-file`, multiple rule IDs, and ` -- reason`; strings cannot accidentally suppress diagnostics. New `unused-ignore` warning offers safe cleanup and is included in explain/list-rules metadata.
+- Linter: `--baseline` / `--update-baseline` and `[lint].baseline` track existing issues with line-text fingerprints; JSON includes `summary.baseline_hidden`.
+- Linter: GitHub Actions annotations (`--format github`) and SARIF 2.1.0 (`--format sarif`) with UTF-16 columns.
+- Linter: deterministic parallel linting and a project-local lint cache; `--no-cache` skips cache reads and writes.
+- Linter: Claude Code PostToolUse hook, skill and agent instructions, with a Python fallback when jq is unavailable.
+- Linter: user guides for configuration, custom rules, baselines, agent integration and CI; executable YAML documentation examples and end-to-end reporter/baseline checks.
 - Linter: every built-in rule now reports a precise start and end position and a `help` text with how to fix the issue (naming rules suggest the corrected name).
 - Linter: new `--max-warnings <N>` option: warnings only fail the run when there are more than N.
 - Linter: `lint --pretty` now lists files in a stable, sorted order.
@@ -32,7 +38,7 @@ This file documents the changes made to the formatter with each release.
 
 ### Reserved
 
-- Linter: new `lint` flags `--baseline`, `--update-baseline` and `--format github|sarif`, and the new `lsp` subcommand are reserved; they report "not implemented yet" (exit code 2) until their feature lands.
+- Linter: `lsp` remains reserved and reports "not implemented yet" (exit code 2) until W7.
 
 ## Release 0.28.0 (2026-10-31)
 

@@ -1,120 +1,46 @@
-# START: build the whole project, wave by wave, until it's finished
+# START: continue the solo roadmap on the current branch
 
-The user pasted this so you would work **through every wave until the end**
-without them doing anything else. Two people (A and B) each run this in their
-own Claude Code session at the same time, on separate branches. Git keeps the
-two sessions in step:
+The user switched to working alone on 2026-11-09. Complete both historical
+tracks sequentially; never wait for a friend or a `wN-b` remote branch.
+This overrides the former two-person orchestration and ownership limits in
+individual wave prompts. Preserve frozen contracts and formatter behavior.
 
-- **A** does A's task each wave, waits for B's branch, then merges both into
-  `main` and checks everything (following `MERGE.md`).
-- **B** does B's task each wave, then waits until A has merged before
-  starting the next wave.
+## Resume
 
-The loop is safe to restart. If the session stops for any reason (limits,
-crash, closed terminal), the user pastes the same line again and you continue
-where the work left off. All state lives in git: the branches, handoff notes
-and `docs/prompts/PROGRESS.md`.
+1. Read `CLAUDE.md`, `_session_rules.md`, `PROGRESS.md`, the current wave's
+   task prompts, relevant spec sections, and existing handoffs.
+2. Inspect `git status` and the current branch. Continue that branch; keep
+   user changes and do not reset, switch to main, or overwrite work.
+3. Existing handoffs describe completed work, but verify their known issues
+   and integration requests. Do not redo completed tasks.
+4. Tell the user the wave and next unfinished work, then proceed.
 
-## 0. Once, at the start
+## Work through each wave
 
-1. Find out who you are from the user's message ("I am A" / "I am B"). If it
-   isn't there, ask once.
-2. If the working tree has uncommitted changes, stop and ask the user what to
-   do with them. That's the only time to stop before the loop.
-3. Tell the user: "Running all waves as <A/B>. I'll keep going until
-   PROGRESS says finished. If I stop, paste the same line again."
+Read the following task files for the current wave:
 
-## 1. The loop
+| Wave | Task prompts |
+| --- | --- |
+| w0, sm0 | `<wave>.md` |
+| w1 through w8 | `<wave>-a.md`, then `<wave>-b.md` |
 
-Repeat until `current_wave` is `finished`:
+1. Finish all incomplete tasks from both prompts, including tests and docs.
+   A solo session may edit every file those prompts or `MERGE.md` assign.
+2. Perform that wave's integration row and applicable handoff requests from
+   `MERGE.md` directly on the current branch. No synthetic branches or merge
+   commits are required.
+3. Run format, clippy, workspace tests, release build, feature-off build
+   from SM0 onward, and release CLI smoke tests. Keep formatter regression
+   tests green. Fix failures before marking a wave done.
+4. Write/update the track handoffs and `docs/handoff/<wave>-merge.md`, with
+   checks, open issues, and exact remaining work. Update the spec, plan and
+   changelog. Commit completed work when git writes are available.
+5. Mark the wave done and advance `current_wave` only after acceptance
+   passes. Repeat: w0, w1, w2, w3, w4, sm0, w5, w6, w7, w8, finished.
+6. Do not create release tags automatically. Keep publishing separate from
+   implementation unless authorized by the user. Report any unavailable
+   network/git operations accurately; never misreport a push or a merge.
 
-### 1a. Sync and pick the wave
-
-1. Run `git fetch origin`, `git switch main` and `git pull origin main`.
-2. Read `current_wave` in `docs/prompts/PROGRESS.md` and call it WAVE.
-3. **Re-read** `docs/prompts/START.md` (this file),
-   `docs/prompts/_session_rules.md` and the task file below at the start of
-   **every** wave. Don't rely on memory of earlier waves; your context may
-   have been compacted.
-
-| WAVE | You are A | You are B |
-|------|-----------|-----------|
-| `w0`, `sm0` | Branch `WAVE`, task `docs/prompts/WAVE.md` | Nothing to do. Go to **1d (B waits)**. |
-| other | Branch `WAVE-a`, task `docs/prompts/WAVE-a.md` | Branch `WAVE-b`, task `docs/prompts/WAVE-b.md` |
-
-### 1b. Do your task
-
-1. **Your work is already done** if `origin/<branch>` contains
-   `docs/handoff/<branch>.md` (check with
-   `git cat-file -e origin/<branch>:docs/handoff/<branch>.md`). In that case,
-   skip to 1c.
-2. **Otherwise, set up the branch:**
-   - if it exists locally or on `origin`, switch to it and pull, then read
-     `git log main..HEAD` to see what's already done (you are resuming);
-   - if it doesn't exist, run `git switch -c <branch>` from `main`.
-3. Tell the user in one line: "Wave WAVE, track <A/B>: starting."
-4. Do the task file completely, following `_session_rules.md`.
-5. **Push only when the task is finished.** A pushed handoff note is the
-   "done" signal your partner waits for. Before pushing:
-   - the handoff note `docs/handoff/<branch>.md` is committed;
-   - `cargo fmt --check`, clippy (`-D warnings`) and
-     `cargo test --workspace` pass.
-   Then run `git push -u origin <branch>`.
-6. Tell the user in one line what's done.
-
-### 1c. A merges (only A)
-
-1. In two-person waves, wait until your partner is done, that is, until
-   `origin/WAVE-b` contains `docs/handoff/WAVE-b.md` (see "How to wait").
-2. Follow `docs/prompts/MERGE.md` completely. It merges, checks, pushes
-   `main`, and moves `current_wave` to the next wave.
-3. **If MERGE stops** because of failing checks it couldn't fix, or a
-   conflict that needs a human: don't continue the loop. Tell the user
-   exactly what's wrong, and that your partner's session is waiting. Then
-   stop.
-4. Go back to 1a.
-
-### 1d. B waits for the merge (only B)
-
-1. Wait until `current_wave` in `origin/main:docs/prompts/PROGRESS.md` is no
-   longer WAVE (see "How to wait").
-2. Go back to 1a.
-
-## How to wait
-
-- Don't spin in the foreground and don't keep re-running commands by hand.
-- Start **one background shell command** that polls every 60 seconds and
-  exits when the condition is true. You're notified when it exits.
-- **A waiting for B:**
-
-  ```sh
-  for i in $(seq 1 720); do
-    git fetch -q origin 2>/dev/null
-    git cat-file -e origin/WAVE-b:docs/handoff/WAVE-b.md 2>/dev/null && exit 0
-    sleep 60
-  done; exit 1
-  ```
-
-- **B waiting for A:**
-
-  ```sh
-  for i in $(seq 1 720); do
-    git fetch -q origin 2>/dev/null
-    git show origin/main:docs/prompts/PROGRESS.md 2>/dev/null \
-      | grep -q '^current_wave: WAVE$' || exit 0
-    sleep 60
-  done; exit 1
-  ```
-
-- If the wait times out (12 hours), tell the user your partner's session
-  seems stopped, say what you're waiting for, and stop. Pasting the line again
-  resumes.
-
-## When everything is finished
-
-When `current_wave` is `finished`:
-
-- **A** reads every `docs/handoff/*-merge.md` and gives the user a final
-  report: what was built, test status, open issues, and the release tags
-  they may want to create (`v0.29` to `v1.0`, never created automatically).
-- **B** says: "All waves finished. See A's final report."
+When all waves are complete, report what was built, validation, unresolved
+issues, and suggested release tags. If interrupted, leave PROGRESS and
+handoffs accurate so the next session can resume without waiting on anyone.

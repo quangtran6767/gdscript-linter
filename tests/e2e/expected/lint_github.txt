@@ -1,0 +1,19 @@
+::error file=scripts/enemies/enemy.gd,line=3,col=8,endLine=3,endColumn=18,title=signal-name::Signal name 'OnDefeated' should be in snake_case format
+::error file=scripts/enemies/enemy.gd,line=5,col=6,endLine=5,endColumn=11,title=enum-name::Enum name 'state' should be in PascalCase format
+::error file=scripts/enemies/enemy.gd,line=7,col=2,endLine=7,endColumn=14,title=enum-member-name::Enum element name 'chase_player' should be in CONSTANT_CASE format
+::error file=scripts/enemies/enemy.gd,line=11,col=5,endLine=11,endColumn=15,title=variable-name::Variable name 'targetName' should be in snake_case or _private_snake_case format
+::error file=scripts/enemies/enemy.gd,line=14,col=6,endLine=14,endColumn=17,title=function-name::Function name 'moveTowards' should be in snake_case, _private_snake_case format
+::warning file=scripts/enemies/enemy.gd,line=15,col=5,endLine=15,endColumn=21,title=comparison-with-itself::Redundant comparison 'target == target' - comparing expression with itself
+::warning file=scripts/enemies/enemy.gd,line=23,col=2,endLine=23,endColumn=6,title=no-else-return::Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'
+::error file=scripts/enemies/enemy.gd,line=28,col=16,endLine=28,endColumn=23,title=private-access::Private variable '_health' should not be accessed from outside its class
+::warning file=scripts/enemies/enemy.gd,line=33,col=2,endLine=33,endColumn=6,title=unnecessary-pass::Unnecessary 'pass' statement when other statements are present
+::notice file=scripts/player.gd,line=12,col=15,endLine=12,endColumn=20,title=unused-argument::Function argument 'delta' is unused. Consider removing it or prefixing with '_'
+::error file=scripts/player.gd,line=14,col=19,endLine=14,endColumn=40,title=no-get-node-in-process::Don't look up nodes in `_process()`; cache the node in an `@onready` variable
+::warning file=scripts/player.gd,line=16,col=5,endLine=16,endColumn=24,title=prefer-is-empty::Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero
+::notice file=scripts/player.gd,line=20,col=31,endLine=20,endColumn=37,title=unused-argument::Function argument 'source' is unused. Consider removing it or prefixing with '_'
+::warning file=scripts/player.gd,line=28,col=9,endLine=28,endColumn=27,title=prefer-not-is-empty::Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero
+::warning file=scripts/ui/hud.gd,line=5,col=25,endLine=5,endColumn=41,title=duplicated-load::Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
+::warning file=scripts/ui/hud.gd,line=6,col=31,endLine=6,endColumn=47,title=duplicated-load::Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
+::error file=scripts/ui/hud.gd,line=11,col=6,endLine=11,endColumn=13,title=loop-variable-name::Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format
+::warning file=scripts/ui/hud.gd,line=16,col=2,endLine=16,endColumn=15,title=standalone-expression::Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect
+::warning file=scripts/ui/hud.gd,line=17,col=98,endLine=17,endColumn=116,title=max-line-length::Line is too long. Found 118 characters, maximum allowed is 100

@@ -19,7 +19,7 @@ struct BuiltinInfo {
     good_example: &'static str,
 }
 
-const BUILTIN_RULES: [BuiltinInfo; 19] = [
+const BUILTIN_RULES: [BuiltinInfo; 20] = [
     BuiltinInfo {
         id: "class-name",
         severity: Severity::Error,
@@ -183,6 +183,15 @@ const BUILTIN_RULES: [BuiltinInfo; 19] = [
         good_example: "func _process(_delta):\n\tprint(\"tick\")\n",
     },
     BuiltinInfo {
+        id: "unused-ignore",
+        severity: Severity::Warning,
+        fixable: true,
+        description: "Ignore comments suppress an existing issue.",
+        rationale: "An unused ignore can hide future issues. Remove the comment or the rule ids that no longer apply. Disabled rules are exempt, since they cannot produce an issue.",
+        bad_example: "# gdguard-ignore-next-line unused-argument -- old callback\nfunc f():\n\tpass\n",
+        good_example: "func f():\n\tpass\n",
+    },
+    BuiltinInfo {
         id: "variable-name",
         severity: Severity::Error,
         fixable: false,
@@ -244,7 +253,8 @@ mod tests {
         }
         assert!(builtin_rule_meta("load-variable-name").is_some());
         assert!(builtin_rule_meta("fix-failed").is_some());
-        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 2);
+        assert!(builtin_rule_meta("unused-ignore").is_some());
+        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 3);
     }
 
     #[test]

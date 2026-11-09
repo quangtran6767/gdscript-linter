@@ -16,10 +16,12 @@ editor integration.
 
 ## Rules for agents
 
-- Ask which track (A or B) and which wave you are on if the user hasn't said.
-  Edit only the files that track owns in that wave, according to the
-  ownership table in `docs/implementation_plan.md`. If a change needs another
-  track's file, stop and tell the user.
+- This is now a solo workflow (user instruction, 2026-11-09). Continue the
+  current branch, use `docs/prompts/PROGRESS.md` to find the wave, and finish
+  both historical tracks plus their integration work sequentially. Never
+  wait for a friend, another track's branch, or a separate merge session.
+  Track ownership tables describe the old collaboration arrangement; the
+  solo session owns both tracks and integration files.
 - Never change frozen contracts without the user explicitly approving it:
   `src/linter/diagnostic.rs`, the signatures in `src/linter/api.rs`,
   `src/semantic/` and `src/project/` signatures,

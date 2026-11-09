@@ -57,7 +57,8 @@ built-in rule or a custom rule.
 ## Shared contracts (`src/linter/diagnostic.rs`)
 
 This module is **frozen after W0**. Changes must be additive (new optional
-fields) and need a PR approved by both developers.
+fields). The project now has one maintainer; preserve compatibility when
+implementing the roadmap contracts.
 
 ### Positions
 
@@ -288,16 +289,27 @@ code 2.
 
 ## Inline ignore comments
 
+Directives must begin a real tree-sitter comment, not occur in strings.
+All forms accept comma/space-separated rule IDs, or no IDs for every rule,
+and a reason after ` -- `. The legacy `gdlint-` prefixes are equivalent.
+
+- `gdguard-ignore-file`: whole file, regardless of the comment's location.
+- `gdguard-ignore-line`: the comment's line.
+- `gdguard-ignore-next-line`: the following line.
+- `gdguard-ignore`: the same line after code, otherwise the following line.
+
 ```gdscript
-# gdguard-ignore-file prefer-is-empty
-var x = 1  # gdguard-ignore no-magic-number -- reason text is allowed
-# gdguard-ignore-next-line private-access
+# gdguard-ignore-file max-line-length -- generated text
+var badName = 1 # gdguard-ignore variable-name -- external field name
+# gdguard-ignore-next-line unused-argument -- required callback signature
+func callback(event):
+    pass
 ```
 
-- The legacy `gdlint-ignore*` prefixes keep working.
-- Text after ` -- ` is a reason and is ignored by the parser.
-- An ignore comment that suppresses nothing produces an `unused-ignore`
-  warning.
+Ignores apply to built-in and custom diagnostics after levels. An unused
+comment or listed ID produces `unused-ignore` (Warning, Safe fix), except
+for disabled rules. Its fix removes the comment or only unused IDs.
+`unused-ignore = "off"` or `gdguard-ignore-file unused-ignore` disables it.
 
 ## Custom YAML rules
 
@@ -426,6 +438,7 @@ gdguard lint [FILES...]                 # default: whole project
   --fix | --fix-unsafe | --diff
   --format pretty|compact|json|github|sarif   (default: pretty on a TTY, compact otherwise)
   --config <PATH>
+  --no-cache
   --baseline <PATH> | --update-baseline
   --max-warnings <N>
   --stdin-filename <PATH>               # read source from stdin
@@ -489,7 +502,7 @@ version.
 {
   "version": 1,
   "tool": { "name": "gdguard", "version": "0.29.0" },
-  "summary": { "files": 12, "errors": 1, "warnings": 3, "infos": 0, "fixable": 2 },
+  "summary": { "files": 12, "errors": 1, "warnings": 3, "infos": 0, "fixable": 2, "baseline_hidden": 0 },
   "issues": [
     {
       "file": "scripts/enemy.gd",
@@ -522,22 +535,47 @@ version.
 `summary.files` counts every linted file, `summary.fixable` counts issues
 with a `safe` fix, `origin` is `builtin` or `custom`, `snippet` is the full
 first line of the range, and `help` is `null` when the rule gives none.
+`summary.baseline_hidden` is an additive W4 field counting hidden issues.
 
 ## Baseline
 
-`--update-baseline` writes all current issues to the baseline file.
-`--baseline` hides issues that are in it. The fingerprint is
-`hash(rule, file, trimmed text of the issue's line, occurrence index of that
-text in the file)`, so issues survive unrelated edits that move lines.
+`--update-baseline` writes every current issue, sorted deterministically, to
+`--baseline PATH`, else `[lint].baseline`, else `.gdguard/baseline.json`.
+It cannot be combined with `--fix`, `--fix-unsafe` or `--diff`.
+`--baseline` or `[lint].baseline` hides matching issues from lint and fix
+reports. The default path is not loaded unless configured or passed.
+A missing explicit file is an error; a missing configured file hides nothing.
+
+The fingerprint is FNV-1a 64 over the rule ID, file path relative to the
+config folder (or cwd), trimmed source line, and occurrence index among
+identical (rule, file, text) issues. Moving lines keeps issues hidden;
+editing the line or adding another occurrence reveals an issue.
+Pretty output shows `N issues hidden by baseline.`; JSON includes
+`summary.baseline_hidden`. Commit baselines, not `.gdguard/cache/`.
+
+## CI reporters
+
+`--format github` emits GitHub workflow annotations with UTF-16 columns,
+escaped properties/data, and Info mapped to `notice`. `--format sarif`
+emits SARIF 2.1.0, `columnKind: utf16CodeUnits`, percent-encoded file URIs,
+and metadata in `tool.driver.rules` for the sorted set of reported rules.
+SARIF does not export fixes yet.
 
 ## AI agent integration
 
-- The recommended loop is `lint --fix --format json`, then the agent fixes
-  the remaining issues (using `help`, `fixes` with safety `suggestion`, and
-  `explain`), then the agent re-lints until the exit code is 0.
-- `integrations/claude-code/` ships a PostToolUse hook that lints each edited
-  `.gd` file and returns the JSON to the agent, plus a skill/AGENTS snippet
-  describing the loop.
+- Run `lint --fix --format json`, review remaining `help` and `fixes`, use
+  `explain` when unsure, edit, and re-lint until exit 0. Review unsafe fixes
+  and suggestions; never add ignore comments without a ` -- reason`.
+- `integrations/claude-code/` includes a POSIX sh PostToolUse hook registered
+  for `Edit|Write|MultiEdit`, settings, a skill and an AGENTS snippet.
+- The hook decodes stdin JSON with `jq`, or Python 3 without jq. It checks
+  `.gd` files, runs safe fixes, returns nothing when clean, or returns a
+  short summary plus JSON on stderr with exit 2 when issues remain. Tool
+  errors also return feedback with exit 2.
+- Binary lookup: `GDGUARD_BIN`, otherwise `gdguard`, then
+  `gdscript-formatter` (the current executable name).
+- User guides: `docs/configuration.md`, `docs/custom_rules.md`,
+  `docs/agents.md`. Complete YAML examples are tested automatically.
 
 ## Semantic model (`src/semantic/`)
 
@@ -715,12 +753,17 @@ export default {
 
 ## Performance and caching
 
-- Files are linted in parallel with `std::thread::scope` (no new dependency).
-- The lint cache lives in `.gdguard/cache/lint.json`. Its key is the file
-  hash, config hash, rules hash and tool version, so files that haven't
-  changed are skipped.
-- `benchmarks/` gains a lint benchmark. Linting a 1000-file project from a
-  warm cache should take under 1 second.
+- Files lint in parallel with `std::thread::scope`, preserving input order.
+  Each worker has its own linter and custom providers; configuration errors
+  are resolved before workers start, in deterministic order.
+- With a config, lint caches results in `.gdguard/cache/lint.json` beside
+  it, keyed by absolute file path and content/settings/custom-rule hashes,
+  plus tool version. Baseline filtering occurs after reading cached results.
+- `--no-cache` skips reading and writing. Fix/diff and stdin do not cache.
+  Unreadable caches are ignored; unwritable caches do not fail linting.
+  Writes use a temporary file and rename; deleted-file entries are pruned.
+  The cache folder gets a `.gitignore` containing `*`.
+- W4-A measured 32 ms for a warm 1068-file corpus, below the 1 s target.
 
 ## Distribution
 

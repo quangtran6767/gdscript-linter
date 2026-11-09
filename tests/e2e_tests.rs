@@ -398,3 +398,89 @@ fn explain_and_list_rules_include_sample_custom_rules() {
         ]
     );
 }
+
+// W4: CI reporters and baselines run against the whole sample project.
+#[test]
+fn lint_sample_project_github_output() {
+    let output = run_in_sample_project_raw(&["lint", "--format", "github", "."]);
+    assert_eq!(output.exit_code, 1, "{}", output.stderr);
+    assert_eq!(output.stderr, "");
+    assert_snapshot("lint_github.txt", &output.stdout);
+}
+
+#[test]
+fn lint_sample_project_sarif_output() {
+    let output = run_in_sample_project_raw(&["lint", "--format", "sarif", "."]);
+    assert_eq!(output.exit_code, 1, "{}", output.stderr);
+    let report: serde_json::Value =
+        serde_json::from_str(&output.stdout).expect("valid e2e fixture and report");
+    assert_eq!(report["version"], "2.1.0");
+    assert_eq!(report["runs"][0]["columnKind"], "utf16CodeUnits");
+    assert_eq!(
+        report["runs"][0]["results"]
+            .as_array()
+            .expect("valid e2e fixture and report")
+            .len(),
+        19
+    );
+    assert!(
+        report["runs"][0]["tool"]["driver"]["rules"]
+            .as_array()
+            .expect("valid e2e fixture and report")
+            .len()
+            > 1
+    );
+    let stdout = output.stdout.replace(
+        &format!("\"version\": \"{}\"", env!("CARGO_PKG_VERSION")),
+        "\"version\": \"<version>\"",
+    );
+    assert_snapshot("lint_sarif.json", &stdout);
+}
+
+#[test]
+fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
+    let project = SampleProjectCopy::new("baseline");
+    let updated = project.run(&["lint", "--update-baseline", "."]);
+    assert_eq!(updated.exit_code, 0, "{}", updated.stderr);
+    let baseline = project.read(".gdguard/baseline.json");
+    let repeated = project.run(&["lint", "--update-baseline", "."]);
+    assert_eq!(repeated.exit_code, 0);
+    assert_eq!(project.read(".gdguard/baseline.json"), baseline);
+
+    let hidden = project.run(&[
+        "lint",
+        "--baseline",
+        ".gdguard/baseline.json",
+        "--format",
+        "pretty",
+        ".",
+    ]);
+    assert_eq!(hidden.exit_code, 0, "{}", hidden.stderr);
+    assert!(
+        hidden.stdout.contains("19 issues hidden by baseline."),
+        "{}",
+        hidden.stdout
+    );
+    fs::write(project.root.join("scripts/new.gd"), "var badName = 1\n")
+        .expect("valid e2e fixture and report");
+    let new_issue = project.run(&[
+        "lint",
+        "--baseline",
+        ".gdguard/baseline.json",
+        "--format",
+        "json",
+        ".",
+    ]);
+    assert_eq!(new_issue.exit_code, 1, "{}", new_issue.stderr);
+    let report: serde_json::Value =
+        serde_json::from_str(&new_issue.stdout).expect("valid e2e fixture and report");
+    assert_eq!(report["summary"]["baseline_hidden"], 19);
+    assert_eq!(
+        report["issues"]
+            .as_array()
+            .expect("valid e2e fixture and report")
+            .len(),
+        1
+    );
+    assert_eq!(report["issues"][0]["file"], "scripts/new.gd");
+}
