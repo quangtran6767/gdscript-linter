@@ -1,0 +1,9 @@
+scope 0 Class 0..74 parent=-
+scope 1 Function 27..73 parent=0
+symbol 0 Signal "changed" scope=0 name=7..14 decl=0..26 type=None annotations=[] static=false
+symbol 1 Function "f" scope=0 name=32..33 decl=27..73 type=None annotations=[] static=false
+ref Read "changed" 38..45 symbol=0
+ref Call "emit" 46..50 symbol=-
+ref Read "changed" 55..62 symbol=0
+ref Call "connect" 63..70 symbol=-
+ref Read "f" 71..72 symbol=1

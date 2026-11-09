@@ -1,0 +1,11 @@
+scope 0 Class 0..71 parent=-
+scope 1 Function 0..70 parent=0
+scope 2 MatchBranch 31..57 parent=1
+scope 3 MatchBranch 60..70 parent=1
+symbol 0 Function "f" scope=0 name=5..6 decl=0..70 type=None annotations=[] static=false
+symbol 1 Parameter "input" scope=1 name=7..12 decl=7..12 type=None annotations=[] static=false
+symbol 2 Variable "item" scope=2 name=36..40 decl=32..40 type=None annotations=[] static=false
+ref Read "input" 22..27 symbol=1
+ref Call "print" 46..51 symbol=-
+ref Read "item" 52..56 symbol=2
+ref Read "_" 60..61 symbol=-

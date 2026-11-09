@@ -21,7 +21,7 @@ use crate::linter::config::FileSettings;
 use crate::linter::custom::loader::find_rule_files;
 use crate::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span};
 
-pub const CACHE_VERSION: u32 = 1;
+pub const CACHE_VERSION: u32 = 2;
 
 /// The cache file, relative to the folder of `gdguard.toml`.
 pub const CACHE_PATH: &str = ".gdguard/cache/lint.json";
@@ -75,9 +75,13 @@ pub fn settings_hash(settings: &FileSettings) -> String {
 pub fn rules_hash(config: &Config) -> String {
     let mut parts: Vec<Vec<u8>> = Vec::new();
     for folder in &config.custom_rule_paths {
-        let Ok(files) = find_rule_files(folder) else {
+        let Ok(mut files) = find_rule_files(folder) else {
             continue;
         };
+        if let Ok(js_files) = crate::linter::custom::find_js_files(std::slice::from_ref(folder)) {
+            files.extend(js_files);
+            files.sort();
+        }
         for file in files {
             parts.push(file.to_string_lossy().into_owned().into_bytes());
             match fs::read(&file) {

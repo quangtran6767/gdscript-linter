@@ -1,0 +1,11 @@
+scope 0 Class 0..62 parent=-
+scope 1 Function 0..61 parent=0
+scope 2 ForLoop 16..48 parent=1
+symbol 0 Function "f" scope=0 name=5..6 decl=0..61 type=None annotations=[] static=false
+symbol 1 Parameter "items" scope=1 name=7..12 decl=7..12 type=None annotations=[] static=false
+symbol 2 LoopVariable "item" scope=2 name=20..24 decl=16..48 type=None annotations=[] static=false
+ref Read "items" 28..33 symbol=1
+ref Call "print" 37..42 symbol=-
+ref Read "item" 43..47 symbol=2
+ref Call "print" 50..55 symbol=-
+ref Read "item" 56..60 symbol=-

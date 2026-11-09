@@ -1,0 +1,3 @@
+scope 0 Class 0..25 parent=-
+scope 1 Function 0..24 parent=0
+symbol 0 Function "broken" scope=0 name=5..11 decl=0..24 type=None annotations=[] static=false

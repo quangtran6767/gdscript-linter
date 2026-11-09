@@ -226,21 +226,21 @@ Real-game dogfooding is recommended before a v0.30 release; no tag created.
 ## W5: A and B at the same time
 
 **A: `a/semantic-model`**
-- [ ] S1. `SemanticModel::build`: scopes for every `ScopeKind`, symbols,
+- [x] S1. `SemanticModel::build`: scopes for every `ScopeKind`, symbols,
       references (read, write, call), resolution, and `scope_at`.
-- [ ] `tests/semantic/`: fixtures with expected symbol and reference dumps.
-- [ ] Build the model once per file in the pipeline and pass it through
+- [x] `tests/semantic/`: fixtures with expected symbol and reference dumps.
+- [x] Build the model once per file in the pipeline and pass it through
       `FileContext`.
 
 **B: `b/js-runtime`**
-- [ ] J1. `src/linter/script/`:
+- [x] J1. `src/linter/script/`:
   - load `.js` rules from the rules folders;
   - QuickJS sandbox with no imports, a memory limit and a time limit;
   - `meta`, then `create(context)`, then visitor callbacks for the subscribed
     node kinds;
   - syntax-only node API, `report`, `fix.*`, `options`.
-- [ ] Make `test-rules` run JS `tests`.
-- [ ] Tests in `tests/js_rules/`, including a rule that runs too long or uses
+- [x] Make `test-rules` run JS `tests`.
+- [x] Tests in `tests/js_rules/`, including a rule that runs too long or uses
       too much memory and gets stopped.
 
 **Merge session (C4):** adds `context.semantic` to the JS API on top of A's merged

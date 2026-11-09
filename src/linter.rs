@@ -125,11 +125,12 @@ impl GDScriptLinter {
         let mut diagnostics = Vec::new();
         run_builtin_rules(&self.config, &tree, source_code, &mut diagnostics);
         if !providers.is_empty() {
+            let semantic = crate::semantic::SemanticModel::build(&tree, source_code);
             let context = FileContext {
                 path: Path::new(file_path),
                 source: source_code,
                 tree: &tree,
-                semantic: None,
+                semantic: Some(&semantic),
                 project: None,
             };
             for provider in providers.iter_mut() {

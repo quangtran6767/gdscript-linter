@@ -1,0 +1,8 @@
+scope 0 Class 0..79 parent=-
+scope 1 Function 26..78 parent=0
+symbol 0 Variable "count" scope=0 name=11..16 decl=0..25 type=Some("int") annotations=[] static=true
+symbol 1 Function "increment" scope=0 name=38..47 decl=26..78 type=None annotations=[] static=true
+symbol 2 Parameter "step" scope=1 name=48..52 decl=48..61 type=Some("int") annotations=[] static=false
+ref Read "count" 65..70 symbol=0
+ref Write "count" 65..70 symbol=0
+ref Read "step" 74..78 symbol=2

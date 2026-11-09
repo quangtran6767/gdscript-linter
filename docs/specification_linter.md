@@ -644,9 +644,15 @@ for unknown IDs; references to unknown IDs are empty. `scope_at` outside the
 source returns root 0. `debug_dump` uses ID-ordered scopes and symbols, then
 references ordered by (start byte, end byte, kind), with LF endings and
 Rust Debug string escaping. Its exact entry format is documented in
-`src/semantic/mod.rs`. W5 implements the builder; the SM0 model is empty
-except for its valid root. FileContext carries None until the pipeline is
-wired in W5/W6.
+`src/semantic/mod.rs`. W5 builds declarations/scopes in one syntax walk,
+then resolves collected references (including forward class members).
+Locals are visible after their initializer. Inner classes cannot capture
+outer instance members, lambdas capture enclosing scopes, and self.x
+resolves to the nearest class member. Compound assignments produce read
+and write uses. Named enum members resolve through their enum qualifier.
+Scope queries use a binary search over disjoint scope-boundary intervals.
+The pipeline builds one model when custom providers are loaded; W6 adds
+semantic built-in consumers. FileContext.project remains None until W6.
 
 Important limit: an unresolved reference is **not** an error, because it may
 come from the parent class, the engine or an autoload. Rules that report
@@ -703,7 +709,8 @@ the implementation without changing signatures.
   imports, a 64 MB memory limit and a time limit per file.
 - Behind cargo feature `js-rules`, enabled by default alongside `gdscript`.
   SM0 pins `rquickjs = 0.9.0` (optional); `--no-default-features` omits it.
-  W5 supplies execution; SM0 only wires the feature and module boundaries.
+  W5 implements execution. Builds without it reject configured JS files
+  with a clear feature error instead of silently skipping them.
 - API modeled on oxlint/ESLint:
 
 ```js
@@ -746,6 +753,15 @@ export default {
   `fix.remove(node)`, plus the two data APIs below.
 - **`context.semantic`:** `scopeAt`, `lookup`, `referencesTo`, `symbols`.
 - **`context.project`:** `classNames`, `autoloads`, `hasMember`.
+- The runtime limits the JS heap to 64 MB, stack to 512 KB and file checks
+  to 2 seconds with an interrupt handler. Rule-load evaluation has the same
+  deadline. Runtime failures or invalid reports become `script-error`
+  (Error, non-fixable) instead of aborting the worker. Metadata/load errors
+  include the rule path and stop loading. `console.log` is quiet unless
+  `GDGUARD_VERBOSE` is set, and always uses stderr.
+- Each worker/config owns its runtime; no runtime crosses thread boundaries.
+  Node properties query native tree handles lazily, with no tree graph
+  serialized into JS. Rule options honor per-folder config overrides.
 - The engine only calls a rule for the node kinds it subscribed to (the same
   visitor map as the built-ins), so the JS cost scales with matches, not file
   size.

@@ -310,7 +310,12 @@ fn message_uses_metavariable_captured_in_a_relational_rule() {
         custom_rule_paths: vec![examples],
         ..Config::default()
     };
-    let mut providers = load_providers(&config).unwrap();
+    // This exercises YAML capture rendering, independently of optional JS.
+    let yaml = gdscript_formatter::linter::custom::YamlRuleProvider::new(
+        gdscript_formatter::linter::custom::loader::load_rules(&config.custom_rule_paths).unwrap(),
+    );
+    let mut providers: Vec<Box<dyn gdscript_formatter::linter::diagnostic::RuleProvider>> =
+        vec![Box::new(yaml)];
     let source = "func _physics_process(delta):\n\tget_node(\"A\").show()\n";
     let tree = parse(source);
     let context = FileContext {

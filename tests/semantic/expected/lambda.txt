@@ -1,0 +1,10 @@
+scope 0 Class 0..100 parent=-
+scope 1 Function 0..99 parent=0
+scope 2 Lambda 44..82 parent=1
+symbol 0 Function "f" scope=0 name=5..6 decl=0..99 type=None annotations=[] static=false
+symbol 1 Variable "captured" scope=1 name=15..23 decl=11..27 type=None annotations=[] static=false
+symbol 2 Variable "callback" scope=1 name=33..41 decl=29..82 type=None annotations=[] static=false
+symbol 3 Parameter "extra" scope=2 name=49..54 decl=49..54 type=None annotations=[] static=false
+ref Read "captured" 66..74 symbol=1
+ref Read "extra" 77..82 symbol=3
+ref Read "callback" 91..99 symbol=2

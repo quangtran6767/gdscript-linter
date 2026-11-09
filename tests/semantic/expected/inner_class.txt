@@ -1,0 +1,11 @@
+scope 0 Class 0..112 parent=-
+scope 1 InnerClass 38..111 parent=0
+scope 2 Function 65..111 parent=1
+symbol 0 Variable "outer_member" scope=0 name=4..16 decl=0..20 type=None annotations=[] static=false
+symbol 1 Constant "SHARED" scope=0 name=27..33 decl=21..37 type=None annotations=[] static=false
+symbol 2 InnerClass "Inner" scope=0 name=44..49 decl=38..111 type=None annotations=[] static=false
+symbol 3 Variable "own" scope=1 name=56..59 decl=52..63 type=None annotations=[] static=false
+symbol 4 Function "f" scope=1 name=70..71 decl=65..111 type=None annotations=[] static=false
+ref Read "outer_member" 84..96 symbol=-
+ref Read "SHARED" 99..105 symbol=1
+ref Read "own" 108..111 symbol=3

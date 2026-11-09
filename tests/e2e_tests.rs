@@ -246,14 +246,20 @@ impl SampleProjectCopy {
             .stdin(Stdio::null())
             .output()
             .expect("should run the binary");
+        let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
+        let machine_format = args
+            .windows(2)
+            .any(|flags| flags == ["--format", "json"] || flags == ["--format", "sarif"]);
         CommandOutput {
             exit_code: output
                 .status
                 .code()
                 .expect("the binary should exit with a code"),
-            stdout: String::from_utf8(output.stdout)
-                .expect("stdout should be valid UTF-8")
-                .replace('\\', "/"),
+            stdout: if machine_format {
+                stdout
+            } else {
+                stdout.replace('\\', "/")
+            },
             stderr: String::from_utf8(output.stderr).expect("stderr should be valid UTF-8"),
         }
     }
@@ -349,6 +355,7 @@ fn stdin_fix_on_sample_project_uses_its_config() {
 }
 
 #[test]
+#[cfg(feature = "js-rules")]
 fn test_rules_passes_on_the_example_rule_pack() {
     let examples_folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/rules");
     let output = run_in_sample_project(&[
@@ -483,4 +490,41 @@ fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
         1
     );
     assert_eq!(report["issues"][0]["file"], "scripts/new.gd");
+}
+
+#[test]
+#[cfg(feature = "js-rules")]
+fn js_semantic_lookup_runs_on_the_sample_project() {
+    let project = SampleProjectCopy::new("js-semantic");
+    fs::write(
+        project.root.join(".gdguard/rules/semantic.js"),
+        r#"
+export default {
+  meta:{id:'semantic-inventory',description:'Check real lexical symbols',severity:'info'},
+  create(context) {return {identifier(node) {
+    if(node.text !== 'inventory') return;
+    const id=context.semantic.lookup(context.semantic.scopeAt(node.range.start.byte),'inventory');
+    const symbol=context.semantic.symbols.find(symbol=>symbol.id===id);
+    if(symbol?.declaredType==='Array' && context.semantic.referencesTo(id).length>0)
+      context.report({node,message:'Resolved inventory as Array'});
+  }}}};
+"#,
+    )
+    .expect("write JS fixture");
+    let output = project.run(&[
+        "lint",
+        "--no-cache",
+        "--format",
+        "json",
+        "scripts/player.gd",
+    ]);
+    assert_eq!(output.exit_code, 1, "{}", output.stderr);
+    let report: serde_json::Value = serde_json::from_str(&output.stdout).expect("JSON");
+    assert!(
+        report["issues"]
+            .as_array()
+            .expect("issues")
+            .iter()
+            .any(|issue| issue["rule"] == "semantic-inventory")
+    );
 }

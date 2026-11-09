@@ -1,0 +1,7 @@
+scope 0 Class 0..51 parent=-
+scope 1 Function 0..50 parent=0
+symbol 0 Function "f" scope=0 name=5..6 decl=0..50 type=None annotations=[] static=false
+symbol 1 Variable "count" scope=1 name=15..20 decl=11..24 type=None annotations=[] static=false
+ref Read "count" 26..31 symbol=1
+ref Write "count" 26..31 symbol=1
+ref Read "count" 45..50 symbol=1

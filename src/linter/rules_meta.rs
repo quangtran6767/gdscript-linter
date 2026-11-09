@@ -19,7 +19,7 @@ struct BuiltinInfo {
     good_example: &'static str,
 }
 
-const BUILTIN_RULES: [BuiltinInfo; 20] = [
+const BUILTIN_RULES: [BuiltinInfo; 21] = [
     BuiltinInfo {
         id: "class-name",
         severity: Severity::Error,
@@ -147,6 +147,15 @@ const BUILTIN_RULES: [BuiltinInfo; 20] = [
         good_example: "func damage(enemy):\n\tenemy.take_damage(1)\n",
     },
     BuiltinInfo {
+        id: "script-error",
+        severity: Severity::Error,
+        fixable: false,
+        description: "A JavaScript rule failed or exceeded its sandbox limits.",
+        rationale: "A failing custom rule cannot reliably check this file. Fix the rule, invalid report, or resource usage before trusting the lint result.",
+        bad_example: "",
+        good_example: "",
+    },
+    BuiltinInfo {
         id: "signal-name",
         severity: Severity::Error,
         fixable: false,
@@ -254,7 +263,7 @@ mod tests {
         assert!(builtin_rule_meta("load-variable-name").is_some());
         assert!(builtin_rule_meta("fix-failed").is_some());
         assert!(builtin_rule_meta("unused-ignore").is_some());
-        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 3);
+        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 4);
     }
 
     #[test]
@@ -286,7 +295,7 @@ mod tests {
         for info in &BUILTIN_RULES {
             // `fix-failed` comes from the fix engine, not from linting code.
             if info.bad_example.is_empty() {
-                assert_eq!(info.id, "fix-failed");
+                assert!(matches!(info.id, "fix-failed" | "script-error"));
                 continue;
             }
             let bad = lint_gdscript(info.bad_example, "example.gd").unwrap();

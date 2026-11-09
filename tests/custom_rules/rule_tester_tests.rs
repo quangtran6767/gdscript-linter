@@ -165,6 +165,7 @@ fn line_diff_marks_changed_lines() {
 // CLI
 
 #[test]
+#[cfg(feature = "js-rules")]
 fn cli_passes_on_example_rules() {
     let examples = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("examples")
@@ -182,8 +183,10 @@ fn cli_passes_on_example_rules() {
 ✓ prefer-is-instance-valid  7 passed
 ✓ prefer-not-is-empty  7 passed
 ✓ prefer-preload-const  7 passed
+✓ max-function-params  3 passed
+✓ no-empty-function  3 passed
 
-8 rules, 8 passed, 0 failed
+10 rules, 10 passed, 0 failed
 "
     );
 }

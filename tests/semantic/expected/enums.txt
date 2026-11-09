@@ -1,0 +1,10 @@
+scope 0 Class 0..86 parent=-
+scope 1 Function 47..85 parent=0
+symbol 0 Enum "State" scope=0 name=5..10 decl=0..28 type=None annotations=[] static=false
+symbol 1 EnumMember "IDLE" scope=0 name=13..17 decl=13..17 type=None annotations=[] static=false
+symbol 2 EnumMember "RUN" scope=0 name=19..22 decl=19..26 type=None annotations=[] static=false
+symbol 3 Constant "DEFAULT" scope=0 name=35..42 decl=29..46 type=None annotations=[] static=false
+symbol 4 Function "f" scope=0 name=52..53 decl=47..85 type=None annotations=[] static=false
+ref Read "State" 65..70 symbol=0
+ref Read "IDLE" 71..75 symbol=1
+ref Read "DEFAULT" 78..85 symbol=3

@@ -1,0 +1,6 @@
+scope 0 Class 0..62 parent=-
+scope 1 Function 15..61 parent=0
+symbol 0 Function "_ready" scope=0 name=20..26 decl=15..61 type=None annotations=[] static=false
+ref Read "position" 31..39 symbol=-
+ref Write "x" 40..41 symbol=-
+ref Call "queue_redraw" 47..59 symbol=-

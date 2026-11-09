@@ -1,0 +1,24 @@
+scope 0 Class 0..165 parent=-
+scope 1 Function 0..164 parent=0
+scope 2 Block 25..48 parent=1
+scope 3 Block 65..88 parent=1
+scope 4 Block 95..118 parent=1
+scope 5 Block 132..164 parent=1
+symbol 0 Function "f" scope=0 name=5..6 decl=0..164 type=None annotations=[] static=false
+symbol 1 Parameter "value" scope=1 name=7..12 decl=7..12 type=None annotations=[] static=false
+symbol 2 Variable "a" scope=2 name=32..33 decl=28..37 type=None annotations=[] static=false
+symbol 3 Variable "b" scope=3 name=72..73 decl=68..77 type=None annotations=[] static=false
+symbol 4 Variable "c" scope=4 name=102..103 decl=98..107 type=None annotations=[] static=false
+symbol 5 Variable "d" scope=5 name=139..140 decl=135..148 type=None annotations=[] static=false
+ref Read "value" 19..24 symbol=1
+ref Call "print" 40..45 symbol=-
+ref Read "a" 46..47 symbol=2
+ref Read "value" 59..64 symbol=1
+ref Call "print" 80..85 symbol=-
+ref Read "b" 86..87 symbol=3
+ref Call "print" 110..115 symbol=-
+ref Read "c" 116..117 symbol=4
+ref Read "value" 126..131 symbol=1
+ref Read "value" 143..148 symbol=1
+ref Write "value" 151..156 symbol=1
+ref Read "d" 159..160 symbol=5

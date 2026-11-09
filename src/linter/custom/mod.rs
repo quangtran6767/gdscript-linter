@@ -29,6 +29,40 @@ pub fn load_providers(config: &Config) -> Result<Vec<Box<dyn RuleProvider>>, Str
         Ok(rules) => rules,
         Err(error) => return Err(error.to_string()),
     };
-    let provider: Box<dyn RuleProvider> = Box::new(YamlRuleProvider::new(rules));
-    Ok(vec![provider])
+    let mut metas = Vec::with_capacity(rules.len());
+    for rule in &rules {
+        metas.push(rule.meta.clone());
+    }
+    #[allow(unused_mut)]
+    let mut providers: Vec<Box<dyn RuleProvider>> = vec![Box::new(YamlRuleProvider::new(rules))];
+    let files = find_js_files(&config.custom_rule_paths)?;
+    if !files.is_empty() {
+        #[cfg(feature = "js-rules")]
+        providers.push(Box::new(crate::linter::script::JsRuleProvider::load(
+            config, &files, &metas,
+        )?));
+        #[cfg(not(feature = "js-rules"))]
+        return Err(format!(
+            "{}: JavaScript rules require a build with the js-rules feature",
+            files[0].display()
+        ));
+    }
+    Ok(providers)
+}
+
+/// Sorted, non-recursive JS discovery, shared with the rule tester/cache.
+pub fn find_js_files(folders: &[std::path::PathBuf]) -> Result<Vec<std::path::PathBuf>, String> {
+    let mut files = Vec::new();
+    for folder in folders {
+        for entry in
+            std::fs::read_dir(folder).map_err(|error| format!("{}: {}", folder.display(), error))?
+        {
+            let path = entry.map_err(|error| error.to_string())?.path();
+            if path.is_file() && path.extension().is_some_and(|extension| extension == "js") {
+                files.push(path);
+            }
+        }
+    }
+    files.sort();
+    Ok(files)
 }

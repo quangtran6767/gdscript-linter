@@ -23,11 +23,12 @@ pub const CONFIG_FILE_NAME: &str = "gdguard.toml";
 /// `fix-failed` by the fix engine when a fix would break the code, and
 /// `unused-ignore` for ignore comments that suppress nothing.
 pub fn builtin_rule_ids() -> Vec<&'static str> {
-    let mut ids = Vec::with_capacity(ALL_RULES.len() + 3);
+    let mut ids = Vec::with_capacity(ALL_RULES.len() + 4);
     for rule in ALL_RULES {
         ids.push(rule.name);
     }
     ids.push("load-variable-name");
+    ids.push("script-error");
     ids.push(crate::linter::fix::FIX_FAILED_RULE_ID);
     ids.push(crate::linter::ignore_patterns::UNUSED_IGNORE_RULE_ID);
     ids

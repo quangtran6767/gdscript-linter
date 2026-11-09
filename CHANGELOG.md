@@ -6,6 +6,8 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
+- Linter: lexical semantic model with scopes, declarations, captured variables, resolved references and stable debug dumps; models are built once for custom-rule checks.
+- Linter: sandboxed JavaScript custom rules, lazy syntax-node/fixer/semantic APIs, config options, embedded tests, and example max-function-params/no-empty-function rules. Runtime failures report script-error; JS is optional via the js-rules feature.
 - Internal: freeze semantic/project contracts and the documented JS rule type declaration; add optional default-enabled `js-rules` and pinned QuickJS/LSP dependencies for the next implementation waves. SM0 provides empty models, not semantic diagnostics or JS execution yet.
 - Linter: ignore comments support `gdguard-ignore-file`, multiple rule IDs, and ` -- reason`; strings cannot accidentally suppress diagnostics. New `unused-ignore` warning offers safe cleanup and is included in explain/list-rules metadata.
 - Linter: `--baseline` / `--update-baseline` and `[lint].baseline` track existing issues with line-text fingerprints; JSON includes `summary.baseline_hidden`.

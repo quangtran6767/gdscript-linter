@@ -1,0 +1,9 @@
+scope 0 Class 0..75 parent=-
+scope 1 Function 14..74 parent=0
+symbol 0 Variable "value" scope=0 name=4..9 decl=0..13 type=None annotations=[] static=false
+symbol 1 Function "f" scope=0 name=19..20 decl=14..74 type=None annotations=[] static=false
+symbol 2 Variable "value" scope=1 name=43..48 decl=39..60 type=None annotations=[] static=false
+ref Call "print" 25..30 symbol=-
+ref Read "value" 31..36 symbol=0
+ref Read "value" 51..56 symbol=0
+ref Read "value" 69..74 symbol=2

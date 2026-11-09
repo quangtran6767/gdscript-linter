@@ -1,0 +1,13 @@
+scope 0 Class 0..108 parent=-
+scope 1 Function 21..46 parent=0
+scope 2 Function 48..67 parent=0
+scope 3 Function 69..107 parent=0
+symbol 0 Variable "value" scope=0 name=4..9 decl=0..67 type=Some("int") annotations=[] static=false
+symbol 1 Parameter "next" scope=1 name=25..29 decl=25..29 type=None annotations=[] static=false
+symbol 2 Function "_init" scope=0 name=74..79 decl=69..107 type=None annotations=[] static=false
+symbol 3 Parameter "start" scope=3 name=80..85 decl=80..90 type=Some("int") annotations=[] static=false
+ref Write "value" 34..39 symbol=0
+ref Read "next" 42..46 symbol=1
+ref Read "value" 62..67 symbol=0
+ref Write "value" 94..99 symbol=0
+ref Read "start" 102..107 symbol=3

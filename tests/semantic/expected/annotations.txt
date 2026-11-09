@@ -1,0 +1,9 @@
+scope 0 Class 0..108 parent=-
+scope 1 Function 71..107 parent=0
+symbol 0 Variable "speed" scope=0 name=12..17 decl=0..30 type=Some("float") annotations=["export"] static=false
+symbol 1 Variable "sprite" scope=0 name=44..50 decl=31..70 type=Some("Sprite2D") annotations=["onready"] static=false
+symbol 2 Function "f" scope=0 name=76..77 decl=71..107 type=None annotations=[] static=false
+ref Read "sprite" 82..88 symbol=1
+ref Write "position" 89..97 symbol=-
+ref Write "x" 98..99 symbol=-
+ref Read "speed" 102..107 symbol=0

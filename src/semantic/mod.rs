@@ -74,37 +74,75 @@ pub struct Reference {
 }
 
 #[derive(Debug, Clone)]
+struct ScopePoint {
+    byte: usize,
+    scope: ScopeId,
+}
+
+#[derive(Debug, Clone)]
 pub struct SemanticModel {
     scopes: Vec<Scope>,
     symbols: Vec<Symbol>,
     references: Vec<Vec<Reference>>,
     unresolved: Vec<Reference>,
+    names: Vec<std::collections::HashMap<String, SymbolId>>,
+    scope_points: Vec<ScopePoint>,
+    source_len: usize,
+    qualified_members:
+        std::collections::HashMap<SymbolId, std::collections::HashMap<String, SymbolId>>,
 }
 
 impl SemanticModel {
-    /// SM0 supplies a valid root scope; W5 implements declaration/resolution.
-    pub fn build(_tree: &tree_sitter::Tree, source: &str) -> SemanticModel {
-        SemanticModel {
-            scopes: vec![Scope {
-                id: ScopeId(0),
-                kind: ScopeKind::Class,
-                parent: None,
-                span: Span::from_byte_range(source, 0, source.len()),
-                symbols: Vec::new(),
-            }],
-            symbols: Vec::new(),
-            references: Vec::new(),
-            unresolved: Vec::new(),
-        }
+    /// Builds lexical scopes and resolves references without assuming engine types.
+    pub fn build(tree: &tree_sitter::Tree, source: &str) -> SemanticModel {
+        builder::build(tree, source)
     }
 
     /// Returns the innermost scope, or root scope 0 outside the source.
-    pub fn scope_at(&self, _byte: usize) -> ScopeId {
-        ScopeId(0)
+    pub fn scope_at(&self, byte: usize) -> ScopeId {
+        if byte >= self.source_len {
+            return ScopeId(0);
+        }
+        let index = self
+            .scope_points
+            .partition_point(|point| point.byte <= byte);
+        match self.scope_points.get(index.saturating_sub(1)) {
+            Some(point) => point.scope,
+            None => ScopeId(0),
+        }
     }
 
-    pub fn lookup(&self, _scope: ScopeId, _name: &str) -> Option<SymbolId> {
-        None
+    pub fn lookup(&self, scope: ScopeId, name: &str) -> Option<SymbolId> {
+        self.lookup_at(scope, name, usize::MAX)
+    }
+
+    fn lookup_at(&self, mut scope: ScopeId, name: &str, byte: usize) -> Option<SymbolId> {
+        let mut crossed_inner_class = false;
+        loop {
+            let current = self.scopes.get(scope.0 as usize)?;
+            if let Some(id) = self.names[scope.0 as usize].get(name) {
+                let symbol = &self.symbols[id.0 as usize];
+                let class_scope = matches!(current.kind, ScopeKind::Class | ScopeKind::InnerClass);
+                let outer_instance = crossed_inner_class
+                    && !symbol.is_static
+                    && matches!(
+                        symbol.kind,
+                        SymbolKind::Variable | SymbolKind::Function | SymbolKind::Signal
+                    );
+                // Locals become visible after their initializer. Class members
+                // are visible throughout their class, including method bodies.
+                let visible = class_scope
+                    || !matches!(symbol.kind, SymbolKind::Variable | SymbolKind::Constant)
+                    || symbol.declaration_span.end_byte <= byte;
+                if visible && !outer_instance {
+                    return Some(*id);
+                }
+            }
+            if current.kind == ScopeKind::InnerClass {
+                crossed_inner_class = true;
+            }
+            scope = current.parent?;
+        }
     }
 
     /// Invalid IDs return None rather than panicking.

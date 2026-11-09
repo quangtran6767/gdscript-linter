@@ -15,8 +15,8 @@ use serde_json::Value;
 
 use super::language::{EXPANDO_CHAR, GdScript, to_internal};
 use crate::linter::api::ConfigError;
+use crate::linter::config::builtin_rule_ids;
 use crate::linter::diagnostic::{FixSafety, RuleMeta, RuleOrigin, Severity};
-use crate::linter::rule_config::get_all_rule_names;
 
 /// The top-level keys of a rule file.
 const TOP_LEVEL_KEYS: [&str; 10] = [
@@ -450,7 +450,7 @@ fn optional_string(
 }
 
 /// Checks that `id` is kebab-case and doesn't clash with a built-in rule.
-fn validate_id(path: &Path, id: &str) -> Result<(), ConfigError> {
+pub(crate) fn validate_id(path: &Path, id: &str) -> Result<(), ConfigError> {
     if !is_kebab_case(id) {
         return Err(error_at(
             path,
@@ -461,7 +461,7 @@ fn validate_id(path: &Path, id: &str) -> Result<(), ConfigError> {
             ),
         ));
     }
-    for built_in in get_all_rule_names() {
+    for built_in in builtin_rule_ids() {
         if built_in == id {
             return Err(error_at(
                 path,
@@ -680,7 +680,7 @@ fn check_metavariables(
     Ok(())
 }
 
-fn parse_tests(path: &Path, value: &Value) -> Result<RuleTests, ConfigError> {
+pub(crate) fn parse_tests(path: &Path, value: &Value) -> Result<RuleTests, ConfigError> {
     let Value::Object(fields) = value else {
         return Err(error_at(
             path,

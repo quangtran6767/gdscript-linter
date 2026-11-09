@@ -54,7 +54,9 @@ pub fn run(args: &TestRulesArgs) -> i32 {
             return 2;
         }
     };
-    if rules.is_empty() {
+    if rules.is_empty()
+        && crate::linter::custom::find_js_files(&folders).is_ok_and(|files| files.is_empty())
+    {
         let mut names = Vec::with_capacity(folders.len());
         for folder in &folders {
             names.push(folder.display().to_string());
@@ -62,7 +64,43 @@ pub fn run(args: &TestRulesArgs) -> i32 {
         println!("No rules found in {}", names.join(", "));
         return 0;
     }
-    let reports = test_rules(rules);
+    #[cfg(feature = "js-rules")]
+    let existing_metas: Vec<_> = rules.iter().map(|rule| rule.meta.clone()).collect();
+    #[allow(unused_mut)]
+    let mut reports = test_rules(rules);
+    let js_files = match crate::linter::custom::find_js_files(&folders) {
+        Ok(files) => files,
+        Err(error) => {
+            eprintln!("Error: {}", error);
+            return 2;
+        }
+    };
+    if !js_files.is_empty() {
+        #[cfg(feature = "js-rules")]
+        {
+            let config = crate::linter::api::Config {
+                custom_rule_paths: folders,
+                ..Default::default()
+            };
+            let provider = match crate::linter::script::JsRuleProvider::load(
+                &config,
+                &js_files,
+                &existing_metas,
+            ) {
+                Ok(provider) => provider,
+                Err(error) => {
+                    eprintln!("Error: {}", error);
+                    return 2;
+                }
+            };
+            reports.extend(crate::linter::script::test_rules(provider));
+        }
+        #[cfg(not(feature = "js-rules"))]
+        {
+            eprintln!("Error: JavaScript rules require the js-rules feature");
+            return 2;
+        }
+    }
     print!("{}", format_reports(&reports));
     exit_code(&reports)
 }
@@ -245,7 +283,7 @@ fn check_fix(
     Ok(())
 }
 
-fn parse(code: &str) -> Result<tree_sitter::Tree, String> {
+pub(crate) fn parse(code: &str) -> Result<tree_sitter::Tree, String> {
     let mut parser = tree_sitter::Parser::new();
     if let Err(error) = parser.set_language(&tree_sitter_gdscript::LANGUAGE.into()) {
         return Err(format!("can't load the GDScript grammar: {}", error));
