@@ -5,6 +5,12 @@ scripts/enemies/enemy.gd
   |        ^^^^^^^^^^
   = help: Rename it to 'on_defeated'.
 
+ 3:8 warning [unused-local-signal] Signal 'OnDefeated' is never used in this file.
+  |
+3 | signal OnDefeated
+  |        ^^^^^^^^^^
+  = help: Emit or connect the signal, or document intentional external/scene use with a reasoned ignore.
+
  5:6 error [enum-name] Enum name 'state' should be in PascalCase format
   |
 5 | enum state {
@@ -121,4 +127,4 @@ scripts/ui/hud.gd
    |                                                                                                     ^^^^^^^^^^^^^^^^^^
    = help: Split the line, for example by wrapping arguments in parentheses or extracting a variable.
 
-Found 19 problems (8 errors, 9 warnings, 2 infos) in 3 files. 4 fixable with --fix.
+Found 20 problems (8 errors, 10 warnings, 2 infos) in 3 files. 4 fixable with --fix.

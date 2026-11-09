@@ -91,6 +91,7 @@ pub fn install<'js>(
                     return "null".to_string();
                 };
                 let value = match method.as_str() {
+                    "root" => json!(project.root.to_string_lossy().replace('\\', "/")),
                     "classNames" => {
                         let mut names: Vec<&str> =
                             project.class_names.keys().map(String::as_str).collect();

@@ -7,10 +7,12 @@ pub mod enum_name;
 pub mod fix_helpers;
 pub mod function_argument_name;
 pub mod function_name;
+mod godot_virtuals;
 pub mod loop_variable_name;
 pub mod max_line_length;
 pub mod no_else_return;
 pub mod private_access;
+pub mod semantic_rules;
 pub mod signal_name;
 pub mod standalone_expression;
 pub mod unnecessary_pass;
@@ -36,6 +38,14 @@ pub trait Rule {
     /// This is called once before traversing the AST node tree for rules that
     /// work on source text directly, like checking line length.
     fn check_source(&mut self, _source_code: &str, _diagnostics: &mut Vec<Diagnostic>) {}
+
+    /// Runs once with shared semantic/project data after the syntax visitors.
+    fn check_context(
+        &mut self,
+        _context: &crate::linter::diagnostic::FileContext,
+        _diagnostics: &mut Vec<Diagnostic>,
+    ) {
+    }
 
     /// The linter calls this function for each node matching the nodes in
     /// get_target_ast_nodes when traversing the AST. This is the main method
@@ -76,6 +86,46 @@ pub struct RuleDefinition {
 /// List of all the rules available in the linter. The linter will only run
 /// these plus the ones that have not been disabled in the config.
 pub const ALL_RULES: &[RuleDefinition] = &[
+    RuleDefinition {
+        name: "unused-variable",
+        create: |_config| {
+            Box::new(semantic_rules::SemanticRule {
+                id: "unused-variable",
+            })
+        },
+    },
+    RuleDefinition {
+        name: "unused-private-function",
+        create: |_config| {
+            Box::new(semantic_rules::SemanticRule {
+                id: "unused-private-function",
+            })
+        },
+    },
+    RuleDefinition {
+        name: "shadowed-variable",
+        create: |_config| {
+            Box::new(semantic_rules::SemanticRule {
+                id: "shadowed-variable",
+            })
+        },
+    },
+    RuleDefinition {
+        name: "unused-local-signal",
+        create: |_config| {
+            Box::new(semantic_rules::SemanticRule {
+                id: "unused-local-signal",
+            })
+        },
+    },
+    RuleDefinition {
+        name: "assigned-but-never-read",
+        create: |_config| {
+            Box::new(semantic_rules::SemanticRule {
+                id: "assigned-but-never-read",
+            })
+        },
+    },
     RuleDefinition {
         name: "duplicated-load",
         create: |_config| {
@@ -149,3 +199,19 @@ pub const ALL_RULES: &[RuleDefinition] = &[
         create: |_config| Box::new(ConstantNameRule),
     },
 ];
+
+pub const SEMANTIC_RULE_IDS: &[&str] = &[
+    "unused-variable",
+    "unused-private-function",
+    "shadowed-variable",
+    "unused-local-signal",
+    "assigned-but-never-read",
+];
+pub fn semantic_rules_enabled(config: &LinterConfig) -> bool {
+    for id in SEMANTIC_RULE_IDS {
+        if !config.disabled_rules.contains(*id) {
+            return true;
+        }
+    }
+    false
+}

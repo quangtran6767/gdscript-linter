@@ -58,15 +58,15 @@ fn fresh_folder_gets_a_valid_config_and_example_rule() {
 fn starter_config_lists_defaults_with_descriptions() {
     let config = starter_config();
     assert!(config.contains(
-        "\nunused-argument        = \"warning\"                            # Function arguments are used, or start with `_`.\n"
+        "\nunused-argument         = \"warning\"                            # Function arguments are used, or start with `_`.\n"
     ), "{}", config);
     assert!(
-        config.contains("\nmax-line-length        = { level = \"warning\", max = 100 }     # "),
+        config.contains("\nmax-line-length         = { level = \"warning\", max = 100 }     # "),
         "{}",
         config
     );
     assert!(
-        config.contains("\nclass-name             = \"error\""),
+        config.contains("\nclass-name              = \"error\""),
         "{}",
         config
     );

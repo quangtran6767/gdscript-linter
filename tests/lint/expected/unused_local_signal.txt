@@ -1,0 +1,1 @@
+tests/lint/input/unused_local_signal.gd:1:unused-local-signal:warning: Signal 'unused' is never used in this file.

@@ -41,7 +41,8 @@ preview, `--fix-unsafe` after review, and `--format json` for tools.
 support CI. `--no-cache` skips `.gdguard/cache/`.
 
 - [Configuration, ignore comments and baselines](docs/configuration.md)
-- [Writing and testing custom rules](docs/custom_rules.md)
+- [Writing and testing YAML rules](docs/custom_rules.md)
+- [JavaScript rules, semantic data and project data](docs/js_rules.md)
 - [Coding agent hooks, JSON and CI](docs/agents.md)
 - [Example rule pack](examples/rules/)
 

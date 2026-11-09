@@ -5,7 +5,7 @@ integration on the current branch (`w4-a`). No partner waits.
 
 The solo integration step updates this file after validation.
 
-current_wave: w6
+current_wave: w7
 
 | Wave | Who works | Status |
 |------|-----------|--------|
@@ -16,7 +16,7 @@ current_wave: w6
 | w4  | solo (A + B + integration) | done |
 | sm0 | solo | done |
 | w5  | solo (A + B + integration) | done |
-| w6  | solo (A + B + integration) | todo |
+| w6  | solo (A + B + integration) | done |
 | w7  | solo (A + B + integration) | todo |
 | w8  | solo (A + B + integration) | todo |
 
@@ -31,6 +31,10 @@ current_wave: w6
   See `docs/handoff/w5-{a,b,merge}.md`.
 - W5 checks: 564 workspace tests; 553 feature-off tests; clippy, release,
   feature-off build and release semantic smoke pass. Semantic overhead ~12%.
-- Next: both W6 tasks and C5 integration, then W7 and W8 without stopping.
+- W6 complete: five semantic rules, shared cached project index, JS project
+  bindings/examples/docs and C5. See `docs/handoff/w6-{a,b,merge}.md`.
+- W6 checks: 579 workspace tests; 563 feature-off tests; clippy, strict TS,
+  release build and 12 release smoke checks pass. 13 example rules pass.
+- Next: W7 LSP server, Godot integration and C6 parity, then W8.
 - User explicitly authorized commits and pushes to origin/w4-a on 2026-11-09.
 - No real-game project path was provided; sample dogfooding passed.

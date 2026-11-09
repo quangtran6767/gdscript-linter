@@ -1,0 +1,3 @@
+tests/lint/input/unused_variable.gd:2:unused-variable:warning: Variable 'unused' is never used.
+tests/lint/input/unused_variable.gd:5:unused-variable:warning: Variable 'effect' is never used.
+tests/lint/input/unused_variable.gd:7:unused-variable:warning: Variable 'item' is never used.

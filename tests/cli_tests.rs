@@ -179,7 +179,7 @@ fn list_rules_text_output_lists_rules_sorted_by_id() {
         .expect("should list rules");
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
-    assert!(stdout.starts_with("Available linting rules:\n  class-name "));
+    assert!(stdout.starts_with("Available linting rules:\n  assigned-but-never-read "));
     assert!(stdout.contains("\n  duplicated-load "));
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
 }

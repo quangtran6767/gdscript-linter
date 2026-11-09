@@ -19,7 +19,16 @@ struct BuiltinInfo {
     good_example: &'static str,
 }
 
-const BUILTIN_RULES: [BuiltinInfo; 21] = [
+const BUILTIN_RULES: [BuiltinInfo; 26] = [
+    BuiltinInfo {
+        id: "assigned-but-never-read",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "Assignments to local variables are read.",
+        rationale: "A value repeatedly assigned and never read often means a missing use or assignment to the wrong variable.",
+        bad_example: "func f():\n\tvar value = 0\n\tvalue = 1\n",
+        good_example: "func f():\n\tvar value = 0\n\tvalue = 1\n\tprint(value)\n",
+    },
     BuiltinInfo {
         id: "class-name",
         severity: Severity::Error,
@@ -156,6 +165,15 @@ const BUILTIN_RULES: [BuiltinInfo; 21] = [
         good_example: "",
     },
     BuiltinInfo {
+        id: "shadowed-variable",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "Local names do not shadow outer declarations.",
+        rationale: "Shadowing makes it easy to read or assign a different variable than intended.",
+        bad_example: "var value = 1\nfunc f():\n\tvar value = 2\n\tprint(value)\n",
+        good_example: "var value = 1\nfunc f():\n\tvar local_value = 2\n\tprint(local_value)\n",
+    },
+    BuiltinInfo {
         id: "signal-name",
         severity: Severity::Error,
         fixable: false,
@@ -199,6 +217,33 @@ const BUILTIN_RULES: [BuiltinInfo; 21] = [
         rationale: "An unused ignore can hide future issues. Remove the comment or the rule ids that no longer apply. Disabled rules are exempt, since they cannot produce an issue.",
         bad_example: "# gdguard-ignore-next-line unused-argument -- old callback\nfunc f():\n\tpass\n",
         good_example: "func f():\n\tpass\n",
+    },
+    BuiltinInfo {
+        id: "unused-local-signal",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "Signals are emitted or connected in their declaring file.",
+        rationale: "Unused signals can be leftovers; external or scene-only usage requires a documented exception.",
+        bad_example: "signal changed\n",
+        good_example: "signal changed\nfunc f():\n\tchanged.emit()\n",
+    },
+    BuiltinInfo {
+        id: "unused-private-function",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "Private functions are referenced or are Godot virtual callbacks.",
+        rationale: "A private helper with no local references may be dead code. Check external callbacks before removing it.",
+        bad_example: "func _helper():\n\tpass\n",
+        good_example: "func _helper():\n\tpass\nfunc f():\n\t_helper()\n",
+    },
+    BuiltinInfo {
+        id: "unused-variable",
+        severity: Severity::Warning,
+        fixable: true,
+        description: "Local variables are used or start with an underscore.",
+        rationale: "Unused locals can hide mistakes or unnecessary work. Removing a declaration can affect behavior, so the offered fix is unsafe.",
+        bad_example: "func f():\n\tvar value = 1\n",
+        good_example: "func f():\n\tvar value = 1\n\tprint(value)\n",
     },
     BuiltinInfo {
         id: "variable-name",

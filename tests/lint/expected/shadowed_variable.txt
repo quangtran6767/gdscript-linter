@@ -1,0 +1,2 @@
+tests/lint/input/shadowed_variable.gd:2:shadowed-variable:warning: Variable 'value' shadows an outer declaration.
+tests/lint/input/shadowed_variable.gd:4:shadowed-variable:warning: Variable 'value' shadows an outer declaration.

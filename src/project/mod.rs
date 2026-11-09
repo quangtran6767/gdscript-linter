@@ -1,11 +1,13 @@
 //! Frozen SM0 project contracts. W6 fills the index and inheritance lookup.
 
+mod implicit_base;
 mod index;
+pub use index::{find_root, fingerprint};
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ScriptSummary {
     /// Path relative to the project root (without a literal res:// prefix).
     pub path: PathBuf,
@@ -32,18 +34,13 @@ pub struct ProjectIndex {
 }
 
 impl ProjectIndex {
-    /// SM0 returns an empty index. W6 discovers scripts and caches summaries.
+    /// Summarizes a Godot project, reusing content-hash cache entries.
     pub fn build(root: &Path) -> Result<ProjectIndex, String> {
-        Ok(ProjectIndex {
-            root: root.to_path_buf(),
-            scripts: Vec::new(),
-            class_names: HashMap::new(),
-            autoloads: HashMap::new(),
-        })
+        index::build(root)
     }
 
-    /// Unknown includes missing classes and inheritance reaching engine types.
-    pub fn has_member(&self, _class_name: &str, _member: &str) -> MemberLookup {
-        MemberLookup::Unknown
+    /// Unknown includes missing classes, cycles, and chains reaching engine types.
+    pub fn has_member(&self, class_name: &str, member: &str) -> MemberLookup {
+        index::has_member(self, class_name, member)
     }
 }

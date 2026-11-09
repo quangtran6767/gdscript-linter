@@ -46,7 +46,9 @@ declare module "gdguard" {
 
   /** Edit constructors; they never mutate source directly. */
   export interface Fixer {
-    /** Replace the complete node/range. */
+    /** Replace the complete node/range.
+     * @example context.report({node, message: "Use value", fix: fixer => fixer.replace(node, "value")});
+     */
     replace(target: Node | Range, text: string): Edit;
     /** Insert at the target's start byte. */
     insertBefore(target: Node | Range, text: string): Edit;
@@ -122,7 +124,9 @@ declare module "gdguard" {
     readonly symbols: readonly Symbol[];
     /** Innermost scope at a UTF-8 byte offset, or root (0) outside the file. */
     scopeAt(byte: number): number;
-    /** Lexical lookup, returning a file-local symbol ID or null. */
+    /** Lexical lookup, returning a file-local symbol ID or null.
+     * @example const id = context.semantic?.lookup(context.semantic.scopeAt(node.range.start.byte), "value");
+     */
     lookup(scope: number, name: string): number | null;
     /** Uses of a declaration; unknown IDs return an empty array. */
     referencesTo(symbol: number): readonly Reference[];
@@ -130,17 +134,21 @@ declare module "gdguard" {
 
   /** Read-only project data. No engine class database is assumed. */
   export interface Project {
+    /** Absolute project folder, added in W6 for exact owner-path comparisons. */
+    readonly root?: string;
     /** Sorted names declared with class_name. */
     readonly classNames: readonly string[];
     /** Autoload name to script path, relative to the project root. */
     readonly autoloads: Readonly<Record<string, string>>;
-    /** Follows project inheritance; unknown when an engine base is reached. */
+    /** Follows project inheritance; unknown when an engine base is reached.
+     * @example if (context.project?.hasMember("Player", "speed") === "yes") { console.log("known"); }
+     */
     hasMember(className: string, member: string): "yes" | "no" | "unknown";
   }
 
   /** File context supplied once to create(). */
   export interface RuleContext<Options = Record<string, unknown>> {
-    /** Path used by config and reports. */
+    /** Absolute source path used for file and owner comparisons. */
     readonly filename: string;
     /** Entire original source. String indices use UTF-16; ranges use UTF-8. */
     readonly source: string;

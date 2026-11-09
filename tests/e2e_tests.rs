@@ -428,7 +428,7 @@ fn lint_sample_project_sarif_output() {
             .as_array()
             .expect("valid e2e fixture and report")
             .len(),
-        19
+        20
     );
     assert!(
         report["runs"][0]["tool"]["driver"]["rules"]
@@ -464,7 +464,7 @@ fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
     ]);
     assert_eq!(hidden.exit_code, 0, "{}", hidden.stderr);
     assert!(
-        hidden.stdout.contains("19 issues hidden by baseline."),
+        hidden.stdout.contains("20 issues hidden by baseline."),
         "{}",
         hidden.stdout
     );
@@ -481,7 +481,7 @@ fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
     assert_eq!(new_issue.exit_code, 1, "{}", new_issue.stderr);
     let report: serde_json::Value =
         serde_json::from_str(&new_issue.stdout).expect("valid e2e fixture and report");
-    assert_eq!(report["summary"]["baseline_hidden"], 19);
+    assert_eq!(report["summary"]["baseline_hidden"], 20);
     assert_eq!(
         report["issues"]
             .as_array()
@@ -526,5 +526,35 @@ export default {
             .expect("issues")
             .iter()
             .any(|issue| issue["rule"] == "semantic-inventory")
+    );
+}
+
+#[test]
+#[cfg(feature = "js-rules")]
+fn project_js_and_semantic_builtins_run_together() {
+    let project = SampleProjectCopy::new("project-js");
+    fs::write(project.root.join(".gdguard/rules/project.js"),r#"
+export default {
+ meta:{id:'project-inventory',description:'Project integration',severity:'info'},
+ create(context){return {class_name_statement(node){
+   if(context.project?.classNames.includes('Player') && context.project.hasMember('Player','inventory')==='yes'
+      && context.project.hasMember('Player','unknown_engine_member')==='unknown'
+      && context.project.autoloads.GameState==='autoload/game_state.gd')
+     context.report({node,message:'Project and semantic APIs are connected'});
+ }}}};
+"#).expect("write project rule");
+    let output = project.run(&["lint", "--no-cache", "--format", "json", "."]);
+    assert_eq!(output.exit_code, 1, "{}", output.stderr);
+    let report: serde_json::Value = serde_json::from_str(&output.stdout).expect("JSON");
+    let issues = report["issues"].as_array().expect("issues");
+    assert!(
+        issues
+            .iter()
+            .any(|issue| issue["rule"] == "project-inventory")
+    );
+    assert!(
+        issues
+            .iter()
+            .any(|issue| issue["rule"] == "unused-local-signal")
     );
 }

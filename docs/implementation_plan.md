@@ -249,24 +249,24 @@ model, and A reviews it.
 ## W6: A and B at the same time
 
 **A: `a/semantic-rules`, `a/project-index`**
-- [ ] Built-in rules on the semantic model, each with fixes where they're
+- [x] Built-in rules on the semantic model, each with fixes where they're
       safe:
   - `unused-variable`
   - `unused-private-function`
   - `shadowed-variable`
   - `unused-local-signal`
   - `assigned-but-never-read`
-- [ ] Add their metadata to `rules_meta.rs`. Coordinate with B, because B
+- [x] Add their metadata to `rules_meta.rs`. Coordinate with B, because B
       owns that file; send A's text in the PR description and B adds it.
-- [ ] P1. `ProjectIndex::build`: parse `project.godot` autoloads, summarize
+- [x] P1. `ProjectIndex::build`: parse `project.godot` autoloads, summarize
       the scripts, follow `extends` chains, use the cache, and fill
       `FileContext.project`.
 
 **B: `b/js-project-api`, `b/js-docs`**
-- [ ] J2. Add `context.project` to the JS API and finish the `.d.ts` types.
-- [ ] JS example rules in `examples/rules/`: `max-function-params`,
+- [x] J2. Add `context.project` to the JS API and finish the `.d.ts` types.
+- [x] JS example rules in `examples/rules/`: `max-function-params`,
       `require-typed-signal-params`, `no-autoload-mutation-outside-owner`.
-- [ ] Write `docs/js_rules.md`.
+- [x] Write `docs/js_rules.md`.
 
 **Merge session (C5):** add an end-to-end test where a JS rule uses semantic and
 project data. Tag **v0.31**.

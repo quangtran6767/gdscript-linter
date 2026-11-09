@@ -7,7 +7,7 @@
   "summary": {
     "files": 5,
     "errors": 8,
-    "warnings": 9,
+    "warnings": 10,
     "infos": 2,
     "fixable": 4,
     "baseline_hidden": 0
@@ -34,6 +34,29 @@
       },
       "snippet": "signal OnDefeated",
       "explain": "gdguard explain signal-name",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "unused-local-signal",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Signal 'OnDefeated' is never used in this file.",
+      "help": "Emit or connect the signal, or document intentional external/scene use with a reasoned ignore.",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 8,
+          "byte": 23
+        },
+        "end": {
+          "line": 3,
+          "column": 18,
+          "byte": 33
+        }
+      },
+      "snippet": "signal OnDefeated",
+      "explain": "gdguard explain unused-local-signal",
       "fixes": []
     },
     {

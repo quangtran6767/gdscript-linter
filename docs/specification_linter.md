@@ -651,17 +651,24 @@ outer instance members, lambdas capture enclosing scopes, and self.x
 resolves to the nearest class member. Compound assignments produce read
 and write uses. Named enum members resolve through their enum qualifier.
 Scope queries use a binary search over disjoint scope-boundary intervals.
-The pipeline builds one model when custom providers are loaded; W6 adds
-semantic built-in consumers. FileContext.project remains None until W6.
+The pipeline builds one model when custom providers or enabled semantic
+built-ins need it. W6 supplies the read-only project index in FileContext.
 
 Important limit: an unresolved reference is **not** an error, because it may
 come from the parent class, the engine or an autoload. Rules that report
 "unused" are reliable for locals, parameters and private (`_`-prefixed)
 members only.
 
-Built-in rules this enables: `unused-variable`, `unused-private-function`,
+W6 built-in rules: `unused-variable`, `unused-private-function`,
 `shadowed-variable`, `unused-local-signal` (declared and never emitted or
-connected in the same file), `assigned-but-never-read`.
+connected in the same file), `assigned-but-never-read`. They default to
+Warning. Unused locals/loop bindings exempt `_` prefixes; class members
+are not treated as unused locals. Assignments with no reads have a separate
+warning. Unused-variable fixes are Unsafe, omitted for initializers with
+calls; an otherwise-empty body receives pass. Private helper removal is a
+Suggestion and exempts known Godot virtuals and string references. Signal
+string emit/connect calls, including self calls, count as local use.
+Semantic built-ins do not report on a malformed tree.
 
 ## Project index (`src/project/`)
 
@@ -693,11 +700,24 @@ impl ProjectIndex {
 }
 ```
 
-SM0 returns an empty ProjectIndex and Unknown for member queries; W6 fills
-the implementation without changing signatures.
+W6 builds one index per discovered project root and shares it read-only
+across workers. `project.godot` autoload values have their `*res://` prefix
+removed; paths stay project-relative. Summaries include top-level functions,
+signals and declared members (variables, constants, enums and inner classes).
+Malformed scripts are cached but excluded from resolvable summaries until
+repaired. Duplicate valid class_name declarations are an error.
+
+`has_member` follows class names and project-relative/res:// script paths.
+Missing bases, cycles and explicit engine bases return Unknown. A terminal
+project script can return No; implicit Object/RefCounted members and dynamic
+_get/_set hooks stay Unknown to avoid false missing-member reports. Engine
+member/virtual exemptions come from the installed gdextension-api data.
 
 - The index is cached in `.gdguard/cache/index.json`, keyed by each file's
-  hash, and only changed files are re-summarized.
+  content hash; only changed files are re-summarized. Malformed/unwritable
+  caches are nonfatal. Discovery order and serialized cache order are stable.
+  A run-wide project-content digest participates in lint cache keys, so JS
+  project rules invalidate when other scripts or project.godot change.
 - Cross-file rules: `unused-signal` (never emitted or connected anywhere in
   the project), `unknown-member-on-project-class` (only when the whole extends
   chain is project scripts; `Unknown` when it reaches an engine class).
@@ -752,7 +772,9 @@ export default {
   `fix.replace(node, text)`, `fix.insertBefore(node, text)`,
   `fix.remove(node)`, plus the two data APIs below.
 - **`context.semantic`:** `scopeAt`, `lookup`, `referencesTo`, `symbols`.
-- **`context.project`:** `classNames`, `autoloads`, `hasMember`.
+- **`context.project`:** `classNames`, `autoloads`, `hasMember`, plus optional
+  absolute `root` (additive in W6 for exact owner comparisons). filename in
+  JS context is absolute; diagnostic display paths keep CLI conventions.
 - The runtime limits the JS heap to 64 MB, stack to 512 KB and file checks
   to 2 seconds with an interrupt handler. Rule-load evaluation has the same
   deadline. Runtime failures or invalid reports become `script-error`
@@ -775,7 +797,8 @@ export default {
   Semantic lookup returns numeric symbol IDs or null. Semantic symbols use
   camelCase property names; reference kinds are read/write/call and symbol
   kinds are the snake_case names in the declaration file. Project autoloads
-  map names to project-relative script paths; classNames is sorted.
+  map names to project-relative script paths; classNames is sorted. The
+  optional root field is the absolute project folder.
   `semantic` is null only when the caller supplies no model; `project` is
   null outside a project. Users write `.js` files
   with JSDoc types; `.ts` files are not supported.

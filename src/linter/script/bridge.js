@@ -34,6 +34,7 @@ globalThis.__prepare = function(index, info, options) {
     referencesTo(symbol) { return JSON.parse(__semantic('referencesTo', symbol, '')); }
   }) : null;
   const project = info.hasProject ? Object.freeze({
+    get root() { return JSON.parse(__project('root', '', '')); },
     get classNames() { return JSON.parse(__project('classNames', '', '')); },
     get autoloads() { return JSON.parse(__project('autoloads', '', '')); },
     hasMember(name, member) { return JSON.parse(__project('hasMember', name, member)); }

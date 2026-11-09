@@ -2,6 +2,7 @@ use crate::node_kind::GDScriptNodeKind;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tree_sitter::{Node, Parser, Tree};
 
@@ -74,6 +75,7 @@ impl Default for LinterConfig {
 pub struct GDScriptLinter {
     config: LinterConfig,
     parser: Parser,
+    project: Option<Arc<crate::project::ProjectIndex>>,
 }
 
 impl GDScriptLinter {
@@ -84,7 +86,11 @@ impl GDScriptLinter {
             .set_language(&language)
             .map_err(|e| format!("Failed to set language: {}", e))?;
         GDScriptNodeKind::populate_lookup_table();
-        Ok(Self { config, parser })
+        Ok(Self {
+            config,
+            parser,
+            project: None,
+        })
     }
 
     /// Parses and lints one file with the built-in rules. Returns the
@@ -122,20 +128,23 @@ impl GDScriptLinter {
             .parse(source_code, None)
             .ok_or("Failed to parse GDScript code")?;
 
+        let needs_semantic = !providers.is_empty() || rules::semantic_rules_enabled(&self.config);
+        let semantic = if needs_semantic {
+            Some(crate::semantic::SemanticModel::build(&tree, source_code))
+        } else {
+            None
+        };
+        let context = FileContext {
+            path: Path::new(file_path),
+            source: source_code,
+            tree: &tree,
+            semantic: semantic.as_ref(),
+            project: self.project.as_deref(),
+        };
         let mut diagnostics = Vec::new();
-        run_builtin_rules(&self.config, &tree, source_code, &mut diagnostics);
-        if !providers.is_empty() {
-            let semantic = crate::semantic::SemanticModel::build(&tree, source_code);
-            let context = FileContext {
-                path: Path::new(file_path),
-                source: source_code,
-                tree: &tree,
-                semantic: Some(&semantic),
-                project: None,
-            };
-            for provider in providers.iter_mut() {
-                diagnostics.extend(provider.check_file(&context));
-            }
+        run_builtin_rules_in_context(&self.config, &context, &mut diagnostics);
+        for provider in providers.iter_mut() {
+            diagnostics.extend(provider.check_file(&context));
         }
 
         apply_rule_levels(levels, &mut diagnostics);
@@ -181,6 +190,11 @@ impl GDScriptLinter {
         Ok(tree.root_node().has_error())
     }
 
+    /// Sets the shared, immutable project index prepared for this run.
+    pub fn set_project(&mut self, project: Option<Arc<crate::project::ProjectIndex>>) {
+        self.project = project;
+    }
+
     /// Replaces the built-in rule settings, for example when the next file
     /// has a different config.
     pub fn set_config(&mut self, config: LinterConfig) {
@@ -214,6 +228,11 @@ pub fn lint_with_settings(
     settings: &FileSettings,
     providers: &mut [Box<dyn RuleProvider>],
 ) -> Result<Vec<Diagnostic>, String> {
+    if linter.project.is_none() {
+        if let Some(root) = crate::project::find_root(path) {
+            linter.project = Some(Arc::new(crate::project::ProjectIndex::build(&root)?));
+        }
+    }
     linter.set_config(settings.linter_config.clone());
     linter.lint_with_levels(
         source_code,
@@ -418,6 +437,7 @@ struct FileJob {
     settings: FileSettings,
     /// `(file key, settings hash, rules hash)` when the cache is on.
     cache_inputs: Option<(String, String, String)>,
+    project: Option<Arc<crate::project::ProjectIndex>>,
 }
 
 #[derive(Clone, Copy)]
@@ -447,6 +467,8 @@ fn prepare_jobs(
     config_cache: &mut ConfigCache,
     with_cache: bool,
 ) -> Result<Vec<FileJob>, String> {
+    let mut projects: HashMap<PathBuf, Arc<crate::project::ProjectIndex>> = HashMap::new();
+    let mut project_hashes: HashMap<PathBuf, String> = HashMap::new();
     let mut rules_hashes: HashMap<PathBuf, String> = HashMap::new();
     let mut jobs = Vec::with_capacity(files.len());
     for file_path in files {
@@ -456,6 +478,20 @@ fn prepare_jobs(
             continue;
         }
         let settings = loaded.compiled.settings_for_file(file_path, &options.cli);
+        let project_root = crate::project::find_root(file_path);
+        if let Some(root) = &project_root {
+            if !projects.contains_key(root) {
+                let project = crate::project::ProjectIndex::build(root)?;
+                if with_cache {
+                    project_hashes.insert(root.clone(), crate::project::fingerprint(&project)?);
+                }
+                projects.insert(root.clone(), Arc::new(project));
+            }
+        }
+        let project = project_root
+            .as_ref()
+            .and_then(|root| projects.get(root))
+            .cloned();
         let cache_inputs = if with_cache {
             if !rules_hashes.contains_key(&config_key) {
                 rules_hashes.insert(
@@ -463,10 +499,16 @@ fn prepare_jobs(
                     cache::rules_hash(&loaded.compiled.config),
                 );
             }
-            let rules_hash = match rules_hashes.get(&config_key) {
+            let mut rules_hash = match rules_hashes.get(&config_key) {
                 Some(rules_hash) => rules_hash.clone(),
                 None => String::new(),
             };
+            if let Some(project_hash) = project_root
+                .as_ref()
+                .and_then(|root| project_hashes.get(root))
+            {
+                rules_hash = cache::stable_hash(&[rules_hash.as_bytes(), project_hash.as_bytes()]);
+            }
             Some((
                 cache::file_key(file_path),
                 cache::settings_hash(&settings),
@@ -480,6 +522,7 @@ fn prepare_jobs(
             config_key,
             settings,
             cache_inputs,
+            project,
         });
     }
     Ok(jobs)
@@ -590,6 +633,8 @@ fn run_job(
 ) -> Result<JobOutcome, String> {
     let source = fs::read_to_string(&job.path)
         .map_err(|error| format!("Failed to read file {}: {}", job.path.display(), error))?;
+
+    linter.set_project(job.project.clone());
 
     let mut cache_key: Option<(String, cache::CacheKey)> = None;
     if let JobMode::Lint = mode
@@ -833,6 +878,28 @@ pub fn run_builtin_rules(
     source_code: &str,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
+    let semantic = if rules::semantic_rules_enabled(config) {
+        Some(crate::semantic::SemanticModel::build(tree, source_code))
+    } else {
+        None
+    };
+    let context = FileContext {
+        path: Path::new(""),
+        source: source_code,
+        tree,
+        semantic: semantic.as_ref(),
+        project: None,
+    };
+    run_builtin_rules_in_context(config, &context, diagnostics);
+}
+
+fn run_builtin_rules_in_context(
+    config: &LinterConfig,
+    context: &FileContext,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let tree = context.tree;
+    let source_code = context.source;
     let mut checkers: Vec<Box<dyn Rule>> = Vec::with_capacity(ALL_RULES.len());
     for current_rule in ALL_RULES {
         if !config.disabled_rules.contains(current_rule.name) {
@@ -865,6 +932,7 @@ pub fn run_builtin_rules(
     );
     for checker in checkers.iter_mut() {
         checker.finalize(source_code, diagnostics);
+        checker.check_context(context, diagnostics);
     }
 }
 

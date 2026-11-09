@@ -140,7 +140,7 @@ fn all_rule_metas_lists_built_ins_then_custom_rules() {
     let metas = all_rule_metas(&project_config()).unwrap();
     // Built-ins, load-variable-name, fix-failed, unused-ignore, and one custom rule.
     assert_eq!(metas.len(), get_all_rule_names().len() + 5);
-    assert_eq!(metas[0].id, "class-name");
+    assert_eq!(metas[0].id, "assigned-but-never-read");
     assert_eq!(metas[metas.len() - 1].id, "no-print-left");
 }
 
@@ -170,11 +170,11 @@ fn all_rule_metas_reports_rule_file_errors() {
 fn list_rules_text() {
     let metas = all_rule_metas(&project_config()).unwrap();
     let text = format_rule_list_text(&metas);
-    assert!(text.starts_with("Available linting rules:\n  class-name              error         Class names use PascalCase.\n"), "{}", text);
-    assert!(text.contains("\n  no-else-return          warning  fix  No `else`/`elif` after an `if` block that ends with `return`.\n"), "{}", text);
+    assert!(text.starts_with("Available linting rules:\n  assigned-but-never-read  warning       Assignments to local variables are read.\n"), "{}", text);
+    assert!(text.contains("\n  no-else-return           warning  fix  No `else`/`elif` after an `if` block that ends with `return`.\n"), "{}", text);
     assert!(
         text.contains(
-            "\n  no-print-left           info          Remove the debug print (custom)\n"
+            "\n  no-print-left            info          Remove the debug print (custom)\n"
         ),
         "{}",
         text
@@ -193,8 +193,13 @@ fn list_rules_json() {
     assert_eq!(document["version"], 1);
     let rules = document["rules"].as_array().unwrap();
     assert_eq!(rules.len(), metas.len());
+    assert_eq!(rules[0]["id"], "assigned-but-never-read");
     assert_eq!(
-        rules[0],
+        rules
+            .iter()
+            .find(|rule| rule["id"] == "class-name")
+            .expect("class-name metadata")
+            .clone(),
         serde_json::json!({
             "id": "class-name",
             "description": "Class names use PascalCase.",

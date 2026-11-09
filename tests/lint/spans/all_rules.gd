@@ -35,3 +35,11 @@ func pick(value: int) -> int:
 
 # The é characters are two bytes each: the span starts at a byte column.
 var long_line = "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+
+
+func _unused_helper():
+	var never_used = 1
+	var assigned = 0
+	assigned = 2
+	var badVariable = 0
+	print(badVariable)

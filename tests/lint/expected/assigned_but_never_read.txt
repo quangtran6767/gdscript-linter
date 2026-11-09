@@ -1,0 +1,1 @@
+tests/lint/input/assigned_but_never_read.gd:2:assigned-but-never-read:warning: Variable 'value' is assigned but never read.

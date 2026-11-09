@@ -1,0 +1,1 @@
+tests/lint/input/unused_private_function.gd:1:unused-private-function:warning: Private function '_helper' is never referenced in this file.

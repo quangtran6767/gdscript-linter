@@ -184,9 +184,12 @@ fn cli_passes_on_example_rules() {
 ✓ prefer-not-is-empty  7 passed
 ✓ prefer-preload-const  7 passed
 ✓ max-function-params  3 passed
+✓ no-autoload-mutation-outside-owner  2 passed
 ✓ no-empty-function  3 passed
+✓ prefer-static-typing  3 passed
+✓ require-typed-signal-params  3 passed
 
-10 rules, 10 passed, 0 failed
+13 rules, 13 passed, 0 failed
 "
     );
 }

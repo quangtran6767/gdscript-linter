@@ -150,7 +150,7 @@ impl JsRuleProvider {
             let result = (|| -> rquickjs::Result<String> {
                 bindings::install(&ctx, context, self.project.clone())?;
                 let prepare: Function = ctx.globals().get("__prepare")?;
-                let info = ctx.json_parse(json!({"filename":context.path.to_string_lossy(),"source":context.source,
+                let info = ctx.json_parse(json!({"filename":std::fs::canonicalize(context.path).or_else(|_|std::path::absolute(context.path)).unwrap_or_else(|_|context.path.to_path_buf()).to_string_lossy(),"source":context.source,
                     "hasSemantic":context.semantic.is_some(),"hasProject":context.project.is_some()}).to_string())?;
                 let options = ctx.json_parse(options.to_string())?;
                 let kinds: Vec<String> = prepare.call((index, info, options))?;

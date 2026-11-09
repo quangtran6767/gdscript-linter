@@ -21,7 +21,7 @@ use crate::linter::config::FileSettings;
 use crate::linter::custom::loader::find_rule_files;
 use crate::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span};
 
-pub const CACHE_VERSION: u32 = 2;
+pub const CACHE_VERSION: u32 = 3;
 
 /// The cache file, relative to the folder of `gdguard.toml`.
 pub const CACHE_PATH: &str = ".gdguard/cache/lint.json";

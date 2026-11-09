@@ -271,3 +271,146 @@ fn test_rules_checks_fix_output_and_idempotency() {
         }
     }
 }
+
+#[test]
+fn project_api_has_autoloads_members_and_null_outside_projects() {
+    let project = Project::new(&rule(
+        "if(context.project && context.project.classNames.includes('Data') && context.project.autoloads.Game==='game.gd' && context.project.hasMember('Data','score')==='yes' && context.project.hasMember('Data','missing')==='no') context.report({node,message:'project data'});",
+    ));
+    std::fs::write(
+        project.root.join("project.godot"),
+        "[autoload]\nGame=\"*res://game.gd\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        project.root.join("game.gd"),
+        "class_name Data\nvar score = 0\n",
+    )
+    .unwrap();
+    assert!(
+        project
+            .lint("func f():\n\treturn old\n")
+            .unwrap()
+            .iter()
+            .any(|diagnostic| diagnostic.rule == "test-rule")
+    );
+    let outside = Project::new(&rule(
+        "if(context.project===null)context.report({node,message:'no project'});",
+    ));
+    assert!(
+        outside
+            .lint("func f():\n\treturn old\n")
+            .unwrap()
+            .iter()
+            .any(|diagnostic| diagnostic.message == "no project")
+    );
+}
+
+#[test]
+fn autoload_example_flags_external_mutation_but_allows_its_owner() {
+    let source = include_str!("../../examples/rules/no-autoload-mutation-outside-owner.js");
+    let project = Project::new(source);
+    std::fs::write(
+        project.root.join("project.godot"),
+        "[autoload]\nGame=\"*res://main.gd\"\n",
+    )
+    .unwrap();
+    assert!(
+        !project
+            .lint("func f():\n\tGame.score = 1\n")
+            .unwrap()
+            .iter()
+            .any(|diagnostic| diagnostic.rule == "no-autoload-mutation-outside-owner")
+    );
+    let diagnostics = lint_source(
+        &project.root.join("other.gd"),
+        "func f():\n\tGame.score += 1\n",
+        &project.config,
+    )
+    .unwrap()
+    .diagnostics;
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.rule == "no-autoload-mutation-outside-owner")
+    );
+    std::fs::create_dir_all(project.root.join("nested")).unwrap();
+    let nested = lint_source(
+        &project.root.join("nested/main.gd"),
+        "func f():\n\tGame.score = 1\n",
+        &project.config,
+    )
+    .unwrap();
+    assert!(
+        nested
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.rule == "no-autoload-mutation-outside-owner")
+    );
+}
+
+#[test]
+fn project_edits_invalidate_cached_lint_results_in_other_files() {
+    let project = Project::new(&rule(
+        "context.report({node,message:context.project.hasMember('Data','added')});",
+    ));
+    std::fs::write(project.root.join("project.godot"), "config_version=5\n").unwrap();
+    std::fs::write(
+        project.root.join("gdguard.toml"),
+        "[custom_rules]\npaths=['rules']\n",
+    )
+    .unwrap();
+    std::fs::write(project.root.join("main.gd"), "func f():\n\treturn old\n").unwrap();
+    std::fs::write(
+        project.root.join("data.gd"),
+        "class_name Data\nvar value = 1\n",
+    )
+    .unwrap();
+    let run = || {
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_gdscript-formatter"))
+            .current_dir(&project.root)
+            .args(["lint", "--format", "json", "main.gd"])
+            .output()
+            .unwrap();
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        serde_json::from_slice::<serde_json::Value>(&output.stdout).unwrap()
+    };
+    let before = run();
+    assert_eq!(before["issues"][0]["message"], "no");
+    std::fs::write(
+        project.root.join("data.gd"),
+        "class_name Data\nvar added = 1\n",
+    )
+    .unwrap();
+    let after = run();
+    assert_eq!(after["issues"][0]["message"], "yes");
+}
+
+#[test]
+fn complete_js_documentation_rule_passes_embedded_tests() {
+    let document = include_str!("../../docs/js_rules.md");
+    let source = document
+        .split("```js\n")
+        .nth(1)
+        .unwrap()
+        .split("```")
+        .next()
+        .unwrap();
+    let project = Project::new(source);
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_gdscript-formatter"))
+        .arg("test-rules")
+        .arg(project.root.join("rules"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
