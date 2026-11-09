@@ -19,7 +19,7 @@ struct BuiltinInfo {
     good_example: &'static str,
 }
 
-const BUILTIN_RULES: [BuiltinInfo; 26] = [
+const BUILTIN_RULES: [BuiltinInfo; 29] = [
     BuiltinInfo {
         id: "assigned-but-never-read",
         severity: Severity::Warning,
@@ -147,6 +147,15 @@ const BUILTIN_RULES: [BuiltinInfo; 26] = [
         good_example: "func sign_of(x):\n\tif x < 0:\n\t\treturn -1\n\treturn 1\n",
     },
     BuiltinInfo {
+        id: "parse-error",
+        severity: Severity::Error,
+        fixable: false,
+        description: "The source parses as GDScript.",
+        rationale: "A syntax error prevents reliable analysis. Repair the reported range and lint again; use Godot for additional parser and type checks.",
+        bad_example: "func f(:\n",
+        good_example: "func f():\n\tpass\n",
+    },
+    BuiltinInfo {
         id: "private-access",
         severity: Severity::Error,
         fixable: false,
@@ -192,6 +201,15 @@ const BUILTIN_RULES: [BuiltinInfo; 26] = [
         good_example: "func add_point(score):\n\tscore += 1\n\treturn score\n",
     },
     BuiltinInfo {
+        id: "unknown-member-on-project-class",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "Declared project types refer to existing project members.",
+        rationale: "A missing member on a known project type is often a typo. Engine, dynamic and inferred types remain unknown.",
+        bad_example: "func f(data: ProjectData):\n\treturn data.missing\n",
+        good_example: "func f(data: ProjectData):\n\treturn data.value\n",
+    },
+    BuiltinInfo {
         id: "unnecessary-pass",
         severity: Severity::Warning,
         fixable: true,
@@ -235,6 +253,15 @@ const BUILTIN_RULES: [BuiltinInfo; 26] = [
         rationale: "A private helper with no local references may be dead code. Check external callbacks before removing it.",
         bad_example: "func _helper():\n\tpass\n",
         good_example: "func _helper():\n\tpass\nfunc f():\n\t_helper()\n",
+    },
+    BuiltinInfo {
+        id: "unused-signal",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "Project signals are emitted or connected somewhere in the project.",
+        rationale: "Unused signals can be removed after reviewing external and dynamic use. Script calls and scene connections count as use.",
+        bad_example: "signal unused\n",
+        good_example: "signal used\nfunc f():\n\tused.emit()\n",
     },
     BuiltinInfo {
         id: "unused-variable",
@@ -296,6 +323,44 @@ mod tests {
     use crate::linter::lint_gdscript;
     use crate::linter::rule_config::get_all_rule_names;
 
+    fn lint_example(
+        info: &BuiltinInfo,
+        source: &str,
+    ) -> Vec<crate::linter::diagnostic::Diagnostic> {
+        if matches!(info.id, "unused-signal" | "unknown-member-on-project-class") {
+            let root = std::env::temp_dir().join(format!(
+                "gdguard-meta-{}-{}-{:?}-{}",
+                info.id,
+                std::process::id(),
+                std::thread::current().id(),
+                if source == info.bad_example {
+                    "bad"
+                } else {
+                    "good"
+                }
+            ));
+            std::fs::create_dir_all(&root).unwrap();
+            std::fs::write(root.join("project.godot"), "config_version=5\n").unwrap();
+            std::fs::write(
+                root.join("data.gd"),
+                "class_name ProjectData\nvar value = 0\n",
+            )
+            .unwrap();
+            let path = root.join("example.gd");
+            std::fs::write(&path, source).unwrap();
+            let result = crate::linter::api::lint_source(
+                &path,
+                source,
+                &crate::linter::api::Config::default(),
+            )
+            .unwrap();
+            let _ = std::fs::remove_dir_all(root);
+            result.diagnostics
+        } else {
+            lint_gdscript(source, "example.gd").unwrap()
+        }
+    }
+
     #[test]
     fn every_built_in_rule_has_metadata() {
         for name in get_all_rule_names() {
@@ -308,7 +373,7 @@ mod tests {
         assert!(builtin_rule_meta("load-variable-name").is_some());
         assert!(builtin_rule_meta("fix-failed").is_some());
         assert!(builtin_rule_meta("unused-ignore").is_some());
-        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 4);
+        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 5);
     }
 
     #[test]
@@ -326,7 +391,7 @@ mod tests {
     #[test]
     fn severities_match_what_the_rules_report() {
         for info in &BUILTIN_RULES {
-            let diagnostics = lint_gdscript(info.bad_example, "example.gd").unwrap();
+            let diagnostics = lint_example(info, info.bad_example);
             for diagnostic in &diagnostics {
                 if diagnostic.rule == info.id {
                     assert_eq!(diagnostic.severity, info.severity, "rule `{}`", info.id);
@@ -343,7 +408,7 @@ mod tests {
                 assert!(matches!(info.id, "fix-failed" | "script-error"));
                 continue;
             }
-            let bad = lint_gdscript(info.bad_example, "example.gd").unwrap();
+            let bad = lint_example(info, info.bad_example);
             let mut reported = false;
             for diagnostic in &bad {
                 if diagnostic.rule == info.id {
@@ -352,7 +417,7 @@ mod tests {
             }
             assert!(reported, "bad example of `{}` isn't reported", info.id);
 
-            let good = lint_gdscript(info.good_example, "example.gd").unwrap();
+            let good = lint_example(info, info.good_example);
             for diagnostic in &good {
                 assert_ne!(
                     diagnostic.rule, info.id,

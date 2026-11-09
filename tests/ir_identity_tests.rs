@@ -14,11 +14,11 @@
 /// intermediate representation. This test battery verified every step of the
 /// way that the intermediate representation preserved all the information
 /// needed to re-render the code correctly.
-use gdscript_formatter::FormatterConfiguration;
-use gdscript_formatter::formatter::build_formatter_intermediate_representation;
-use gdscript_formatter::node_kind::GDScriptNodeKind;
-use gdscript_formatter::parser::ParseInput;
-use gdscript_formatter::renderer::{PrinterConfiguration, render};
+use gdguard::FormatterConfiguration;
+use gdguard::formatter::build_formatter_intermediate_representation;
+use gdguard::node_kind::GDScriptNodeKind;
+use gdguard::parser::ParseInput;
+use gdguard::renderer::{PrinterConfiguration, render};
 use std::fs;
 
 test_each_file::test_each_path! { in "./tests/input" => test_ir_format_file }

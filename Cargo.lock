@@ -242,7 +242,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3489a9e7463353467db3cfe3eb12de31c9b6200e4f928bde4959bf5db5b31d2f"
 
 [[package]]
-name = "gdscript-formatter"
+name = "gdguard"
 version = "0.28.0"
 dependencies = [
  "ast-grep-config",
@@ -263,10 +263,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "gdscript-formatter-gdextension"
+name = "gdguard-gdextension"
 version = "0.22.2"
 dependencies = [
- "gdscript-formatter",
+ "gdguard",
  "godot",
 ]
 

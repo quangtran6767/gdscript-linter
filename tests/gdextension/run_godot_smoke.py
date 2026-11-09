@@ -19,7 +19,7 @@ repo = Path(__file__).resolve().parents[2]
 if not args.skip_build:
     subprocess.run(["cargo", "build", "--workspace"], cwd=repo, check=True)
 system = platform.system()
-name = {"Linux": "libgdscript_formatter_gdextension.so", "Darwin": "libgdscript_formatter_gdextension.dylib", "Windows": "gdscript_formatter_gdextension.dll"}[system]
+name = {"Linux": "libgdguard_gdextension.so", "Darwin": "libgdguard_gdextension.dylib", "Windows": "gdguard_gdextension.dll"}[system]
 condition = {"Linux": "linux.debug.x86_64", "Darwin": "macos.debug", "Windows": "windows.debug.x86_64"}[system]
 cli = repo / "target/debug" / ("gdscript-formatter.exe" if system == "Windows" else "gdscript-formatter")
 sample = repo / "tests/e2e/sample_project"

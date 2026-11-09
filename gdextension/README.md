@@ -1,5 +1,7 @@
-# GDScript formatter GDExtension
+# Optional gdguard GDExtension
 
-GDExtension wrapper around the formatter library. This allows us to bundle the formatter in a Godot add-on with native performance and no need to download or run a separate command line program.
+Native `GDGuard` singleton exposing the same lint, fix and format library as
+the CLI. This is optional; see [editor setup](../docs/editors.md). Build with
+`cargo build -p gdguard-gdextension`. Godot 4.7+ is required by the pinned SDK.
 
 Built with [godot-rust GDExtension](https://github.com/godot-rust/gdext).

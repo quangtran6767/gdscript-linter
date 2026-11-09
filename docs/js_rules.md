@@ -2,8 +2,7 @@
 
 Register a folder in `[custom_rules].paths` in `gdguard.toml`. Its `.js`
 files load alongside YAML rules, with unique kebab-case IDs across both and
-built-ins. The current executable is `gdscript-formatter`; `gdguard` is the
-planned final name. JS support is enabled by default; a build made with
+built-ins. The executable is `gdguard`. JS support is enabled by default; a build made with
 `--no-default-features` reports an error if JS rules are configured.
 
 ## Quick start
@@ -40,8 +39,8 @@ export default {
 };
 ```
 
-Run `gdscript-formatter test-rules .gdguard/rules`, then
-`gdscript-formatter lint --format json .`. Suggestions are reviewed by a
+Run `gdguard test-rules .gdguard/rules`, then
+`gdguard lint --format json .`. Suggestions are reviewed by a
 person or agent; `--fix` does not apply them. The complete rule above is
 extracted and run by the documentation test.
 
@@ -141,7 +140,7 @@ synchronous and return their reports during the check.
 
 ## Testing and debugging
 
-Run `gdscript-formatter test-rules examples/rules` from this repository.
+Run `gdguard test-rules examples/rules` from this repository.
 All 13 example rules pass. `output` tests apply fixes at every safety level,
 require the expected text to parse, and re-run the owning rule to verify no
 issue remains. A wrong count/output or repeated diagnostic fails (exit 1).

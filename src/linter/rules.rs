@@ -12,6 +12,7 @@ pub mod loop_variable_name;
 pub mod max_line_length;
 pub mod no_else_return;
 pub mod private_access;
+pub mod project_rules;
 pub mod semantic_rules;
 pub mod signal_name;
 pub mod standalone_expression;
@@ -43,6 +44,15 @@ pub trait Rule {
     fn check_context(
         &mut self,
         _context: &crate::linter::diagnostic::FileContext,
+        _diagnostics: &mut Vec<Diagnostic>,
+    ) {
+    }
+
+    /// Runs once with the analysis shared by all files in the project.
+    fn check_project_context(
+        &mut self,
+        _context: &crate::linter::diagnostic::FileContext,
+        _analysis: &crate::project::ProjectAnalysis,
         _diagnostics: &mut Vec<Diagnostic>,
     ) {
     }
@@ -86,6 +96,14 @@ pub struct RuleDefinition {
 /// List of all the rules available in the linter. The linter will only run
 /// these plus the ones that have not been disabled in the config.
 pub const ALL_RULES: &[RuleDefinition] = &[
+    RuleDefinition {
+        name: "unused-signal",
+        create: |_config| Box::new(project_rules::UnusedSignalRule),
+    },
+    RuleDefinition {
+        name: "unknown-member-on-project-class",
+        create: |_config| Box::new(project_rules::UnknownMemberRule),
+    },
     RuleDefinition {
         name: "unused-variable",
         create: |_config| {
@@ -201,6 +219,8 @@ pub const ALL_RULES: &[RuleDefinition] = &[
 ];
 
 pub const SEMANTIC_RULE_IDS: &[&str] = &[
+    "unused-signal",
+    "unknown-member-on-project-class",
     "unused-variable",
     "unused-private-function",
     "shadowed-variable",

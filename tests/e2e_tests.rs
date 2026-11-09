@@ -552,9 +552,5 @@ export default {
             .iter()
             .any(|issue| issue["rule"] == "project-inventory")
     );
-    assert!(
-        issues
-            .iter()
-            .any(|issue| issue["rule"] == "unused-local-signal")
-    );
+    assert!(issues.iter().any(|issue| issue["rule"] == "unused-signal"));
 }

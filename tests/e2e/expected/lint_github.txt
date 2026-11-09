@@ -1,5 +1,5 @@
 ::error file=scripts/enemies/enemy.gd,line=3,col=8,endLine=3,endColumn=18,title=signal-name::Signal name 'OnDefeated' should be in snake_case format
-::warning file=scripts/enemies/enemy.gd,line=3,col=8,endLine=3,endColumn=18,title=unused-local-signal::Signal 'OnDefeated' is never used in this file.
+::warning file=scripts/enemies/enemy.gd,line=3,col=8,endLine=3,endColumn=18,title=unused-signal::Signal 'OnDefeated' is never emitted or connected in this project.
 ::error file=scripts/enemies/enemy.gd,line=5,col=6,endLine=5,endColumn=11,title=enum-name::Enum name 'state' should be in PascalCase format
 ::error file=scripts/enemies/enemy.gd,line=7,col=2,endLine=7,endColumn=14,title=enum-member-name::Enum element name 'chase_player' should be in CONSTANT_CASE format
 ::error file=scripts/enemies/enemy.gd,line=11,col=5,endLine=11,endColumn=15,title=variable-name::Variable name 'targetName' should be in snake_case or _private_snake_case format

@@ -88,8 +88,8 @@ func _exit_tree() -> void:
 
 
 func _backend() -> Object:
-	if Engine.has_singleton("GDScriptFormatter"):
-		return Engine.get_singleton("GDScriptFormatter")
+	if Engine.has_singleton("GDGuard"):
+		return Engine.get_singleton("GDGuard")
 	return null
 
 

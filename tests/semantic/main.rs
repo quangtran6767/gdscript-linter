@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-use gdscript_formatter::semantic::{ReferenceKind, ScopeKind, SemanticModel, SymbolKind};
+use gdguard::semantic::{ReferenceKind, ScopeKind, SemanticModel, SymbolKind};
 use std::path::Path;
 
 fn model(source: &str) -> SemanticModel {
@@ -139,15 +139,12 @@ fn enum_members_resolve_only_through_the_named_enum() {
         .find(|symbol| symbol.name == "IDLE")
         .unwrap();
     assert_eq!(semantic.references_to(idle.id).len(), 1);
-    assert_eq!(
-        semantic.lookup(gdscript_formatter::semantic::ScopeId(0), "IDLE"),
-        None
-    );
+    assert_eq!(semantic.lookup(gdguard::semantic::ScopeId(0), "IDLE"), None);
 }
 
 #[test]
 fn unused_local_fixes_are_unsafe_and_do_not_remove_calls() {
-    use gdscript_formatter::linter::api::{Config, fix_source, lint_source};
+    use gdguard::linter::api::{Config, fix_source, lint_source};
     let path = Path::new("test.gd");
     let config = Config::default();
     let source = "func f():\n\tvar unused = 1\n";
@@ -170,7 +167,7 @@ fn unused_local_fixes_are_unsafe_and_do_not_remove_calls() {
 
 #[test]
 fn semantic_rule_exemptions_cover_virtuals_underscores_and_string_signals() {
-    use gdscript_formatter::linter::api::{Config, lint_source};
+    use gdguard::linter::api::{Config, lint_source};
     let source =
         "signal changed\nfunc _ready():\n\tvar _intentional = 1\n\tself.emit_signal(\"changed\")\n";
     let diagnostics = lint_source(Path::new("test.gd"), source, &Config::default())

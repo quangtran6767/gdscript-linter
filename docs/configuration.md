@@ -1,6 +1,6 @@
 # Linter configuration
 
-The current executable is `gdscript-formatter`. `init` creates
+The executable is `gdguard`. `init` creates
 `gdguard.toml` and `.gdguard/rules/prefer-is-empty.yml` at the Godot project
 root (or current directory without `project.godot`).
 
@@ -57,8 +57,8 @@ fix. Disabled rules are exempt. Disable it with
 ## Baseline an existing project
 
 ```sh
-gdscript-formatter lint --update-baseline .
-gdscript-formatter lint --baseline .gdguard/baseline.json .
+gdguard lint --update-baseline .
+gdguard lint --baseline .gdguard/baseline.json .
 ```
 
 `--update-baseline` writes all current issues, using `--baseline PATH`,

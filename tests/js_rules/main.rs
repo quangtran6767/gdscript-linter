@@ -1,8 +1,8 @@
 #![cfg(feature = "js-rules")]
 #![allow(clippy::unwrap_used)]
-use gdscript_formatter::linter::api::{Config, ConfigOverride, RuleSetting, lint_source};
-use gdscript_formatter::linter::diagnostic::{FixSafety, RuleProvider, apply_edits};
-use gdscript_formatter::linter::script::JsRuleProvider;
+use gdguard::linter::api::{Config, ConfigOverride, RuleSetting, lint_source};
+use gdguard::linter::diagnostic::{FixSafety, RuleProvider, apply_edits};
+use gdguard::linter::script::JsRuleProvider;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT: AtomicUsize = AtomicUsize::new(0);
@@ -28,10 +28,7 @@ impl Project {
             root,
         }
     }
-    fn lint(
-        &self,
-        source: &str,
-    ) -> Result<Vec<gdscript_formatter::linter::diagnostic::Diagnostic>, String> {
+    fn lint(&self, source: &str) -> Result<Vec<gdguard::linter::diagnostic::Diagnostic>, String> {
         Ok(lint_source(&self.root.join("main.gd"), source, &self.config)?.diagnostics)
     }
 }
@@ -169,7 +166,7 @@ fn resource_limits_return_clear_errors() {
             .unwrap();
         let source = "var text = 'đ'\nprint(old)\n";
         let tree = parser.parse(source, None).unwrap();
-        let context = gdscript_formatter::linter::diagnostic::FileContext {
+        let context = gdguard::linter::diagnostic::FileContext {
             path: &project.root,
             source,
             tree: &tree,

@@ -12,9 +12,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use gdscript_formatter::linter::api::{self, Config};
-use gdscript_formatter::linter::diagnostic::Severity;
-use gdscript_formatter::linter::{LintRunOptions, fix_files};
+use gdguard::linter::api::{self, Config};
+use gdguard::linter::diagnostic::Severity;
+use gdguard::linter::{LintRunOptions, fix_files};
 
 /// A new empty folder under the system temp folder. Removed on drop.
 struct TempProject {

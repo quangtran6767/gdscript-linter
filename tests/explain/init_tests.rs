@@ -3,11 +3,11 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use gdscript_formatter::linter::config::load_with_providers;
-use gdscript_formatter::linter::custom::loader::load_rules;
-use gdscript_formatter::linter::init::{InitArgs, find_project_root, init_project, starter_config};
-use gdscript_formatter::linter::rule_config::get_all_rule_names;
-use gdscript_formatter::linter::rule_tester::{exit_code, test_rules};
+use gdguard::linter::config::load_with_providers;
+use gdguard::linter::custom::loader::load_rules;
+use gdguard::linter::init::{InitArgs, find_project_root, init_project, starter_config};
+use gdguard::linter::rule_config::get_all_rule_names;
+use gdguard::linter::rule_tester::{exit_code, test_rules};
 
 fn temp_dir(name: &str) -> PathBuf {
     let directory =
@@ -58,15 +58,17 @@ fn fresh_folder_gets_a_valid_config_and_example_rule() {
 fn starter_config_lists_defaults_with_descriptions() {
     let config = starter_config();
     assert!(config.contains(
-        "\nunused-argument         = \"warning\"                            # Function arguments are used, or start with `_`.\n"
+        "\nunused-argument                 = \"warning\"                            # Function arguments are used, or start with `_`.\n"
     ), "{}", config);
     assert!(
-        config.contains("\nmax-line-length         = { level = \"warning\", max = 100 }     # "),
+        config.contains(
+            "\nmax-line-length                 = { level = \"warning\", max = 100 }     # "
+        ),
         "{}",
         config
     );
     assert!(
-        config.contains("\nclass-name              = \"error\""),
+        config.contains("\nclass-name                      = \"error\""),
         "{}",
         config
     );

@@ -1,20 +1,20 @@
 [package]
-name = "gdscript-formatter-gdextension"
+name = "gdguard-gdextension"
 version = "0.22.2"
 edition = "2024"
-description = "A GDExtension for the formatter"
+description = "Optional native gdguard lint and format API"
 license = "MIT"
-repository = "https://github.com/gdquest/gdscript-formatter"
+repository = "https://github.com/quangtran6767/gdscript-linter"
 readme = "README.md"
 keywords = ["godot", "gdscript", "format", "lint"]
 categories = ["development-tools"]
 rust-version = "1.94"
 
 [lib]
-name = "gdscript_formatter_gdextension"
+name = "gdguard_gdextension"
 path = "src/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-gdscript-formatter = { path = "../" }
+gdguard = { path = "../" }
 godot = "=0.5.4"

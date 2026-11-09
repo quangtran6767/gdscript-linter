@@ -3,10 +3,10 @@
 
 use std::path::{Path, PathBuf};
 
-use gdscript_formatter::linter::api::Config;
-use gdscript_formatter::linter::custom::loader::load_rules;
-use gdscript_formatter::linter::custom::{YamlRuleProvider, load_providers};
-use gdscript_formatter::linter::diagnostic::{
+use gdguard::linter::api::Config;
+use gdguard::linter::custom::loader::load_rules;
+use gdguard::linter::custom::{YamlRuleProvider, load_providers};
+use gdguard::linter::diagnostic::{
     Diagnostic, FileContext, FixSafety, Position, Severity, apply_edits,
 };
 
@@ -311,10 +311,10 @@ fn message_uses_metavariable_captured_in_a_relational_rule() {
         ..Config::default()
     };
     // This exercises YAML capture rendering, independently of optional JS.
-    let yaml = gdscript_formatter::linter::custom::YamlRuleProvider::new(
-        gdscript_formatter::linter::custom::loader::load_rules(&config.custom_rule_paths).unwrap(),
+    let yaml = gdguard::linter::custom::YamlRuleProvider::new(
+        gdguard::linter::custom::loader::load_rules(&config.custom_rule_paths).unwrap(),
     );
-    let mut providers: Vec<Box<dyn gdscript_formatter::linter::diagnostic::RuleProvider>> =
+    let mut providers: Vec<Box<dyn gdguard::linter::diagnostic::RuleProvider>> =
         vec![Box::new(yaml)];
     let source = "func _physics_process(delta):\n\tget_node(\"A\").show()\n";
     let tree = parse(source);

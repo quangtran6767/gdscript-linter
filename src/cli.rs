@@ -5,18 +5,18 @@
 //!
 //! NB: do not replace with a dependency like clap: it brings too many
 //! dependencies only to save a little straightforward code.
-use gdscript_formatter::QuoteStyle;
-use gdscript_formatter::linter::explain::{ExplainArgs, ListRulesFormat};
-use gdscript_formatter::linter::init::InitArgs;
-use gdscript_formatter::linter::output::OutputFormat;
-use gdscript_formatter::linter::rule_tester::TestRulesArgs;
+use gdguard::QuoteStyle;
+use gdguard::linter::explain::{ExplainArgs, ListRulesFormat};
+use gdguard::linter::init::InitArgs;
+use gdguard::linter::output::OutputFormat;
+use gdguard::linter::rule_tester::TestRulesArgs;
 use std::path::PathBuf;
 
 const HELP_FORMATTER: &str = "\
-	A GDScript formatter following the official style guide.
+	GDScript linting, reviewed fixes and formatting for CLI and AI agents.
 
-	Usage: gdscript-formatter [OPTIONS] [FILES]...
-	       gdscript-formatter lint [OPTIONS] [FILES]...
+	Usage: gdguard [OPTIONS] [FILES]...
+	       gdguard lint [OPTIONS] [FILES]...
 
 	Arguments:
 	  <FILES>...  GDScript files or directories to format. If empty, uses
@@ -40,19 +40,19 @@ const HELP_FORMATTER: &str = "\
 	  -V, --version                              Print version
 
 	Subcommands:
-	  lint                     Lint GDScript files for style issues
+	  lint                     Lint GDScript files and project issues
 	  explain <RULE>           Explain a lint rule, with examples
 	  test-rules [RULE_DIR]    Run the tests of custom lint rules
 	  init                     Write a starter gdguard.toml and .gdguard/ folder
 	  lsp                      Start the linter language server
 
-	Run 'gdscript-formatter lint --help' for lint options.
+	Run 'gdguard lint --help' for lint options.
 ";
 
 const HELP_LINTER: &str = "\
-Lint GDScript files for style and convention issues.
+Lint GDScript syntax, style, semantic and project issues.
 
-Usage: gdscript-formatter lint [OPTIONS] [FILES]...
+Usage: gdguard lint [OPTIONS] [FILES]...
 
 Arguments:
   <FILES>...                 GDScript files or directories to lint
@@ -82,13 +82,13 @@ Exit codes: 0 no problems, 1 lint problems found, 2 usage, config or rule-file e
 const HELP_EXPLAIN: &str = "\
 Explain a lint rule: rationale, examples and whether it can be fixed.
 
-Usage: gdscript-formatter explain <RULE>
+Usage: gdguard explain <RULE>
 ";
 
 const HELP_TEST_RULES: &str = "\
 Run the tests written inside custom rule files.
 
-Usage: gdscript-formatter test-rules [RULE_DIR]
+Usage: gdguard test-rules [RULE_DIR]
 
 Arguments:
   [RULE_DIR]  Folder of rule files (default: the custom rule paths from
@@ -98,7 +98,7 @@ Arguments:
 const HELP_INIT: &str = "\
 Write a starter gdguard.toml and .gdguard/rules/ folder.
 
-Usage: gdscript-formatter init [OPTIONS]
+Usage: gdguard init [OPTIONS]
 
 Options:
       --force  Overwrite existing files
@@ -108,7 +108,7 @@ Options:
 const HELP_LSP: &str = "\
 Start the linter language server on stdin and stdout.
 
-Usage: gdscript-formatter lsp
+Usage: gdguard lsp
 ";
 
 /// Represents the parsed command-line arguments for the GDScript formatter. You
@@ -160,7 +160,7 @@ pub enum Command {
         /// quote style for strings.
         quote_style: Option<QuoteStyle>,
     },
-    /// Lint GDScript files for style and convention issues.
+    /// Lint GDScript syntax, style, semantic and project issues.
     Lint {
         /// Optional list of comma-separated linter rule names to disable.
         disabled_linter_rules: Option<String>,
@@ -286,7 +286,7 @@ pub fn parse_args() -> CliArguments {
         }
 
         if current_argument == "--version" || current_argument == "-V" {
-            println!("gdscript-formatter {}", env!("CARGO_PKG_VERSION"));
+            println!("gdguard {}", env!("CARGO_PKG_VERSION"));
             std::process::exit(0);
         }
 
@@ -778,6 +778,6 @@ fn require_no_value(assigned_value: Option<&str>, flag_name: &str) {
 }
 
 fn print_error_invalid_argument(message: &str) -> ! {
-    eprintln!("gdscript-formatter: error: {}", message);
+    eprintln!("gdguard: error: {}", message);
     std::process::exit(2);
 }

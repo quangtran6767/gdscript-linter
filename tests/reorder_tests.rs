@@ -2,7 +2,7 @@
 /// Runs the formatter with reorder_code enabled on each input file. Verifies
 /// that the output matches the expected output file. Similar to
 /// integration_tests, but focuses on reordering code.
-use gdscript_formatter::{FormatterConfiguration, format_gdscript};
+use gdguard::{FormatterConfiguration, format_gdscript};
 use std::fs;
 
 test_each_file::test_each_path! { in "./tests/reorder_code/input" => test_reorder }

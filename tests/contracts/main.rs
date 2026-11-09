@@ -1,7 +1,7 @@
 //! SM0 contract behavior at the empty-model boundary.
 
-use gdscript_formatter::project::{MemberLookup, ProjectIndex};
-use gdscript_formatter::semantic::{ScopeId, ScopeKind, SemanticModel, SymbolId};
+use gdguard::project::{MemberLookup, ProjectIndex};
+use gdguard::semantic::{ScopeId, ScopeKind, SemanticModel, SymbolId};
 use std::path::Path;
 
 #[test]

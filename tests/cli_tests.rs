@@ -187,23 +187,23 @@ fn bad_subcommand_and_format_arguments_are_usage_errors() {
     let cases: [(&[&str], &str); 5] = [
         (
             &["lint", "--format", "xml", "a.gd"],
-            "gdscript-formatter: error: --format expects pretty, compact, json, github or sarif, got 'xml'\n",
+            "gdguard: error: --format expects pretty, compact, json, github or sarif, got 'xml'\n",
         ),
         (
             &["lint", "--list-rules", "--format", "sarif"],
-            "gdscript-formatter: error: --format with --list-rules expects text or json, got 'sarif'\n",
+            "gdguard: error: --format with --list-rules expects text or json, got 'sarif'\n",
         ),
         (
             &["explain"],
-            "gdscript-formatter: error: explain requires a rule id: explain <RULE>\n",
+            "gdguard: error: explain requires a rule id: explain <RULE>\n",
         ),
         (
             &["test-rules", "a", "b"],
-            "gdscript-formatter: error: unexpected argument 'b' for 'test-rules'\n",
+            "gdguard: error: unexpected argument 'b' for 'test-rules'\n",
         ),
         (
             &["init", "--oops"],
-            "gdscript-formatter: error: unexpected argument '--oops' for 'init'\n",
+            "gdguard: error: unexpected argument '--oops' for 'init'\n",
         ),
     ];
     for (args, expected_stderr) in cases {
@@ -452,4 +452,120 @@ fn lint_skips_excluded_files() {
     let (exit_code, stdout, _) = run_and_capture(&directory, &["lint", "."]);
     assert_eq!(exit_code, 0, "{}", stdout);
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
+}
+
+#[test]
+fn primary_binary_and_legacy_alias_match_and_support_the_agent_fix_loop() {
+    let directory = test_directory();
+    let path = directory.join("player.gd");
+    fs::write(&path, "var badName = 1\nfunc f():\n\tprint(1)\n\tpass\n")
+        .expect("write agent fixture");
+    let run = |binary: &str, args: &[&str]| {
+        Command::new(binary)
+            .current_dir(&directory)
+            .args(args)
+            .output()
+            .expect("run CLI")
+    };
+    let primary = env!("CARGO_BIN_EXE_gdguard");
+    let legacy = env!("CARGO_BIN_EXE_gdscript-formatter");
+    let args = ["lint", "--no-cache", "--format", "json", "player.gd"];
+    let before = run(primary, &args);
+    let alias = run(legacy, &args);
+    assert_eq!(before.status.code(), Some(1));
+    assert_eq!(alias.status.code(), before.status.code());
+    assert_eq!(alias.stdout, before.stdout);
+    let help = run(primary, &["--help"]);
+    assert!(help.status.success());
+    assert!(String::from_utf8_lossy(&help.stdout).contains("Usage: gdguard"));
+    let fixed = run(primary, &["lint", "--fix", "--format", "json", "player.gd"]);
+    assert_eq!(fixed.status.code(), Some(1));
+    let report: serde_json::Value =
+        serde_json::from_slice(&fixed.stdout).expect("pure JSON stdout");
+    let issues = report["issues"].as_array().expect("issues");
+    assert_eq!(issues.len(), 1);
+    assert_eq!(issues[0]["rule"], "variable-name");
+    assert!(
+        !issues[0]["help"]
+            .as_str()
+            .expect("actionable help")
+            .is_empty()
+    );
+    assert_eq!(issues[0]["explain"], "gdguard explain variable-name");
+    let source = fs::read_to_string(&path).expect("fixed file");
+    assert!(!source.contains("pass"));
+    fs::write(&path, source.replace("badName", "good_name"))
+        .expect("agent repairs remaining issue");
+    let clean = run(primary, &args);
+    assert_eq!(clean.status.code(), Some(0));
+    let report: serde_json::Value = serde_json::from_slice(&clean.stdout).expect("clean JSON");
+    assert!(report["issues"].as_array().expect("issues").is_empty());
+    let invalid = run(
+        primary,
+        &["lint", "--disable", "does-not-exist", "player.gd"],
+    );
+    assert_eq!(invalid.status.code(), Some(2));
+    fs::remove_dir_all(directory).expect("cleanup");
+}
+
+#[test]
+fn malformed_source_fails_with_an_actionable_parser_diagnostic_and_empty_enums_are_valid() {
+    let directory = test_directory();
+    let path = directory.join("syntax.gd");
+    for (source, expected) in [("func f(:\n", 1), ("enum GoodEnum {}\n", 0)] {
+        fs::write(&path, source).expect("syntax source");
+        let output = Command::new(env!("CARGO_BIN_EXE_gdguard"))
+            .current_dir(&directory)
+            .args(["lint", "--format", "json", "syntax.gd"])
+            .output()
+            .expect("run syntax lint");
+        assert_eq!(output.status.code(), Some(expected));
+        let report: serde_json::Value = serde_json::from_slice(&output.stdout).expect("JSON");
+        if expected == 1 {
+            let issue = report["issues"]
+                .as_array()
+                .expect("issues")
+                .iter()
+                .find(|issue| issue["rule"] == "parse-error")
+                .expect("parse error");
+            assert_eq!(issue["severity"], "error");
+            assert!(issue["help"].as_str().expect("help").contains("Godot"));
+            assert!(issue["range"]["end"]["byte"].as_u64().expect("end") <= source.len() as u64);
+            assert!(issue["fixes"].as_array().expect("fixes").is_empty());
+        }
+    }
+    fs::remove_dir_all(directory).expect("cleanup");
+}
+
+#[test]
+fn scene_connections_invalidate_cached_project_results_and_no_cache_creates_no_cache_directory() {
+    let directory = test_directory();
+    fs::write(directory.join("project.godot"), "config_version=5\n").expect("project");
+    fs::write(directory.join("gdguard.toml"), "[rules]\n").expect("config");
+    fs::write(directory.join("data.gd"), "signal scene_only\n").expect("signal");
+    let run = |extra: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_gdguard"))
+            .current_dir(&directory)
+            .args(["lint", "--format", "json"])
+            .args(extra)
+            .arg("data.gd")
+            .output()
+            .expect("lint project")
+    };
+    assert_eq!(run(&["--no-cache"]).status.code(), Some(1));
+    assert!(!directory.join(".gdguard/cache").exists());
+    assert_eq!(run(&[]).status.code(), Some(1));
+    assert!(directory.join(".gdguard/cache/index.json").is_file());
+    assert!(directory.join(".gdguard/cache/lint.json").is_file());
+    fs::write(directory.join("main.tscn"), "[gd_scene format=3]\n[connection signal=\"scene_only\" from=\".\" to=\".\" method=\"_on_scene_only\"]\n").expect("connection");
+    let clean = run(&[]);
+    assert_eq!(
+        clean.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&clean.stdout)
+    );
+    fs::remove_file(directory.join("main.tscn")).expect("remove connection");
+    assert_eq!(run(&[]).status.code(), Some(1));
+    fs::remove_dir_all(directory).expect("cleanup");
 }

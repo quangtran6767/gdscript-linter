@@ -77,6 +77,7 @@ pub struct GDScriptLinter {
     config: LinterConfig,
     parser: Parser,
     project: Option<Arc<crate::project::ProjectIndex>>,
+    project_analysis: Option<Arc<crate::project::ProjectAnalysis>>,
 }
 
 impl GDScriptLinter {
@@ -91,6 +92,7 @@ impl GDScriptLinter {
             config,
             parser,
             project: None,
+            project_analysis: None,
         })
     }
 
@@ -143,7 +145,12 @@ impl GDScriptLinter {
             project: self.project.as_deref(),
         };
         let mut diagnostics = Vec::new();
-        run_builtin_rules_in_context(&self.config, &context, &mut diagnostics);
+        run_builtin_rules_in_context(
+            &self.config,
+            &context,
+            self.project_analysis.as_deref(),
+            &mut diagnostics,
+        );
         for provider in providers.iter_mut() {
             diagnostics.extend(provider.check_file(&context));
         }
@@ -196,6 +203,10 @@ impl GDScriptLinter {
         self.project = project;
     }
 
+    pub fn set_project_analysis(&mut self, analysis: Option<Arc<crate::project::ProjectAnalysis>>) {
+        self.project_analysis = analysis;
+    }
+
     /// Replaces the built-in rule settings, for example when the next file
     /// has a different config.
     pub fn set_config(&mut self, config: LinterConfig) {
@@ -229,11 +240,7 @@ pub fn lint_with_settings(
     settings: &FileSettings,
     providers: &mut [Box<dyn RuleProvider>],
 ) -> Result<Vec<Diagnostic>, String> {
-    if linter.project.is_none() {
-        if let Some(root) = crate::project::find_root(path) {
-            linter.project = Some(Arc::new(crate::project::ProjectIndex::build(&root)?));
-        }
-    }
+    load_project_context(linter, path, true)?;
     linter.set_config(settings.linter_config.clone());
     linter.lint_with_levels(
         source_code,
@@ -241,6 +248,26 @@ pub fn lint_with_settings(
         providers,
         &settings.levels,
     )
+}
+
+fn load_project_context(
+    linter: &mut GDScriptLinter,
+    path: &Path,
+    with_cache: bool,
+) -> Result<(), String> {
+    if linter.project.is_none() {
+        if let Some(root) = crate::project::find_root(path) {
+            let project = if with_cache {
+                crate::project::ProjectIndex::build(&root)?
+            } else {
+                crate::project::ProjectIndex::build_uncached(&root)?
+            };
+            linter.project_analysis =
+                Some(Arc::new(crate::project::ProjectAnalysis::build(&project)?));
+            linter.project = Some(Arc::new(project));
+        }
+    }
+    Ok(())
 }
 
 /// What the `lint` command needs besides the files.
@@ -439,6 +466,7 @@ struct FileJob {
     /// `(file key, settings hash, rules hash)` when the cache is on.
     cache_inputs: Option<(String, String, String)>,
     project: Option<Arc<crate::project::ProjectIndex>>,
+    project_analysis: Option<Arc<crate::project::ProjectAnalysis>>,
 }
 
 #[derive(Clone, Copy)]
@@ -469,6 +497,7 @@ fn prepare_jobs(
     with_cache: bool,
 ) -> Result<Vec<FileJob>, String> {
     let mut projects: HashMap<PathBuf, Arc<crate::project::ProjectIndex>> = HashMap::new();
+    let mut analyses: HashMap<PathBuf, Arc<crate::project::ProjectAnalysis>> = HashMap::new();
     let mut project_hashes: HashMap<PathBuf, String> = HashMap::new();
     let mut rules_hashes: HashMap<PathBuf, String> = HashMap::new();
     let mut jobs = Vec::with_capacity(files.len());
@@ -482,7 +511,15 @@ fn prepare_jobs(
         let project_root = crate::project::find_root(file_path);
         if let Some(root) = &project_root {
             if !projects.contains_key(root) {
-                let project = crate::project::ProjectIndex::build(root)?;
+                let project = if with_cache {
+                    crate::project::ProjectIndex::build(root)?
+                } else {
+                    crate::project::ProjectIndex::build_uncached(root)?
+                };
+                analyses.insert(
+                    root.clone(),
+                    Arc::new(crate::project::ProjectAnalysis::build(&project)?),
+                );
                 if with_cache {
                     project_hashes.insert(root.clone(), crate::project::fingerprint(&project)?);
                 }
@@ -524,6 +561,10 @@ fn prepare_jobs(
             settings,
             cache_inputs,
             project,
+            project_analysis: project_root
+                .as_ref()
+                .and_then(|root| analyses.get(root))
+                .cloned(),
         });
     }
     Ok(jobs)
@@ -636,6 +677,7 @@ fn run_job(
         .map_err(|error| format!("Failed to read file {}: {}", job.path.display(), error))?;
 
     linter.set_project(job.project.clone());
+    linter.set_project_analysis(job.project_analysis.clone());
 
     let mut cache_key: Option<(String, cache::CacheKey)> = None;
     if let JobMode::Lint = mode
@@ -702,6 +744,7 @@ pub fn lint_stdin(
     options: &LintRunOptions,
 ) -> Result<LintReport, String> {
     let mut linter = GDScriptLinter::new(LinterConfig::default())?;
+    load_project_context(&mut linter, config_lookup_path, false)?;
     let mut config_cache = ConfigCache {
         configs: HashMap::new(),
     };
@@ -810,6 +853,7 @@ pub fn fix_stdin(
     allow_unsafe: bool,
 ) -> Result<FixRunReport, String> {
     let mut linter = GDScriptLinter::new(LinterConfig::default())?;
+    load_project_context(&mut linter, config_lookup_path, false)?;
     let mut config_cache = ConfigCache {
         configs: HashMap::new(),
     };
@@ -891,18 +935,41 @@ pub fn run_builtin_rules(
         semantic: semantic.as_ref(),
         project: None,
     };
-    run_builtin_rules_in_context(config, &context, diagnostics);
+    run_builtin_rules_in_context(config, &context, None, diagnostics);
 }
 
 fn run_builtin_rules_in_context(
     config: &LinterConfig,
     context: &FileContext,
+    project_analysis: Option<&crate::project::ProjectAnalysis>,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     let tree = context.tree;
     let source_code = context.source;
+    if !config.disabled_rules.contains("parse-error") {
+        if let Some(node) = first_parse_error(tree, source_code) {
+            diagnostics.push(Diagnostic {
+                rule: "parse-error".to_string(),
+                severity: diagnostic::Severity::Error,
+                message: if node.is_missing() {
+                    format!("Missing {} in GDScript syntax.", node.kind())
+                } else {
+                    "The GDScript parser could not read this syntax.".to_string()
+                },
+                help: Some("Repair the syntax near this range and run lint again. Confirm valid syntax and additional type diagnostics with Godot; this parser may lag new language features.".to_string()),
+                span: diagnostic::Span::from_node(&node),
+                fixes: Vec::new(),
+            });
+        }
+    }
     let mut checkers: Vec<Box<dyn Rule>> = Vec::with_capacity(ALL_RULES.len());
     for current_rule in ALL_RULES {
+        if current_rule.name == "unused-local-signal"
+            && project_analysis.is_some()
+            && !config.disabled_rules.contains("unused-signal")
+        {
+            continue;
+        }
         if !config.disabled_rules.contains(current_rule.name) {
             checkers.push((current_rule.create)(config));
         }
@@ -934,6 +1001,48 @@ fn run_builtin_rules_in_context(
     for checker in checkers.iter_mut() {
         checker.finalize(source_code, diagnostics);
         checker.check_context(context, diagnostics);
+        if let Some(analysis) = project_analysis {
+            checker.check_project_context(context, analysis, diagnostics);
+        }
+    }
+}
+
+/// The grammar requires at least one enum item, while Godot 4.7 accepts
+/// empty enums. Ignore that known recovery node, without hiding other errors.
+fn first_parse_error<'tree>(tree: &'tree Tree, source: &str) -> Option<tree_sitter::Node<'tree>> {
+    if !tree.root_node().has_error() {
+        return None;
+    }
+    let mut cursor = tree.walk();
+    loop {
+        let node = cursor.node();
+        if node.is_error() || node.is_missing() {
+            let empty_enum = node.is_missing()
+                && node.kind() == "identifier"
+                && node.parent().is_some_and(|parent| {
+                    parent.kind() == "enumerator"
+                        && parent.parent().is_some_and(|list| {
+                            list.kind() == "enumerator_list"
+                                && source[list.byte_range()]
+                                    .chars()
+                                    .all(|ch| ch == '{' || ch == '}' || ch.is_whitespace())
+                        })
+                });
+            if !empty_enum {
+                return Some(node);
+            }
+        }
+        if cursor.goto_first_child() {
+            continue;
+        }
+        loop {
+            if cursor.goto_next_sibling() {
+                break;
+            }
+            if !cursor.goto_parent() {
+                return None;
+            }
+        }
     }
 }
 

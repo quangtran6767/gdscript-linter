@@ -3,10 +3,8 @@
 
 use std::path::{Path, PathBuf};
 
-use gdscript_formatter::linter::custom::loader::{
-    InvalidCase, LoadedRule, load_rule_str, load_rules,
-};
-use gdscript_formatter::linter::diagnostic::{FixSafety, RuleOrigin, Severity};
+use gdguard::linter::custom::loader::{InvalidCase, LoadedRule, load_rule_str, load_rules};
+use gdguard::linter::diagnostic::{FixSafety, RuleOrigin, Severity};
 
 fn fixture_dir(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

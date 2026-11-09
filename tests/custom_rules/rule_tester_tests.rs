@@ -4,10 +4,8 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use gdscript_formatter::linter::custom::loader::load_rules;
-use gdscript_formatter::linter::rule_tester::{
-    RuleReport, exit_code, format_reports, line_diff, test_rules,
-};
+use gdguard::linter::custom::loader::load_rules;
+use gdguard::linter::rule_tester::{RuleReport, exit_code, format_reports, line_diff, test_rules};
 
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

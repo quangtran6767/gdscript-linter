@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::needless_pass_by_value)]
-use gdscript_formatter::lsp::{byte_to_position, position_to_byte};
+use gdguard::lsp::{byte_to_position, position_to_byte};
 use serde_json::{Value, json};
 use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -242,7 +242,7 @@ fn utf16_positions_round_trip_emoji_cjk_and_bad_offsets() {
         source.len()
     );
     assert_eq!(
-        gdscript_formatter::lsp::uri_to_path("file:///tmp/a%20%E6%BC%A2.gd").unwrap(),
+        gdguard::lsp::uri_to_path("file:///tmp/a%20%E6%BC%A2.gd").unwrap(),
         PathBuf::from("/tmp/a 漢.gd")
     );
 }
@@ -270,14 +270,11 @@ fn lsp_diagnostics_match_library_results_on_every_sample_script() {
         let source = std::fs::read_to_string(&path).unwrap();
         let uri = format!("file://{}", path.to_string_lossy().replace('\\', "/"));
         let actual = client.open(&uri, &source);
-        let config = gdscript_formatter::linter::api::load_config_for(&path).unwrap();
-        let lint = gdscript_formatter::linter::api::lint_source(&path, &source, &config).unwrap();
+        let config = gdguard::linter::api::load_config_for(&path).unwrap();
+        let lint = gdguard::linter::api::lint_source(&path, &source, &config).unwrap();
         let mut expected = Vec::new();
         for diagnostic in lint.diagnostics {
-            expected.push(gdscript_formatter::lsp::diagnostic_json(
-                &source,
-                &diagnostic,
-            ));
+            expected.push(gdguard::lsp::diagnostic_json(&source, &diagnostic));
         }
         assert_eq!(actual["diagnostics"], json!(expected), "{}", path.display());
     }

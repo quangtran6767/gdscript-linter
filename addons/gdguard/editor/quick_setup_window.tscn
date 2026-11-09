@@ -1,12 +1,12 @@
 [gd_scene format=3 uid="uid://2ffo6diluqkm"]
 
-[ext_resource type="Script" uid="uid://chtdytdwey3un" path="res://addons/GDQuest_GDScript_formatter/editor/quick_setup_window.gd" id="1_cku6i"]
-[ext_resource type="Texture2D" uid="uid://cp5vhsg54dmt5" path="res://addons/GDQuest_GDScript_formatter/images/gdquest_logo.svg" id="1_hq2xi"]
-[ext_resource type="Texture2D" uid="uid://pfs8d8babvcu" path="res://addons/GDQuest_GDScript_formatter/images/icons/download.svg" id="3_cku6i"]
-[ext_resource type="Texture2D" uid="uid://bgwq4as8xi47j" path="res://addons/GDQuest_GDScript_formatter/images/icons/resources.svg" id="4_2dn7m"]
-[ext_resource type="Texture2D" uid="uid://ctpras52nelx3" path="res://addons/GDQuest_GDScript_formatter/images/icons/link.svg" id="4_yrmdb"]
-[ext_resource type="Texture2D" uid="uid://c25vn7jgshggh" path="res://addons/GDQuest_GDScript_formatter/images/icons/trash.svg" id="5_cx1jr"]
-[ext_resource type="Texture2D" uid="uid://dp30pekmsn6tt" path="res://addons/GDQuest_GDScript_formatter/images/icons/settings.svg" id="5_lrwqi"]
+[ext_resource type="Script" uid="uid://chtdytdwey3un" path="res://addons/gdguard/editor/quick_setup_window.gd" id="1_cku6i"]
+[ext_resource type="Texture2D" uid="uid://cp5vhsg54dmt5" path="res://addons/gdguard/images/gdquest_logo.svg" id="1_hq2xi"]
+[ext_resource type="Texture2D" uid="uid://pfs8d8babvcu" path="res://addons/gdguard/images/icons/download.svg" id="3_cku6i"]
+[ext_resource type="Texture2D" uid="uid://bgwq4as8xi47j" path="res://addons/gdguard/images/icons/resources.svg" id="4_2dn7m"]
+[ext_resource type="Texture2D" uid="uid://ctpras52nelx3" path="res://addons/gdguard/images/icons/link.svg" id="4_yrmdb"]
+[ext_resource type="Texture2D" uid="uid://c25vn7jgshggh" path="res://addons/gdguard/images/icons/trash.svg" id="5_cx1jr"]
+[ext_resource type="Texture2D" uid="uid://dp30pekmsn6tt" path="res://addons/gdguard/images/icons/settings.svg" id="5_lrwqi"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2dn7m"]
 content_margin_left = 16.0

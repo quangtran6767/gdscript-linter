@@ -17,21 +17,21 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         craneLib = crane.mkLib pkgs;
-        gdscript-formatter = craneLib.buildPackage {
+        gdguard = craneLib.buildPackage {
           src = ./.;
 
-          cargoExtraArgs = "--bin=gdscript-formatter";
+          cargoExtraArgs = "--bin=gdguard";
         };
       in
       {
-        packages.default = gdscript-formatter;
+        packages.default = gdguard;
 
         devShells.default = craneLib.devShell {
-          inputsFrom = [ gdscript-formatter ];
+          inputsFrom = [ gdguard ];
         };
 
         checks = {
-          inherit gdscript-formatter;
+          inherit gdguard;
         };
       }
     );

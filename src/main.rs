@@ -14,6 +14,7 @@
 //! parallel path remains available for performance-sensitive callers and uses
 //! the same per-file configuration logic.
 
+#[path = "cli.rs"]
 mod cli;
 
 use std::{
@@ -23,19 +24,17 @@ use std::{
     thread,
 };
 
-use gdscript_formatter::linter::baseline::{
+use gdguard::linter::baseline::{
     Baseline, BaselineTarget, apply_baseline, entries_for_report as baseline_entries_for_report,
     load_target, resolve_baseline, write_baseline,
 };
-use gdscript_formatter::linter::config::CliRuleOverrides;
-use gdscript_formatter::linter::fix::unified_diff;
-use gdscript_formatter::linter::output::{LintReport, OutputFormat, display_path, write_report};
-use gdscript_formatter::linter::rule_config::parse_disabled_rules;
-use gdscript_formatter::linter::{
-    FixRunReport, LintRunOptions, fix_files, fix_stdin, lint_files, lint_stdin,
-};
-use gdscript_formatter::linter::{explain, init, rule_tester};
-use gdscript_formatter::{
+use gdguard::linter::config::CliRuleOverrides;
+use gdguard::linter::fix::unified_diff;
+use gdguard::linter::output::{LintReport, OutputFormat, display_path, write_report};
+use gdguard::linter::rule_config::parse_disabled_rules;
+use gdguard::linter::{FixRunReport, LintRunOptions, fix_files, fix_stdin, lint_files, lint_stdin};
+use gdguard::linter::{explain, init, rule_tester};
+use gdguard::{
     FormatErrors, FormatterConfiguration, QuoteStyle, RenderElement, format_gdscript,
     format_gdscript_with_buffers,
 };
@@ -76,7 +75,7 @@ struct FormatterConfigOverrides {
     quote_style: Option<QuoteStyle>,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let parsed_cli_args = parse_args();
 
     // The linter tool subcommands live in the library so their owners can
@@ -88,7 +87,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Command::Init(init_args) => std::process::exit(init::run(init_args)),
         Command::Lsp => {
-            if let Err(error) = gdscript_formatter::lsp::run_stdio() {
+            if let Err(error) = gdguard::lsp::run_stdio() {
                 eprintln!("LSP error: {}", error);
                 std::process::exit(1);
             }
@@ -532,7 +531,7 @@ fn prepare_lint_input(command: LintCommand) -> Result<(LintInput, LintRunOptions
         let current_directory = env::current_dir()
             .map_err(|error| format!("Failed to get current directory: {}", error))?;
         let lookup_path = current_directory.join(&stdin_filename);
-        let display_name = gdscript_formatter::linter::output::display_path(&stdin_filename);
+        let display_name = gdguard::linter::output::display_path(&stdin_filename);
         let input = LintInput::Stdin {
             source,
             lookup_path,
@@ -576,16 +575,16 @@ fn find_cache_path(options: &LintRunOptions, files: &[PathBuf]) -> Option<PathBu
     if config_path.is_none()
         && let Ok(current_directory) = env::current_dir()
     {
-        config_path = gdscript_formatter::linter::config::find_config_file(&current_directory);
+        config_path = gdguard::linter::config::find_config_file(&current_directory);
     }
     if config_path.is_none()
         && let Some(first_file) = files.first()
     {
-        config_path = gdscript_formatter::linter::config::find_config_file(first_file);
+        config_path = gdguard::linter::config::find_config_file(first_file);
     }
     let config_path = std::path::absolute(config_path?).ok()?;
     let config_directory = config_path.parent()?;
-    Some(config_directory.join(gdscript_formatter::linter::cache::CACHE_PATH))
+    Some(config_directory.join(gdguard::linter::cache::CACHE_PATH))
 }
 
 fn read_stdin() -> Result<String, String> {
@@ -848,10 +847,7 @@ fn get_final_config_applied_to_script(
     config_overrides: FormatterConfigOverrides,
 ) -> FormatterConfiguration {
     let mut file_config = config.clone();
-    gdscript_formatter::editorconfig::apply_editorconfig_to_formatter_config(
-        &mut file_config,
-        file_path,
-    );
+    gdguard::editorconfig::apply_editorconfig_to_formatter_config(&mut file_config, file_path);
     if let Some(use_spaces) = config_overrides.use_spaces {
         file_config.printer.use_spaces = use_spaces;
     }
@@ -1003,9 +999,7 @@ fn find_gdscript_files(
                     if extension == "gd" {
                         let file_path = entry.path();
                         if !is_path_excluded(&file_path, excluded_paths)
-                            && !gdscript_formatter::editorconfig::is_excluded_by_editorconfig(
-                                &file_path,
-                            )
+                            && !gdguard::editorconfig::is_excluded_by_editorconfig(&file_path)
                         {
                             gdscript_file_paths.push(file_path);
                         }
@@ -1014,7 +1008,7 @@ fn find_gdscript_files(
             }
         } else if let Some(extension) = current_path.extension() {
             if extension == "gd"
-                && !gdscript_formatter::editorconfig::is_excluded_by_editorconfig(&current_path)
+                && !gdguard::editorconfig::is_excluded_by_editorconfig(&current_path)
             {
                 gdscript_file_paths.push(current_path);
             }
@@ -1062,4 +1056,9 @@ fn compare_output_index(
 
 fn terminal_clear_line() {
     eprint!("\r{}", " ".repeat(80));
+}
+
+#[allow(dead_code)]
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    run()
 }

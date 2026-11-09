@@ -3,7 +3,7 @@
 /// These tests verify that the renderer itself produces the correct output for
 /// various kinds of intermediate representations of code, notably around line
 /// wrapping.
-use gdscript_formatter::renderer::{
+use gdguard::renderer::{
     GroupParentFit, PrinterConfiguration, RangeRenderElement, RangeSourceBytes, RenderElement,
     render,
 };

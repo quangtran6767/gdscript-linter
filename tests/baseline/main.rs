@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use gdscript_formatter::linter::baseline::{BaselineTarget, resolve_baseline};
+use gdguard::linter::baseline::{BaselineTarget, resolve_baseline};
 
 /// A new empty folder under the system temp folder. Removed on drop.
 struct TempProject {

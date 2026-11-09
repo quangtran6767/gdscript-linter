@@ -266,12 +266,12 @@
               }
             },
             {
-              "id": "unused-local-signal",
+              "id": "unused-signal",
               "shortDescription": {
-                "text": "Signals are emitted or connected in their declaring file."
+                "text": "Project signals are emitted or connected somewhere in the project."
               },
               "fullDescription": {
-                "text": "Unused signals can be leftovers; external or scene-only usage requires a documented exception."
+                "text": "Unused signals can be removed after reviewing external and dynamic use. Script calls and scene connections count as use."
               },
               "defaultConfiguration": {
                 "level": "warning"
@@ -326,11 +326,11 @@
           ]
         },
         {
-          "ruleId": "unused-local-signal",
+          "ruleId": "unused-signal",
           "ruleIndex": 16,
           "level": "warning",
           "message": {
-            "text": "Signal 'OnDefeated' is never used in this file."
+            "text": "Signal 'OnDefeated' is never emitted or connected in this project."
           },
           "locations": [
             {

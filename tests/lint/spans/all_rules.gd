@@ -43,3 +43,7 @@ func _unused_helper():
 	assigned = 2
 	var badVariable = 0
 	print(badVariable)
+
+
+func project_member(data: ProjectData):
+	return data.missing

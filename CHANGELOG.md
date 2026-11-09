@@ -6,6 +6,12 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
+- CLI: project-wide unused-signal checks include script and scene connections; unknown-member-on-project-class reports only provably missing members of explicit project types.
+- CLI: actionable parse-error diagnostics prevent malformed source from appearing clean; tolerate Godot's valid empty enums.
+- CLI: generated 1000-file cold/warm benchmark, signal-scene cache invalidation and an automated agent safe-fix/manual-repair/re-lint test.
+- Release: noninteractive dry-run/package helper, CLI and legacy alias archives, native assets, type declarations and example rules; tag-triggered workflow creates a reviewable draft.
+- Docs: CLI-first README, migration, FAQ, release guide and upstream contribution proposals.
+
 - Optional stdio LSP diagnostics, UTF-16 positions, versioned quick fixes/fix-all and config reload, sharing the CLI pipeline.
 - Optional path-aware Godot lint/fix APIs, guarded individual edits, config caching and lint panel; legacy lint_gdscript remains available. Native/LSP parity is covered on every sample script.
 - Linter: unused-variable, unused-private-function, shadowed-variable, unused-local-signal and assigned-but-never-read semantic rules, with conservative exemptions and reviewed unsafe/suggestion fixes.
@@ -13,7 +19,7 @@ This file documents the changes made to the formatter with each release.
 - Linter: three additional JS example rules, a complete JS guide and checked type examples. Optional Project.root supports exact autoload owner comparisons.
 - Linter: lexical semantic model with scopes, declarations, captured variables, resolved references and stable debug dumps; models are built once for custom-rule checks.
 - Linter: sandboxed JavaScript custom rules, lazy syntax-node/fixer/semantic APIs, config options, embedded tests, and example max-function-params/no-empty-function rules. Runtime failures report script-error; JS is optional via the js-rules feature.
-- Internal: freeze semantic/project contracts and the documented JS rule type declaration; add optional default-enabled `js-rules` and pinned QuickJS/LSP dependencies for the next implementation waves. SM0 provides empty models, not semantic diagnostics or JS execution yet.
+- Internal: freeze semantic/project contracts and the documented JS rule type declaration; add optional default-enabled `js-rules` and pinned QuickJS/LSP dependencies for the next implementation waves. The subsequent W5–W8 entries above describe the completed implementation.
 - Linter: ignore comments support `gdguard-ignore-file`, multiple rule IDs, and ` -- reason`; strings cannot accidentally suppress diagnostics. New `unused-ignore` warning offers safe cleanup and is included in explain/list-rules metadata.
 - Linter: `--baseline` / `--update-baseline` and `[lint].baseline` track existing issues with line-text fingerprints; JSON includes `summary.baseline_hidden`.
 - Linter: GitHub Actions annotations (`--format github`) and SARIF 2.1.0 (`--format sarif`) with UTF-16 columns.
@@ -37,6 +43,10 @@ This file documents the changes made to the formatter with each release.
 - Linter: `gdguard init` sets up a project with a commented `gdguard.toml` and an example custom rule.
 
 ### Changed
+
+- Product/package/crate/executable renamed to gdguard, native library to gdguard_gdextension and singleton to GDGuard; keep gdscript-formatter as a compatibility binary and legacy formatter settings/hook IDs.
+- CLI/AI-agent workflows are the primary product; IDE/Godot integrations are optional compatibility features.
+- --no-cache, stdin and fix/diff runs also skip project-summary cache reads and writes.
 
 - Linter: `lint --list-rules` lists rules sorted by id, with their default severity and fixability.
 

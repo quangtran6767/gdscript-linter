@@ -1,6 +1,6 @@
 1:12-1:20 class-name 'badClass'
 4:8-4:17 signal-name 'BadSignal'
-4:8-4:17 unused-local-signal 'BadSignal'
+4:8-4:17 unused-signal 'BadSignal'
 6:6-6:11 enum-name 'state'
 6:14-6:24 enum-member-name 'idle_state'
 8:7-8:15 constant-name 'maxSpeed'
@@ -26,3 +26,4 @@
 42:6-42:14 assigned-but-never-read 'assigned'
 44:6-44:17 variable-name 'badVariable'
 44:6-44:17 shadowed-variable 'badVariable'
+49:14-49:21 unknown-member-on-project-class 'missing'

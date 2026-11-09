@@ -10,11 +10,11 @@ func check(condition: bool, message: String) -> void:
 
 
 func _initialize() -> void:
-	check(Engine.has_singleton("GDScriptFormatter"), "Native singleton not registered")
-	if not Engine.has_singleton("GDScriptFormatter"):
+	check(Engine.has_singleton("GDGuard"), "Native singleton not registered")
+	if not Engine.has_singleton("GDGuard"):
 		quit(1)
 		return
-	var backend := Engine.get_singleton("GDScriptFormatter")
+	var backend := Engine.get_singleton("GDGuard")
 	var fixtures: Array = JSON.parse_string(FileAccess.get_file_as_string("res://native_parity.json"))
 	for fixture: Dictionary in fixtures:
 		var actual: Array = backend.call("lint", "res://" + fixture.path, fixture.source)

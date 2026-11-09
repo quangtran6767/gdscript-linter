@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-use gdscript_formatter::project::{MemberLookup, ProjectIndex, find_root};
+use gdguard::project::{MemberLookup, ProjectIndex, find_root};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT: AtomicUsize = AtomicUsize::new(0);
@@ -120,4 +120,66 @@ fn cycles_and_broken_scripts_do_not_produce_false_missing_members() {
             .has_member("Child", "missing"),
         MemberLookup::Unknown
     );
+}
+
+#[test]
+fn cross_file_rules_count_scene_and_script_usage_and_skip_unknown_engine_members() {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project/fixtures/cross");
+    let config = gdguard::linter::api::Config::default();
+    let data = root.join("data.gd");
+    let source = std::fs::read_to_string(&data).unwrap();
+    let diagnostics = gdguard::linter::api::lint_source(&data, &source, &config)
+        .unwrap()
+        .diagnostics;
+    let unused: Vec<_> = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.rule == "unused-signal")
+        .collect();
+    assert_eq!(unused.len(), 1, "{:?}", diagnostics);
+    assert!(unused[0].message.contains("never_used"));
+    assert!(
+        !diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.rule == "unused-local-signal")
+    );
+    let caller = root.join("caller.gd");
+    let source = std::fs::read_to_string(&caller).unwrap();
+    let diagnostics = gdguard::linter::api::lint_source(&caller, &source, &config)
+        .unwrap()
+        .diagnostics;
+    let missing: Vec<_> = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.rule == "unknown-member-on-project-class")
+        .collect();
+    assert_eq!(missing.len(), 1);
+    assert_eq!(
+        &source[missing[0].span.start_byte..missing[0].span.end_byte],
+        "missing"
+    );
+}
+
+#[test]
+fn dynamic_signal_emission_is_conservatively_unknown() {
+    let project = Project::new();
+    std::fs::write(
+        project.root.join("dynamic.gd"),
+        "signal unknown_usage\nfunc f(signal_name):\n\temit_signal(signal_name)\n",
+    )
+    .unwrap();
+    let index = ProjectIndex::build(&project.root).unwrap();
+    let analysis = gdguard::project::ProjectAnalysis::build(&index).unwrap();
+    assert!(analysis.dynamic_signal_usage);
+}
+
+#[test]
+fn live_buffer_signal_uses_override_stale_disk_usage() {
+    let project = Project::new();
+    let path = project.root.join("live.gd");
+    std::fs::write(&path, "signal newly_used\n").unwrap();
+    let source = "signal newly_used\nfunc f():\n\temit_signal(\"newly_used\")\n";
+    let issues = gdguard::linter::api::lint_source(&path, source, &Default::default())
+        .unwrap()
+        .diagnostics;
+    assert!(!issues.iter().any(|issue| issue.rule == "unused-signal"));
 }

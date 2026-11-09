@@ -6,7 +6,7 @@ Godot's own language server enabled for engine completion and type checks.
 
 ## Language server
 
-Run `gdscript-formatter lsp` (the final binary name is `gdguard`). It speaks
+Run `gdguard lsp`. It speaks
 LSP over stdin/stdout; protocol output is never mixed with log output.
 It publishes on open/save and 150 ms after full-text changes. Diagnostics
 include rule ID, severity, range, help and a documentation link.
@@ -82,9 +82,9 @@ not been exercised here. They are optional compatibility checks.
 
 ## Godot native integration
 
-Build `cargo build -p gdscript-formatter-gdextension` for the host. The
+Build `cargo build -p gdguard-gdextension` for the host. The
 native extension adds `lint(path, source)`, `fix(path, source, unsafe_fixes)`
-and reviewed `apply_edits(source, edits)` to the formatter singleton.
+and reviewed `apply_edits(source, edits)` to the `GDGuard` singleton.
 The legacy `lint_gdscript(source, config)` method remains available but is
 deprecated; use the path-aware methods for gdguard.toml and custom rules.
 

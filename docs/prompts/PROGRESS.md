@@ -5,7 +5,7 @@ integration on the current branch (`w4-a`). No partner waits.
 
 The solo integration step updates this file after validation.
 
-current_wave: w8
+current_wave: done
 
 | Wave | Who works | Status |
 |------|-----------|--------|
@@ -18,7 +18,7 @@ current_wave: w8
 | w5  | solo (A + B + integration) | done |
 | w6  | solo (A + B + integration) | done |
 | w7  | solo (A + B + integration) | done |
-| w8  | solo (A + B + integration) | todo |
+| w8  | solo (A + B + integration) | done |
 
 ## Resume notes
 
@@ -40,7 +40,11 @@ current_wave: w8
   cold-start/import and native smoke pass (0 failures, 5 parity fixtures).
 - User priority: CLI + AI-agent fix/re-lint/JSON. Optional IDE polish must not
   delay completion. Native hot-loading requires a restart; GUI QA optional.
-- Next: W8 cross-file CLI rules, 1000-file benchmark, rename, release dry
-  run and final CLI/agent documentation/validation. Continue to completion.
+- W8 complete: cross-file rules, parse-error, 1000-file benchmark (cold
+  77 ms / warm 48 ms), rename to gdguard (alias gdscript-formatter), release
+  dry run, CLI-first docs and short README. See docs/handoff/w8-*.md.
+- W8 checks: 591 workspace / 575 feature-off tests; fmt/clippy/release;
+  Godot 4.7.2 native smoke 0 failures.
+- Next: maintainer-only steps (version tag, upstream PRs, real-game dogfood).
 - User explicitly authorized commits and pushes to origin/w4-a on 2026-11-09.
 - No real-game project path was provided; sample dogfooding passed.

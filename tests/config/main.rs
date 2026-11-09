@@ -7,13 +7,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use gdscript_formatter::linter::api::{self, Config, RuleLevel};
-use gdscript_formatter::linter::config::{
+use gdguard::linter::api::{self, Config, RuleLevel};
+use gdguard::linter::config::{
     CliRuleOverrides, CompiledConfig, find_config_file, load_and_validate, load_config_file,
     parse_config,
 };
-use gdscript_formatter::linter::diagnostic::Severity;
-use gdscript_formatter::linter::{LintRunOptions, lint_files};
+use gdguard::linter::diagnostic::Severity;
+use gdguard::linter::{LintRunOptions, lint_files};
 
 /// A new empty folder under the system temp folder. Removed on drop.
 struct TempProject {

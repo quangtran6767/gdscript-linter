@@ -1,7 +1,6 @@
 # Using the linter with coding agents
 
-The executable currently ships as `gdscript-formatter`; `gdguard` is the
-planned name used by JSON `explain` hints. Substitute the installed name.
+The primary executable is `gdguard`; `gdscript-formatter` remains a legacy alias.
 The hook tries `gdguard`, then `gdscript-formatter`, or an absolute path in
 `GDGUARD_BIN`.
 
@@ -18,7 +17,7 @@ The hook tries `gdguard`, then `gdscript-formatter`, or an absolute path in
 3. Copy [the skill](../integrations/claude-code/skill/SKILL.md) into
    `.claude/skills/gdguard/SKILL.md`, or append the
    [agent snippet](../integrations/claude-code/AGENTS.snippet.md) to your
-   project's agent instructions. Run `gdscript-formatter init` in the game
+   project's agent instructions. Run `gdguard init` in the game
    to enable the starter custom rule.
 
 The hook reads `.tool_input.file_path` (or `.path`) from stdin, skips other
@@ -37,9 +36,9 @@ linter, including its Python fallback without `jq`.
 ## Recommended loop for any agent
 
 ```sh
-gdscript-formatter lint --fix --format json scripts/player.gd
-gdscript-formatter explain unused-argument
-gdscript-formatter lint --format json scripts/player.gd
+gdguard lint --fix --format json scripts/player.gd
+gdguard explain unused-argument
+gdguard lint --format json scripts/player.gd
 ```
 
 Read `issues[].help` and `fixes` after safe fixes. Review each unsafe fix
@@ -75,10 +74,10 @@ together, in descending byte order, or use `--fix`.
 ## CI
 
 ```sh
-gdscript-formatter lint --format github .
-gdscript-formatter lint --format sarif . > gdguard.sarif
-gdscript-formatter lint --no-cache --format json . > gdguard.json
-gdscript-formatter test-rules examples/rules
+gdguard lint --format github .
+gdguard lint --format sarif . > gdguard.sarif
+gdguard lint --no-cache --format json . > gdguard.json
+gdguard test-rules examples/rules
 ```
 
 GitHub annotations are emitted on stdout. Upload SARIF with your chosen

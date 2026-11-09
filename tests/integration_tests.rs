@@ -2,10 +2,8 @@
 /// Runs the formatter over a series of input files and verifies the output
 /// matches the expected output file. See files in the ./input and ./expected
 /// folders.
-use gdscript_formatter::linter::{GDScriptLinter, LinterConfig, format_diagnostic_line};
-use gdscript_formatter::{
-    FormatterConfiguration, PrinterConfiguration, QuoteStyle, format_gdscript,
-};
+use gdguard::linter::{GDScriptLinter, LinterConfig, format_diagnostic_line};
+use gdguard::{FormatterConfiguration, PrinterConfiguration, QuoteStyle, format_gdscript};
 use similar::{ChangeTag, TextDiff};
 use std::fs;
 use std::path::Path;
@@ -112,7 +110,7 @@ fn test_file_with_config(
 
     let result = match format_gdscript(&input_content, config) {
         Ok(result) => result,
-        Err(gdscript_formatter::FormatErrors::ParseErrors) => input_content.clone(),
+        Err(gdguard::FormatErrors::ParseErrors) => input_content.clone(),
         Err(error) => panic!("Failed to format {}: {}", input_path.display(), error),
     };
 
@@ -126,7 +124,7 @@ fn test_file_with_config(
     if check_idempotence {
         let second_result = match format_gdscript(&result, config) {
             Ok(result) => result,
-            Err(gdscript_formatter::FormatErrors::ParseErrors) => result.clone(),
+            Err(gdguard::FormatErrors::ParseErrors) => result.clone(),
             Err(error) => panic!("Failed to format {}: {}", input_path.display(), error),
         };
         assert_formatted_eq(
@@ -201,7 +199,7 @@ fn parse_errors_are_rejected_before_formatting() {
 
     assert!(matches!(
         format_gdscript(input, &config),
-        Err(gdscript_formatter::FormatErrors::ParseErrors)
+        Err(gdguard::FormatErrors::ParseErrors)
     ));
 }
 
@@ -232,7 +230,7 @@ fn generic_type_parameters_never_break() {
 #[test]
 fn editorconfig_applies_quote_style() {
     let mut config = FormatterConfiguration::default();
-    gdscript_formatter::editorconfig::apply_editorconfig_to_formatter_config(
+    gdguard::editorconfig::apply_editorconfig_to_formatter_config(
         &mut config,
         Path::new("tests/manual_test_files/hello_world.gd"),
     );
@@ -246,14 +244,19 @@ fn editorconfig_applies_quote_style() {
 /// UTF-8 byte columns. Set UPDATE_SNAPSHOTS=1 to rewrite the expected file.
 #[test]
 fn builtin_rule_spans() {
-    use gdscript_formatter::linter::diagnostic::Span;
-    use gdscript_formatter::linter::rule_config::get_all_rule_names;
+    use gdguard::linter::diagnostic::Span;
+    use gdguard::linter::rule_config::get_all_rule_names;
 
     let fixture_path = Path::new("tests/lint/spans/all_rules.gd");
     let expected_path = Path::new("tests/lint/spans/all_rules.txt");
     let source = fs::read_to_string(fixture_path).unwrap();
 
     let mut linter = GDScriptLinter::new(LinterConfig::default()).unwrap();
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/project/fixtures/cross");
+    let project = gdguard::project::ProjectIndex::build(&root).unwrap();
+    let analysis = gdguard::project::ProjectAnalysis::build(&project).unwrap();
+    linter.set_project(Some(std::sync::Arc::new(project)));
+    linter.set_project_analysis(Some(std::sync::Arc::new(analysis)));
     let diagnostics = linter.lint(&source, "all_rules.gd").unwrap();
 
     let mut actual_output = String::new();
@@ -282,10 +285,12 @@ fn builtin_rule_spans() {
         ));
     }
 
+    // Cross-file mode supersedes the local fallback; exercise that fallback separately.
+    let fallback = gdguard::linter::lint_gdscript(&source, "all_rules.gd").unwrap();
     // The fixture must exercise every built-in rule.
     for rule_name in get_all_rule_names() {
         let mut is_reported = false;
-        for diagnostic in &diagnostics {
+        for diagnostic in diagnostics.iter().chain(&fallback) {
             if diagnostic.rule == rule_name {
                 is_reported = true;
                 break;

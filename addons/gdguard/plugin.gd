@@ -97,7 +97,7 @@ var _editorconfig_last_modified_time := -1
 var _editorconfig_format_on_save_rules: Array[Dictionary] = []
 
 # Used to detect the formatter
-const FORMATTER_BINARY_NAME = "gdscript-formatter"
+const FORMATTER_BINARY_NAME = "gdguard"
 
 
 func _init() -> void:

@@ -4,7 +4,7 @@ description: Lint and fix GDScript files with gdguard after editing them.
 ---
 
 After editing GDScript, run `gdguard lint --fix --format json <file>`.
-The existing binary is also available as `gdscript-formatter`.
+The legacy compatibility alias is `gdscript-formatter`.
 
 1. Read the remaining `issues`, their `help`, and `fixes`. Byte offsets are
    UTF-8, the end is exclusive. Only safe fixes are applied by `--fix`.

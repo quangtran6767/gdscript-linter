@@ -11,8 +11,7 @@ paths = [".gdguard/rules"]
 prefer-is-empty = "warning"
 ```
 
-The executable is currently `gdscript-formatter`; `gdguard` in the design
-and JSON hints is the planned name. Run `gdscript-formatter init` to create
+Run `gdguard init` to create
 a starter config and rule. Existing formatter commands still work.
 
 ## First rule: patterns, alternatives and constraints
@@ -44,8 +43,8 @@ tests:
     - "var empty = len(items) == 1\n"
 ```
 
-Run `gdscript-formatter test-rules .gdguard/rules`, then
-`gdscript-formatter lint --fix .`. The tests below run every complete YAML
+Run `gdguard test-rules .gdguard/rules`, then
+`gdguard lint --fix .`. The tests below run every complete YAML
 example in this page with the actual rule tester.
 
 Required fields are `id`, `message` and `rule`. IDs are unique kebab-case,
@@ -196,7 +195,7 @@ that rule's tests. `test-rules` exits 0 on success, 1 for failing cases,
 and 2 when loading rules fails.
 
 The [example pack](../examples/rules/) includes eight tested rules. Run
-`gdscript-formatter test-rules examples/rules` from this repository.
+`gdguard test-rules examples/rules` from this repository.
 
 ## Debugging a rule
 

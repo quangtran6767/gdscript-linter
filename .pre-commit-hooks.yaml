@@ -1,12 +1,24 @@
+- id: gdguard
+  name: gdguard Formatter
+  description: Format GDScript files with gdguard
+  entry: gdguard
+  language: rust
+  files: \.gd$
+- id: gdguard-lint
+  name: gdguard Linter
+  description: Lint GDScript files with gdguard
+  entry: gdguard lint
+  language: rust
+  files: \.gd$
 - id: gdscript-formatter
   name: GDScript Formatter
   description: Format GDScript files with gdscript-formatter
-  entry: gdscript-formatter
+  entry: gdguard
   language: rust
   files: \.gd$
 - id: gdscript-linter
-  name: GDScript Linter
-  description: Lint GDScript files with gdscript-formatter
-  entry: gdscript-formatter lint
+  name: gdguard Linter
+  description: Lint GDScript files with gdguard
+  entry: gdguard lint
   language: rust
   files: \.gd$

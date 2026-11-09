@@ -1,14 +1,14 @@
 [package]
-name = "gdscript-formatter"
+name = "gdguard"
 version = "0.28.0"
 edition = "2024"
-description = "A GDScript code formatter using Tree-sitter"
+description = "GDScript linting, reviewed fixes and formatting for CLI and AI-agent workflows"
 license = "MIT"
-repository = "https://github.com/gdquest/gdscript-formatter"
+repository = "https://github.com/quangtran6767/gdscript-linter"
 readme = "README.md"
 keywords = ["godot", "gdscript", "format", "lint"]
 categories = ["command-line-utilities", "development-tools"]
-default-run = "gdscript-formatter"
+default-run = "gdguard"
 rust-version = "1.89"
 
 [workspace]
@@ -84,8 +84,12 @@ gdscript = []
 js-rules = ["dep:rquickjs"]
 
 [[bin]]
-name = "gdscript-formatter"
+name = "gdguard"
 path = "src/main.rs"
+
+[[bin]]
+name = "gdscript-formatter"
+path = "src/legacy_main.rs"
 
 [profile.release]
 strip = true

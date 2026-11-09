@@ -7,7 +7,7 @@ enum HttpRequestState {
 	DOWNLOADING_BINARY,
 }
 
-const URL_GITHUB_API_LATEST_RELEASE = "https://api.github.com/repos/gdquest/GDScript-formatter/releases/latest"
+const URL_GITHUB_API_LATEST_RELEASE = "https://api.github.com/repos/quangtran6767/gdscript-linter/releases/latest"
 signal installation_completed(binary_path: String)
 signal installation_failed(error_message: String)
 
@@ -26,7 +26,7 @@ func _ready() -> void:
 
 
 func install_or_update_formatter() -> void:
-	print("Starting GDScript formatter installation...")
+	print("Starting gdguard installation...")
 	http_request_state = HttpRequestState.FETCHING_RELEASE_INFO
 	http_request.request(URL_GITHUB_API_LATEST_RELEASE)
 
@@ -65,7 +65,7 @@ func _process_response_latest_release(body: PackedByteArray) -> void:
 		installation_failed.emit(error_message)
 		return
 
-	print("GDScript Formatter release information loaded successfully")
+	print("gdguard release information loaded successfully")
 
 	var assets = json["assets"]
 	var tag = json["tag_name"]
@@ -105,7 +105,7 @@ func _process_response_download_file(body: PackedByteArray) -> void:
 		return
 
 	print(
-		"\n".join(["GDScript formatter installed successfully!", "Binary location: " + binary_path]),
+		"\n".join(["gdguard installed successfully!", "Binary location: " + binary_path]),
 	)
 	installation_completed.emit(binary_path)
 
@@ -123,9 +123,9 @@ func _get_platform_info() -> Dictionary:
 	elif processor_name.contains("x86_64") or processor_name.contains("amd64"):
 		architecture = "x86_64"
 
-	var binary_name := "gdscript-formatter"
+	var binary_name := "gdguard"
 	if os_name.contains("windows"):
-		binary_name = "gdscript-formatter.exe"
+		binary_name = "gdguard.exe"
 
 	var platform_info := { "architecture": architecture, "binary_name": binary_name }
 
@@ -144,7 +144,7 @@ func _find_matching_asset(assets: Array, tag: String) -> String:
 	if platform_info.is_empty():
 		return ""
 
-	var expected_pattern := "gdscript-formatter-%s-%s-%s" % [
+	var expected_pattern := "gdguard-%s-%s-%s" % [
 		tag,
 		platform_info["os"],
 		platform_info["architecture"],
@@ -198,7 +198,7 @@ func _download_and_install_binary(zip_data: PackedByteArray, platform_info: Dict
 	var actual_binary_name := ""
 
 	for file_path in files:
-		if not file_path.ends_with("/"):
+		if file_path.get_file() == binary_name:
 			binary_data = zip_reader.read_file(file_path)
 			actual_binary_name = file_path.get_file()
 			found_binary = true

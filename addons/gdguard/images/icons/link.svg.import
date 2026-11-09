@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://addons/GDQuest_GDScript_formatter/images/icons/link.svg"
+source_file="res://addons/gdguard/images/icons/link.svg"
 dest_files=["res://.godot/imported/link.svg-b137df11cbc30e911fb0835645149fef.ctex"]
 
 [params]

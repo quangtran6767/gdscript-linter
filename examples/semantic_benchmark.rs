@@ -1,6 +1,6 @@
 //! Run with cargo run --release --example semantic_benchmark.
-use gdscript_formatter::linter::{GDScriptLinter, LinterConfig};
-use gdscript_formatter::semantic::SemanticModel;
+use gdguard::linter::{GDScriptLinter, LinterConfig};
+use gdguard::semantic::SemanticModel;
 use std::time::Instant;
 fn main() -> Result<(), String> {
     for directory in ["tests/lint/input", "tests/input"] {
@@ -44,17 +44,17 @@ fn main() -> Result<(), String> {
     }
     #[cfg(feature = "js-rules")]
     {
-        use gdscript_formatter::linter::api::Config;
-        use gdscript_formatter::linter::diagnostic::RuleProvider;
+        use gdguard::linter::api::Config;
+        use gdguard::linter::diagnostic::RuleProvider;
         let config = Config {
             custom_rule_paths: vec![std::path::PathBuf::from("examples/rules")],
             ..Default::default()
         };
-        let files = gdscript_formatter::linter::custom::find_js_files(&config.custom_rule_paths)?;
-        let js = gdscript_formatter::linter::script::JsRuleProvider::load(&config, &files, &[])?;
+        let files = gdguard::linter::custom::find_js_files(&config.custom_rule_paths)?;
+        let js = gdguard::linter::script::JsRuleProvider::load(&config, &files, &[])?;
         let mut providers: Vec<Box<dyn RuleProvider>> = vec![Box::new(js)];
         let mut baseline: Vec<Box<dyn RuleProvider>> = vec![Box::new(
-            gdscript_formatter::linter::custom::YamlRuleProvider::new(Vec::new()),
+            gdguard::linter::custom::YamlRuleProvider::new(Vec::new()),
         )];
         let source = std::fs::read_to_string("tests/e2e/sample_project/scripts/player.gd")
             .map_err(|error| error.to_string())?;

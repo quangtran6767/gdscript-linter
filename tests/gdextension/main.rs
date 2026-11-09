@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
-use gdscript_formatter::linter::api;
-use gdscript_formatter::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span};
-use gdscript_formatter::linter::editor::{EditorSession, apply_edits_checked, payloads};
+use gdguard::linter::api;
+use gdguard::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span};
+use gdguard::linter::editor::{EditorSession, apply_edits_checked, payloads};
 use std::path::Path;
 
 #[test]

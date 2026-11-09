@@ -5,11 +5,11 @@ scripts/enemies/enemy.gd
   |        ^^^^^^^^^^
   = help: Rename it to 'on_defeated'.
 
- 3:8 warning [unused-local-signal] Signal 'OnDefeated' is never used in this file.
+ 3:8 warning [unused-signal] Signal 'OnDefeated' is never emitted or connected in this project.
   |
 3 | signal OnDefeated
   |        ^^^^^^^^^^
-  = help: Emit or connect the signal, or document intentional external/scene use with a reasoned ignore.
+  = help: Emit/connect the signal, remove it after review, or add a reasoned ignore for usage outside this project.
 
  5:6 error [enum-name] Enum name 'state' should be in PascalCase format
   |

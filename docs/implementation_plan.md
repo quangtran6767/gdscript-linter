@@ -41,7 +41,7 @@ column below), and tests everything.
 | **W5** | Semantic model (scopes, symbols, references) | JS runtime: sandbox, loader, syntax-only node API, JS in `test-rules` | **C4:** B exposes `context.semantic` to JS, A reviews | |
 | **W6** | Semantic built-in rules; project index | JS bindings for project data; `.d.ts` types; JS example rules; JS docs | **C5:** JS rules can use the semantic model and project index | **v0.31**: semantic + JS rules |
 | **W7** | LSP server (`gdguard lsp`) | Godot editor panel (gdextension + addon) | **C6:** both run on the same project and the same config | **v0.32**: editors |
-| **W8** | Cross-file rules; performance and benchmarks | Rename and release pipeline; docs site; upstream PRs | Final review | **v1.0** |
+| **W8** | Cross-file rules; performance and benchmarks | Rename and release pipeline; CLI docs; upstream proposals | Final review | **v1.0** |
 
 Rough size: W1 to W4 are the biggest waves. If each person can put in a few
 focused days per wave, the whole roadmap takes weeks, not months. AI agents
@@ -295,19 +295,21 @@ the diagnostics are identical. Tag **v0.32**.
 ## W8: A and B at the same time
 
 **A: `a/cross-file-rules`, `a/perf`**
-- [ ] P2. `unused-signal` (project-wide) and
+- [x] P2. `unused-signal` (project-wide) and
       `unknown-member-on-project-class`.
-- [ ] A lint benchmark in `benchmarks/`, profiling, and a warm-cache target
+- [x] A lint benchmark in `benchmarks/`, profiling, and a warm-cache target
       of under 1 second for 1000 files.
 
 **B: `b/release`, `b/upstream`**
-- [ ] R1. Rename the binary, addon and artifacts in `release.yml`, then do a
+- [x] R1. Rename the binary, addon and artifacts in `release.yml`, then do a
       release dry run.
-- [ ] Final docs pass and README.
-- [ ] Open upstream PRs to GDQuest for the general parts (spans, JSON output,
-      fix engine) if they want them.
+- [x] Final docs pass and README.
+- [x] Write upstream contribution proposals for spans, JSON and fixes.
+      No PRs opened; the maintainer decides whether to submit them.
 
-**Final:** full review of the spec against the code, then tag **v1.0**.
+**Final:** review the spec against code and validate CLI/agent workflows.
+No release tag is created automatically. Selecting v1.0 and publishing it
+remain explicit maintainer actions; see docs/releasing.md.
 
 ---
 

@@ -7,14 +7,18 @@ lives in `docs/implementation_plan.md`.
 
 Tool name: **`gdguard`** (decided in W0). The binary, the config file
 `gdguard.toml`, the rules folder `.gdguard/` and the ignore prefix
-`gdguard-ignore` all use it. The Cargo package and binary keep the name
-`gdscript-formatter` until W8 renames them. Don't use `gdlint` because
-gdtoolkit's Python linter already uses that name.
+`gdguard-ignore` all use it. The Cargo package/crate and primary executable
+are `gdguard`; `gdscript-formatter` remains a legacy executable alias with
+unchanged formatting behavior. gdtoolkit's Python linter keeps its `gdlint` name.
+
+The primary product is a CLI for coding agents: apply safe fixes, inspect
+remaining actionable diagnostics, repair code and re-lint. IDE and Godot
+integrations are optional compatibility features.
 
 ## Goals
 
-1. Projects can add their own rules without recompiling: YAML rules first,
-   scripted rules later.
+1. Projects can add their own rules without recompiling: YAML syntax patterns and
+   sandboxed JavaScript visitors.
 2. Issues can be fixed automatically when that's safe, and every remaining
    issue carries enough information for a person or an AI agent to fix it.
 3. Output is stable and machine-readable (JSON, SARIF, GitHub annotations) so
@@ -37,7 +41,7 @@ Non-goals:
                    ▼
             ┌──────────────┐   built-in rules (Rust, src/linter/rules/)
  source ──▶ │ parse + run  │◀─ custom rules  (YAML, src/linter/custom/)
-            │  providers   │   (later) scripted rules (JS)
+            │  providers   │   scripted rules (JS)
             └──────┬───────┘
                    ▼  Vec<Diagnostic>
             ┌──────────────┐
@@ -132,7 +136,7 @@ pub struct FileContext<'a> {
     pub project: Option<&'a ProjectIndex>,
 }
 
-/// Implemented by the custom rule engine (and later the JS engine). The
+/// Implemented by the custom YAML and JS rule engines. The
 /// built-in rules keep their existing `Rule` trait and visitor.
 pub trait RuleProvider {
     fn rules(&self) -> &[RuleMeta];
@@ -407,6 +411,16 @@ and must produce no diagnostic when the rule runs again. It prints
 summary line. Exit code 0 when everything passes, 1 on a failing test, 2 when
 rules can't be loaded.
 
+## Parser diagnostics
+
+`parse-error` (Error, non-fixable) reports the first ERROR/MISSING node the
+bundled parser cannot read, with a range and repair/re-lint/Godot guidance.
+Like other diagnostic IDs it is configurable and reserved from custom-rule
+collisions. A malformed source must not appear clean merely because style
+rules find nothing. Empty enums are explicitly tolerated: Godot 4.7 accepts
+them although the pinned grammar inserts a missing enum identifier. The
+parser may lag newer Godot syntax; Godot remains the authoritative checker.
+
 ## Fix engine
 
 1. Collect, for each diagnostic, its first fix allowed by the safety level
@@ -436,7 +450,7 @@ removing `else:` and dedenting its body; Unsafe when that body declares a
 ## CLI
 
 ```
-gdguard lint [FILES...]                 # default: whole project
+gdguard lint [FILES...]                 # default: current directory, recursively
   --fix | --fix-unsafe | --diff
   --format pretty|compact|json|github|sarif   (default: pretty on a TTY, compact otherwise)
   --config <PATH>
@@ -446,7 +460,7 @@ gdguard lint [FILES...]                 # default: whole project
   --stdin-filename <PATH>               # read source from stdin
   --list-rules [--format json]
 gdguard explain <RULE>                   # rationale, examples, fixability
-gdguard test-rules [RULE_DIR]            # run YAML rule tests
+gdguard test-rules [RULE_DIR]            # run YAML and JS rule tests
 gdguard init [--force]                   # write a starter gdguard.toml and .gdguard/
 gdguard lsp                              # language server on stdin/stdout
 ```
@@ -480,8 +494,7 @@ current folder). If either file exists it writes nothing and exits 1, unless
 `--pretty` is an alias of `--format pretty`. The compact format is one line
 per issue: `file:line:col: severity [rule] message`.
 
-Until a flag or subcommand is implemented, it prints
-``"`<flag>` is not implemented yet"`` on stderr and exits with code 2.
+All listed flags/subcommands are implemented. Unknown options exit 2.
 `--list-rules` accepts `--format text` (default) or `--format json`.
 
 Exit codes:
@@ -575,7 +588,7 @@ SARIF does not export fixes yet.
   short summary plus JSON on stderr with exit 2 when issues remain. Tool
   errors also return feedback with exit 2.
 - Binary lookup: `GDGUARD_BIN`, otherwise `gdguard`, then
-  `gdscript-formatter` (the current executable name).
+  `gdscript-formatter` (legacy compatibility alias).
 - User guides: `docs/configuration.md`, `docs/custom_rules.md`,
   `docs/agents.md`. Complete YAML examples are tested automatically.
 
@@ -655,9 +668,9 @@ The pipeline builds one model when custom providers or enabled semantic
 built-ins need it. W6 supplies the read-only project index in FileContext.
 
 Important limit: an unresolved reference is **not** an error, because it may
-come from the parent class, the engine or an autoload. Rules that report
-"unused" are reliable for locals, parameters and private (`_`-prefixed)
-members only.
+come from the parent class, the engine or an autoload. Unused checks for locals, parameters and private members use resolved
+lexical references. Project signal checks are conservative name-based
+heuristics; runtime or external consumers still require review.
 
 W6 built-in rules: `unused-variable`, `unused-private-function`,
 `shadowed-variable`, `unused-local-signal` (declared and never emitted or
@@ -717,10 +730,25 @@ member/virtual exemptions come from the installed gdextension-api data.
   content hash; only changed files are re-summarized. Malformed/unwritable
   caches are nonfatal. Discovery order and serialized cache order are stable.
   A run-wide project-content digest participates in lint cache keys, so JS
-  project rules invalidate when other scripts or project.godot change.
-- Cross-file rules: `unused-signal` (never emitted or connected anywhere in
-  the project), `unknown-member-on-project-class` (only when the whole extends
-  chain is project scripts; `Unknown` when it reaches an engine class).
+  project rules invalidate when other scripts, project.godot or text scenes change.
+- Cross-file rules (Warning, no automatic fixes): `unused-signal` counts
+  string emit/connect/disconnect/is_connected calls, signal.emit/connect
+  uses and `.tscn` connection entries across the project. A shared immutable
+  `ProjectAnalysis` is built once per run/root, and current-buffer signal
+  uses are merged with disk uses. Dynamic emission suppresses definite unused
+  reports; matching by name may hide unrelated signals of the same name.
+  Binary scenes and external/runtime consumers cannot be proven.
+- In a project, enabled `unused-signal` supersedes `unused-local-signal` to
+  avoid duplicate and scene-blind reports; disabling it restores the local
+  rule. Outside a project, only the local rule applies.
+- `unknown-member-on-project-class` checks identifier receivers resolved to
+  symbols with explicit project class annotations. It reports only a `No`
+  from has_member, with a precise member range; `Unknown` is never reported.
+  There is no inference. Reference positions are indexed once per file to
+  avoid scanning all uses for each attribute.
+- Additive W8 APIs: `ProjectIndex::build_uncached(root)` skips both summary
+  cache reads/writes; `ProjectAnalysis::{build,from_tree}` supplies shared
+  signal usage and current-buffer overlays without changing frozen index fields.
 
 ## Scripted rules in JS (`src/linter/script/`)
 
@@ -855,14 +883,25 @@ export default {
   Unreadable caches are ignored; unwritable caches do not fail linting.
   Writes use a temporary file and rename; deleted-file entries are pruned.
   The cache folder gets a `.gitignore` containing `*`.
-- W4-A measured 32 ms for a warm 1068-file corpus, below the 1 s target.
+- `python3 benchmarks/lint_project.py` generates a temporary 1000-file
+  project, measures median cold/warm runs, asserts identical output, and
+  checks targets below 3 s cold / 1 s warm. See docs/handoff/w8-a.md for
+  the measured machine and results.
 
 ## Distribution
 
-- Rename the binary, the addon and the release artifacts in
-  `.github/workflows/release.yml`.
+- Primary binary/crate `gdguard`, alias `gdscript-formatter`, native library
+  `gdguard_gdextension`, singleton `GDGuard`; addon folders gdguard,
+  gdguard_standalone and gdguard_lint.
+- `.github/package_release.py` and `make_release --dry-run` review existing
+  build inputs without changing versions, git or tags. Explicit --output
+  creates CLI/alias, optional native, addon and types/example-rule ZIPs.
+- The tag-triggered workflow builds six OS/architecture targets and creates
+  a draft release for maintainer review. Version tags remain explicit user
+  actions; roadmap completion does not publish a release.
 - Docs are split into `docs/configuration.md`, `docs/custom_rules.md`,
   `docs/js_rules.md`, `docs/agents.md` and `docs/editors.md`; the README
   links to them.
-- Offer the general improvements (spans, JSON output, fixes) upstream to
-  GDQuest to reduce fork drift.
+- docs/migration.md, docs/faq.md and docs/releasing.md cover adoption,
+  analysis limits and packaging. docs/upstream_proposal.md proposes separate
+  spans/JSON/fix-engine contributions; no upstream PR is opened automatically.

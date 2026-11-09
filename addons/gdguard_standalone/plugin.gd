@@ -478,7 +478,7 @@ func format_code(script: GDScript, force_reorder := false, source_content: Varia
 	if get_editor_setting(SETTING_SAFE_MODE):
 		formatter_config[SETTING_SAFE_MODE] = true
 
-	return GDScriptFormatter.format_gdscript(source_content, formatter_config)
+	return GDGuard.format_gdscript(source_content, formatter_config)
 
 
 ## Lints a GDScript file using the GDScript Formatter's linter,
@@ -493,7 +493,7 @@ func lint_code(script: GDScript) -> Array:
 		disabled_rules = ",".split(
 				get_editor_setting(SETTING_LINT_IGNORED_RULES) as String),
 	}
-	return GDScriptFormatter.lint_gdscript(script.source_code, linter_config)
+	return GDGuard.lint_gdscript(script.source_code, linter_config)
 
 
 ## Applies lint highlighting to the code editor

@@ -9,133 +9,77 @@ env:
 
 jobs:
   build-binaries:
-    name: Build binaries
     strategy:
       fail-fast: false
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            name: gdscript-formatter-${{ github.ref_name }}-linux-x86_64
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            name: gdscript-formatter-${{ github.ref_name }}-linux-aarch64
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            name: gdscript-formatter-${{ github.ref_name }}-macos-x86_64
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            name: gdscript-formatter-${{ github.ref_name }}-macos-aarch64
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            name: gdscript-formatter-${{ github.ref_name }}-windows-x86_64.exe
-          - target: aarch64-pc-windows-msvc
-            os: windows-latest
-            name: gdscript-formatter-${{ github.ref_name }}-windows-aarch64.exe
-
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-latest, platform: linux-x86_64 }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-latest, platform: linux-aarch64 }
+          - { target: x86_64-apple-darwin, os: macos-latest, platform: macos-x86_64 }
+          - { target: aarch64-apple-darwin, os: macos-latest, platform: macos-aarch64 }
+          - { target: x86_64-pc-windows-msvc, os: windows-latest, platform: windows-x86_64 }
+          - { target: aarch64-pc-windows-msvc, os: windows-latest, platform: windows-aarch64 }
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
-      # This is a toolchain to build cross-platform binaries with rust. We use
-      # it for other architectures and OSes than the build runner's.
       - name: Install cross
-        if: matrix.os == 'ubuntu-latest' && matrix.target != 'x86_64-unknown-linux-gnu'
-        run: cargo install cross --version 0.2.5
-
-      # Build either with cross or cargo, depending on the target.
-      - name: Build binary
-        run: |
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.target }}" != "x86_64-unknown-linux-gnu" ]]; then
-            cross build --verbose --locked --release --target ${{ matrix.target }}
-          else
-            cargo build --verbose --locked --release --target ${{ matrix.target }}
-          fi
+        if: matrix.platform == 'linux-aarch64'
+        run: cargo install cross --version 0.2.5 --locked
+      - name: Build CLI, alias and native library
         shell: bash
-
-      - name: Move and rename binary
         run: |
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            mv target/${{ matrix.target }}/release/gdscript-formatter.exe ${{ matrix.name }}
+          if [[ "${{ matrix.platform }}" == "linux-aarch64" ]]; then
+            cross build --locked --release --workspace --lib --bin gdguard --bin gdscript-formatter --target ${{ matrix.target }}
           else
-            mv target/${{ matrix.target }}/release/gdscript-formatter ${{ matrix.name }}
+            cargo build --locked --release --workspace --lib --bin gdguard --bin gdscript-formatter --target ${{ matrix.target }}
           fi
-        shell: bash
-
-      - name: Compress to ZIP (All platforms)
-        run: |
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            7z a ${{ matrix.name }}.zip ${{ matrix.name }}
-          else
-            zip ${{ matrix.name }}.zip ${{ matrix.name }}
-          fi
-        shell: bash
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7.0.1
+      - name: Package platform archives
+        run: python .github/package_release.py --platform ${{ matrix.platform }} --binary-dir target/${{ matrix.target }}/release --only cli native --output artifacts
+      - uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.name }}
-          path: ${{ matrix.name }}.zip
+          name: gdguard-${{ matrix.platform }}
+          path: artifacts/*.zip
           if-no-files-found: error
-          retention-days: 10
 
-  package-godot-addon:
-    name: Package the Godot add-on
+  package-common:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Create godot-addon.zip
-        run: |
-          zip -r godot-addon.zip addons/GDQuest_GDScript_formatter/
-          zip -r godot-addon-gdextension.zip addons/GDQuest_GDScript_formatter_standalone/
-        shell: bash
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
-          name: godot-addon
-          path: |
-            godot-addon.zip
-            godot-addon-gdextension.zip
+          python-version: '3.12'
+      - name: Verify tag matches Cargo version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python -c 'import os,tomllib; assert os.environ["RELEASE_TAG"] == tomllib.load(open("Cargo.toml", "rb"))["package"]["version"], "tag and Cargo version differ"'
+      - name: Package addon, types and examples
+        run: python .github/package_release.py --only common --output artifacts
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gdguard-common
+          path: artifacts/*.zip
           if-no-files-found: error
-          retention-days: 10
 
   publish-release:
-    name: Publish GitHub release
-    needs:
-      - build-binaries
-      - package-godot-addon
+    needs: [build-binaries, package-common]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
-
-      - name: Generate release notes
-        run: python .github/generate_release_notes.py > release-notes.md
-
-      - name: Create Release
-        run: |
-          gh release create "${{ github.ref_name }}" --verify-tag --draft --title "GDScript formatter ${{ github.ref_name }}" --notes-file release-notes.md
-
-          gh release upload "${{ github.ref_name }}" artifacts/*.zip
-          gh release edit "${{ github.ref_name }}" --draft=false
+      - run: python .github/generate_release_notes.py > release-notes.md
+      - name: Create release draft for review
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" artifacts/*.zip --verify-tag --draft --title "gdguard $RELEASE_TAG" --notes-file release-notes.md

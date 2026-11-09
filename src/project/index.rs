@@ -39,17 +39,21 @@ pub fn find_root(path: &Path) -> Option<PathBuf> {
     None
 }
 
-pub(super) fn build(root: &Path) -> Result<ProjectIndex, String> {
+pub(super) fn build(root: &Path, with_cache: bool) -> Result<ProjectIndex, String> {
     let root =
         std::fs::canonicalize(root).map_err(|error| format!("{}: {}", root.display(), error))?;
     let project_file = root.join("project.godot");
     let project_text = std::fs::read_to_string(&project_file)
         .map_err(|error| format!("{}: {}", project_file.display(), error))?;
     let cache_path = root.join(".gdguard/cache/index.json");
-    let mut previous: IndexCache = std::fs::read(&cache_path)
-        .ok()
-        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-        .unwrap_or_default();
+    let mut previous: IndexCache = if with_cache {
+        std::fs::read(&cache_path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default()
+    } else {
+        IndexCache::default()
+    };
     if previous.version != INDEX_VERSION {
         previous.files.clear();
     }
@@ -107,7 +111,7 @@ pub(super) fn build(root: &Path) -> Result<ProjectIndex, String> {
     }
     // Cache errors cost performance, not correctness. Stable path order and
     // a unique temporary file keep concurrent lint processes independent.
-    if let Some(directory) = cache_path.parent() {
+    if let Some(directory) = cache_path.parent().filter(|_| with_cache) {
         if std::fs::create_dir_all(directory).is_ok() {
             let _ = std::fs::write(directory.join(".gitignore"), "*\n");
             if let Ok(bytes) = serde_json::to_vec(&cache) {
@@ -301,6 +305,10 @@ pub fn fingerprint(index: &ProjectIndex) -> Result<String, String> {
         let bytes =
             std::fs::read(index.root.join(&script.path)).map_err(|error| error.to_string())?;
         parts.push(bytes);
+    }
+    for scene in super::analysis::scene_files(&index.root)? {
+        parts.push(scene.to_string_lossy().as_bytes().to_vec());
+        parts.push(std::fs::read(scene).map_err(|error| error.to_string())?);
     }
     let mut slices = Vec::with_capacity(parts.len());
     for part in &parts {

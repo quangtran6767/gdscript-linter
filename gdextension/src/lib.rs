@@ -2,12 +2,10 @@
 // clippy versions flag. The lint fires on macro output we don't control.
 #![allow(clippy::redundant_field_names)]
 
-use gdscript_formatter::linter::diagnostic::{Diagnostic, Severity, Span};
-use gdscript_formatter::linter::editor::{EditorDiagnostic, EditorSession, payloads};
-use gdscript_formatter::linter::{LinterConfig, lint_gdscript_with_config};
-use gdscript_formatter::{
-    FormatterConfiguration, PrinterConfiguration, QuoteStyle, format_gdscript,
-};
+use gdguard::linter::diagnostic::{Diagnostic, Severity, Span};
+use gdguard::linter::editor::{EditorDiagnostic, EditorSession, payloads};
+use gdguard::linter::{LinterConfig, lint_gdscript_with_config};
+use gdguard::{FormatterConfiguration, PrinterConfiguration, QuoteStyle, format_gdscript};
 use godot::builtin::{Array, PackedStringArray};
 use godot::obj::Singleton;
 use godot::prelude::{
@@ -17,20 +15,20 @@ use godot::prelude::{
 use std::cell::RefCell;
 use std::path::Path;
 
-struct FormatterExtension;
+struct GdguardExtension;
 
 #[gdextension]
-unsafe impl ExtensionLibrary for FormatterExtension {}
+unsafe impl ExtensionLibrary for GdguardExtension {}
 
 #[derive(GodotClass)]
 #[class(init, singleton, base=Object)]
-struct GDScriptFormatter {
+struct GDGuard {
     base: Base<Object>,
     session: RefCell<EditorSession>,
 }
 
 #[godot_api]
-impl GDScriptFormatter {
+impl GDGuard {
     #[func]
     pub fn format_gdscript(
         &self,
@@ -132,12 +130,12 @@ impl GDScriptFormatter {
                     .and_then(|value| value.try_to::<GString>().ok())
                     .ok_or("invalid replacement")?
                     .to_string();
-                changes.push(gdscript_formatter::linter::diagnostic::Edit {
+                changes.push(gdguard::linter::diagnostic::Edit {
                     span: Span::from_byte_range(&source, start, end),
                     replacement,
                 });
             }
-            gdscript_formatter::linter::editor::apply_edits_checked(&source, &changes)
+            gdguard::linter::editor::apply_edits_checked(&source, &changes)
         })();
         match output {
             Ok(output) => result.set("output", &GString::from(&output)),

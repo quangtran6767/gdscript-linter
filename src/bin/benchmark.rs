@@ -19,9 +19,7 @@
 //! cargo run --bin benchmark --release >> benchmark_results.txt
 //! git checkout -
 //! ```
-use gdscript_formatter::{
-    FormatErrors, FormatterConfiguration, RenderElement, format_gdscript_with_buffers,
-};
+use gdguard::{FormatErrors, FormatterConfiguration, RenderElement, format_gdscript_with_buffers};
 use std::{
     env, fs,
     hint::black_box,
