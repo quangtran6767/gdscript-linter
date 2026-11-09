@@ -1,0 +1,8 @@
+tests/lint/input/prefer_array_method.gd:25:no-else-return:warning: Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'
+tests/lint/input/prefer_array_method.gd:68:unused-variable:warning: Variable 'node' is never used.
+tests/lint/input/prefer_array_method.gd:77:prefer-array-method:info: This loop can be `any`.
+tests/lint/input/prefer_array_method.gd:84:prefer-array-method:info: This loop can be `all`.
+tests/lint/input/prefer_array_method.gd:91:prefer-array-method:info: This loop can be `all`.
+tests/lint/input/prefer_array_method.gd:99:prefer-array-method:info: This loop can be `filter`.
+tests/lint/input/prefer_array_method.gd:107:prefer-array-method:info: This loop can be `map`.
+tests/lint/input/prefer_array_method.gd:114:prefer-array-method:info: This loop can be `assign`.

@@ -1,0 +1,18 @@
+tests/lint/input/prefer_is_empty_call.gd:8:declaration-order:warning: variable `queue` should come before inner classes
+tests/lint/input/prefer_is_empty_call.gd:37:prefer-is-empty-call:info: Use `items.is_empty()` to check whether `items` is empty.
+tests/lint/input/prefer_is_empty_call.gd:38:prefer-is-empty-call:info: Use `items.is_empty()` to check whether `items` is empty.
+tests/lint/input/prefer_is_empty_call.gd:39:prefer-is-empty-call:info: Use `items.is_empty()` to check whether `items` is empty.
+tests/lint/input/prefer_is_empty_call.gd:40:prefer-is-empty-call:info: Use `not items.is_empty()` to check whether `items` is empty.
+tests/lint/input/prefer_is_empty_call.gd:41:prefer-is-empty-call:info: Use `not items.is_empty()` to check whether `items` is empty.
+tests/lint/input/prefer_is_empty_call.gd:42:prefer-is-empty-call:info: Use `not items.is_empty()` to check whether `items` is empty.
+tests/lint/input/prefer_is_empty_call.gd:43:prefer-is-empty-call:info: Use `not items.is_empty()` to check whether `items` is empty.
+tests/lint/input/prefer_is_empty_call.gd:44:prefer-is-empty-call:info: Use `names.is_empty()` to check whether `names` is empty.
+tests/lint/input/prefer_is_empty_call.gd:45:prefer-is-empty-call:info: Use `not table.is_empty()` to check whether `table` is empty.
+tests/lint/input/prefer_is_empty_call.gd:46:prefer-is-empty-call:info: Use `label.is_empty()` to check whether `label` is empty.
+tests/lint/input/prefer_is_empty_call.gd:47:prefer-is-empty-call:info: Use `not text.is_empty()` to check whether `text` is empty.
+tests/lint/input/prefer_is_empty_call.gd:48:prefer-is-empty-call:info: Use `not list.is_empty()` to check whether `list` is empty.
+tests/lint/input/prefer_is_empty_call.gd:49:prefer-is-empty-call:info: Use `packed.is_empty()` to check whether `packed` is empty.
+tests/lint/input/prefer_is_empty_call.gd:50:prefer-is-empty-call:info: Use `not items.is_empty()` to check whether `items` is empty.
+tests/lint/input/prefer_is_empty_call.gd:50:prefer-is-empty-call:info: Use `names.is_empty()` to check whether `names` is empty.
+tests/lint/input/prefer_is_empty_call.gd:52:prefer-is-empty-call:info: Use `not items.is_empty()` to check whether `items` is empty.
+tests/lint/input/prefer_is_empty_call.gd:53:prefer-is-empty-call:info: Use `(not items.is_empty())` to check whether `items` is empty.

@@ -898,6 +898,8 @@ pub struct FixedFile {
     pub fixed: String,
     /// How many fixes were applied to this file.
     pub applied: usize,
+    /// True when `[fix].format` formatted this file.
+    pub formatted: bool,
 }
 
 /// The result of `lint --fix`, `--fix-unsafe` or `--diff`, before anything is
@@ -1017,6 +1019,7 @@ fn add_fixed_source(
             original,
             fixed: fixed.output,
             applied: fixed.applied,
+            formatted: fixed.formatted,
         });
     }
 }

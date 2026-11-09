@@ -289,11 +289,11 @@ fn builtin_rule_spans() {
     let fallback = gdguard::linter::lint_gdscript(&source, "all_rules.gd").unwrap();
     // The fixture must exercise every built-in rule. Two rules need the
     // linted file to be inside the project (autoload and scene lookups by
-    // path); tests/project covers them.
+    // path); tests/project and tests/fix cover them.
     for rule_name in get_all_rule_names() {
         if matches!(
             rule_name,
-            "missing-class-name" | "scene-connection-missing-method"
+            "missing-class-name" | "scene-connection-missing-method" | "prefer-unique-node-name"
         ) {
             continue;
         }

@@ -66,8 +66,8 @@ Options:
       --fix                    Apply safe fixes
       --fix-unsafe             Apply safe and unsafe fixes
       --diff                   Print the fixes as a unified diff, don't write files
-      --format <FORMAT>        Output format: pretty, compact, json, github, sarif
-                               (default: pretty on a terminal, compact otherwise)
+      --format <FORMAT>        Output format: pretty, compact, json, github, sarif,
+                               agent (default: pretty on a terminal, compact otherwise)
       --config <PATH>          Use this gdguard.toml instead of searching for one
       --baseline <PATH>        Hide the issues listed in this baseline file
       --update-baseline        Write all current issues to the baseline file
@@ -642,7 +642,7 @@ pub fn parse_args() -> CliArguments {
                     output_format = match OutputFormat::from_name(&format_name) {
                         Some(format) => Some(format),
                         None => print_error_invalid_argument(&format!(
-                            "--format expects pretty, compact, json, github or sarif, got '{}'",
+                            "--format expects pretty, compact, json, github, sarif or agent, got '{}'",
                             format_name
                         )),
                     };

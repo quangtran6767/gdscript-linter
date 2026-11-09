@@ -1,6 +1,6 @@
 # Built-in rules
 
-gdguard has 40 built-in rules. This page lists them all, grouped by what they catch. The same text is available offline:
+gdguard has 45 built-in rules. This page lists them all, grouped by what they catch. The same text is available offline:
 
 ```sh
 gdguard lint --list-rules     # one line per rule
@@ -16,7 +16,7 @@ unused-argument = "info"
 max-line-length = { level = "warning", max = 120 }
 ```
 
-Levels: **error** and **warning** fail the run (warnings up to `--max-warnings N` are allowed); **info** never does. `lint --fix` applies **safe** fixes, `--fix-unsafe` also applies **unsafe** ones, and **suggestions** are never applied automatically. Silence one line with `# gdguard-ignore-next-line <rule> -- reason`.
+Levels: **error** and **warning** fail the run (warnings up to `--max-warnings N` are allowed); **info** never does. `lint --fix` applies **safe** fixes, `--fix-unsafe` also applies **unsafe** ones, and **suggestions** are never applied automatically. To have `lint --fix` (and the agent hook) apply some unsafe fixes too, list their rules: `[fix] unsafe = ["prefer-squared-distance"]`, or `unsafe = true` for all. Silence one line with `# gdguard-ignore-next-line <rule> -- reason`.
 
 ## All rules
 
@@ -24,6 +24,7 @@ Levels: **error** and **warning** fail the run (warnings up to `--max-warnings N
 | --- | --- | --- | --- |
 | [`parse-error`](#parse-error) | error |  | Syntax and Godot 4 compatibility |
 | [`godot3-syntax`](#godot3-syntax) | error | safe/unsafe | Syntax and Godot 4 compatibility |
+| [`single-line-container-type`](#single-line-container-type) | error | safe | Syntax and Godot 4 compatibility |
 | [`comparison-with-itself`](#comparison-with-itself) | warning |  | Likely bugs |
 | [`self-assignment`](#self-assignment) | warning |  | Likely bugs |
 | [`standalone-expression`](#standalone-expression) | warning |  | Likely bugs |
@@ -45,6 +46,7 @@ Levels: **error** and **warning** fail the run (warnings up to `--max-warnings N
 | [`prefer-uid-path`](#prefer-uid-path) | warning | safe | Project rules |
 | [`unused-signal`](#unused-signal) | warning |  | Project rules |
 | [`unknown-member-on-project-class`](#unknown-member-on-project-class) | warning |  | Project rules |
+| [`prefer-unique-node-name`](#prefer-unique-node-name) | info | unsafe | Project rules |
 | [`declaration-order`](#declaration-order) | warning | safe/unsafe | Naming and style |
 | [`class-name`](#class-name) | error |  | Naming and style |
 | [`signal-name`](#signal-name) | error |  | Naming and style |
@@ -59,6 +61,9 @@ Levels: **error** and **warning** fail the run (warnings up to `--max-warnings N
 | [`max-line-length`](#max-line-length) | warning |  | Naming and style |
 | [`no-else-return`](#no-else-return) | warning | safe/unsafe | Naming and style |
 | [`duplicated-load`](#duplicated-load) | warning |  | Naming and style |
+| [`prefer-is-empty-call`](#prefer-is-empty-call) | info | safe | Naming and style |
+| [`prefer-squared-distance`](#prefer-squared-distance) | warning | unsafe | Naming and style |
+| [`prefer-array-method`](#prefer-array-method) | info | unsafe | Naming and style |
 | [`fix-failed`](#fix-failed) | warning |  | Tool messages |
 | [`script-error`](#script-error) | error |  | Tool messages |
 | [`godot-error`](#godot-error) | error |  | Tool messages |
@@ -108,6 +113,30 @@ Good:
 ```gdscript
 func _ready():
 	await get_tree().process_frame
+```
+
+### `single-line-container-type`
+
+**error** · fix: safe (joins the type on one line)
+
+Array[...] and Dictionary[...] types stay on one line.
+
+Godot 4.7 rejects a line break inside the brackets of a variable, constant, return or loop-variable type ("Expected type for collection after ..."), but the bundled parser accepts it, so `parse-error` doesn't catch it. Parameter and lambda types, and `\` continuations, are accepted by Godot and not reported. Types with a comment inside get no fix.
+
+Bad:
+
+```gdscript
+func living() -> Array[
+	Node
+]:
+	return []
+```
+
+Good:
+
+```gdscript
+func living() -> Array[Node]:
+	return []
 ```
 
 ## Likely bugs
@@ -595,6 +624,28 @@ func f(data: ProjectData):
 	return data.value
 ```
 
+### `prefer-unique-node-name`
+
+**info** · fix: unsafe (replaces the path with `%Name`)
+
+Scripts reach their scene's unique nodes with %Name instead of a $path.
+
+`%Button` keeps working when the scene tree is rearranged; `$Panel/Button` breaks. Reported only when the script is the root script of its scenes (and of no other node), and every one of those scenes marks the node `unique_name_in_owner`. Inherited scenes and nodes inside instanced scenes are skipped. The fix is unsafe: the script may also be used where the scan can't see it.
+
+Bad:
+
+```gdscript
+func _ready() -> void:
+	$Panel/Button.text = "Go"
+```
+
+Good:
+
+```gdscript
+func _ready() -> void:
+	%Button.text = "Go"
+```
+
 ## Naming and style
 
 The [GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html) and readability.
@@ -919,6 +970,75 @@ Good:
 const ICON = preload("res://icon.svg")
 var a = ICON
 var b = ICON
+```
+
+### `prefer-is-empty-call`
+
+**info** · fix: safe
+
+Emptiness checks on arrays, dictionaries and strings use is_empty().
+
+`items.is_empty()` states the intent better than `items.size() > 0` or `len(items) == 0`. Handles `size()`, `length()` (String) and `len()` compared with `0` or `1`, in either order. Only identifiers whose type is declared, or set from a literal like `[]`, `{}` or `""`, as an Array, Dictionary, packed array or String are reported, so the fix never changes behavior. A project class with its own `size()` stays silent. The built-in `prefer-is-empty` example custom rule from `gdguard init` is separate.
+
+Bad:
+
+```gdscript
+func has_items(items: Array) -> bool:
+	return items.size() > 0
+```
+
+Good:
+
+```gdscript
+func has_items(items: Array) -> bool:
+	return not items.is_empty()
+```
+
+### `prefer-squared-distance`
+
+**warning** · fix: unsafe
+
+Distance and length comparisons on vectors use the squared forms.
+
+`distance_squared_to()` and `length_squared()` skip a square root, which matters in per-frame range checks. Receivers must be known float vectors: identifiers declared (or set from a literal) as `Vector2`, `Vector3` or `Vector4`, inherited `position`/`global_position`, `other.global_position`, and sums or differences of those. The threshold must be free of calls so it can be squared without running anything twice; integer literals are squared (`40` → `1600`). Equality checks and real-distance arithmetic are left alone. The fix is unsafe: a negative threshold, or rounding exactly on the boundary, can change the result.
+
+Bad:
+
+```gdscript
+func near(a: Vector2, b: Vector2) -> bool:
+	return a.distance_to(b) < 40.0
+```
+
+Good:
+
+```gdscript
+func near(a: Vector2, b: Vector2) -> bool:
+	return a.distance_squared_to(b) < 40.0 * 40.0
+```
+
+### `prefer-array-method`
+
+**info** · fix: unsafe
+
+Loops that rebuild any(), all(), filter(), map() or a copy use the Array method.
+
+`for e in items: if P: return true` followed by `return false` becomes `return items.any(func(e): return P)` (`all` with `not P` when reversed). A loop that appends to an empty array declared right before it becomes `result.assign(items.filter(...))`, `result.assign(items.map(...))`, or `result.assign(items)` for a plain copy. The source must be an identifier known to be an `Array`; the lambda parameter keeps the loop variable's type, or the array's element type. Loops with comments, `await`, assignments, nested loops or functions, or conditions over several lines aren't reported. The fix is unsafe: the lambda captures local variables by value.
+
+Bad:
+
+```gdscript
+func any_ready(items: Array[Node]) -> bool:
+	for item in items:
+		if item.is_node_ready():
+			return true
+	return false
+```
+
+Good:
+
+```gdscript
+func any_ready(items: Array[Node]) -> bool:
+	return items.any(func(item: Node): return item.is_node_ready())
 ```
 
 ## Tool messages

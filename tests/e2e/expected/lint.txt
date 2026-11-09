@@ -12,8 +12,10 @@ scripts/enemies/enemy.gd:33:2: warning [unnecessary-pass] Unnecessary 'pass' sta
 scripts/player.gd:2:1: error [scene-connection-missing-method] Scene 'res://scenes/player.tscn' connects signal 'body_entered' of node 'Hurtbox' to method '_on_hurtbox_body_entered', which this script doesn't define.
 scripts/player.gd:12:15: info [unused-argument] Function argument 'delta' is unused. Consider removing it or prefixing with '_'
 scripts/player.gd:14:19: error [no-get-node-in-process] Don't look up nodes in `_process()`; cache the node in an `@onready` variable
+scripts/player.gd:16:5: info [prefer-is-empty-call] Use `inventory.is_empty()` to check whether `inventory` is empty.
 scripts/player.gd:16:5: warning [prefer-is-empty] Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero
 scripts/player.gd:20:31: info [unused-argument] Function argument 'source' is unused. Consider removing it or prefixing with '_'
+scripts/player.gd:28:9: info [prefer-is-empty-call] Use `not inventory.is_empty()` to check whether `inventory` is empty.
 scripts/player.gd:28:9: warning [prefer-not-is-empty] Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero
 scripts/ui/hud.gd:1:1: warning [missing-class-name] Script has no class_name.
 scripts/ui/hud.gd:3:30: warning [prefer-uid-path] Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'.

@@ -37,3 +37,9 @@
 56:24-56:28 duplicate-dictionary-key '"hp"'
 57:2-57:7 godot3-syntax 'yield'
 59:2-59:22 unreachable-code 'print("unreachable")'
+62:18-64:2 single-line-container-type 'Array[
+	int
+]'
+68:5-68:21 prefer-is-empty-call 'items.size() > 0'
+69:9-69:31 prefer-squared-distance 'a.distance_to(b) < 4.0'
+70:2-70:5 prefer-array-method 'for'

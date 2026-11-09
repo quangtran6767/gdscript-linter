@@ -749,7 +749,18 @@ fn run_fix_command(lint_command: LintCommand, fix_command: &FixCommand) -> i32 {
         eprintln!("Error: {}", error);
         return 2;
     }
-    let fixed_line = fixed_summary_line(fix_report.applied(), fix_report.changed_files.len());
+    let mut fixed_file_count = 0;
+    let mut formatted_file_count = 0;
+    for changed_file in &fix_report.changed_files {
+        if changed_file.applied > 0 {
+            fixed_file_count += 1;
+        }
+        if changed_file.formatted {
+            formatted_file_count += 1;
+        }
+    }
+    let fixed_line =
+        fixed_summary_line(fix_report.applied(), fixed_file_count, formatted_file_count);
     // Machine-readable formats keep stdout parseable.
     let is_machine_format = matches!(
         fix_command.format,
@@ -771,14 +782,30 @@ fn run_fix_command(lint_command: LintCommand, fix_command: &FixCommand) -> i32 {
         .exit_code(fix_command.max_warnings)
 }
 
-/// "Fixed 3 problems in 2 files", with singular forms for 1.
-fn fixed_summary_line(applied: usize, file_count: usize) -> String {
+/// "Fixed 3 problems in 2 files", with singular forms for 1. With
+/// `[fix].format`, files the formatter changed are added: "Fixed 3 problems
+/// in 2 files, formatted 4 files".
+fn fixed_summary_line(applied: usize, file_count: usize, formatted_count: usize) -> String {
     let problem_word = if applied == 1 { "problem" } else { "problems" };
-    let file_word = if file_count == 1 { "file" } else { "files" };
-    format!(
+    let mut line = format!(
         "Fixed {} {} in {} {}",
-        applied, problem_word, file_count, file_word
-    )
+        applied,
+        problem_word,
+        file_count,
+        file_word(file_count)
+    );
+    if formatted_count > 0 {
+        line.push_str(&format!(
+            ", formatted {} {}",
+            formatted_count,
+            file_word(formatted_count)
+        ));
+    }
+    line
+}
+
+fn file_word(count: usize) -> &'static str {
+    if count == 1 { "file" } else { "files" }
 }
 
 /// The files of a fix run and their options, for the Godot check that runs

@@ -15,12 +15,18 @@ mod godot_virtuals;
 pub mod loop_variable_name;
 pub mod max_line_length;
 pub mod no_else_return;
+pub mod prefer_array_method;
+pub mod prefer_is_empty_call;
+pub mod prefer_squared_distance;
+pub mod prefer_unique_node_name;
 pub mod private_access;
 pub mod project_rules;
+mod receiver_types;
 pub mod resource_paths;
 pub mod self_assignment;
 pub mod semantic_rules;
 pub mod signal_name;
+pub mod single_line_container_type;
 pub mod standalone_expression;
 pub mod unnecessary_pass;
 pub mod unreachable_code;
@@ -152,6 +158,26 @@ pub const ALL_RULES: &[RuleDefinition] = &[
         create: |_config| Box::new(godot3_syntax::Godot3SyntaxRule),
     },
     RuleDefinition {
+        name: single_line_container_type::RULE_ID,
+        create: |_config| Box::new(single_line_container_type::SingleLineContainerTypeRule),
+    },
+    RuleDefinition {
+        name: prefer_is_empty_call::RULE_ID,
+        create: |_config| Box::new(prefer_is_empty_call::PreferIsEmptyCallRule),
+    },
+    RuleDefinition {
+        name: prefer_squared_distance::RULE_ID,
+        create: |_config| Box::new(prefer_squared_distance::PreferSquaredDistanceRule),
+    },
+    RuleDefinition {
+        name: prefer_array_method::RULE_ID,
+        create: |_config| Box::new(prefer_array_method::PreferArrayMethodRule),
+    },
+    RuleDefinition {
+        name: prefer_unique_node_name::RULE_ID,
+        create: |_config| Box::new(prefer_unique_node_name::PreferUniqueNodeNameRule),
+    },
+    RuleDefinition {
         name: "unused-variable",
         create: |_config| {
             Box::new(semantic_rules::SemanticRule {
@@ -274,6 +300,9 @@ pub const SEMANTIC_RULE_IDS: &[&str] = &[
     "unused-local-signal",
     "assigned-but-never-read",
     "self-assignment",
+    "prefer-is-empty-call",
+    "prefer-squared-distance",
+    "prefer-array-method",
 ];
 pub fn semantic_rules_enabled(config: &LinterConfig) -> bool {
     for id in SEMANTIC_RULE_IDS {

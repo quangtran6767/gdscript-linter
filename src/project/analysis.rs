@@ -35,6 +35,15 @@ pub struct ProjectAnalysis {
     pub path_uids: HashMap<String, String>,
     /// Scene `res://` path to the `res://` path of its root node's script.
     pub scene_root_scripts: HashMap<String, String>,
+    /// Scene `res://` path to the paths (relative to the root, like
+    /// `Panel/Button`) of the nodes it owns with `unique_name_in_owner`.
+    /// Scenes whose root is an instance (inherited scenes) are left out.
+    /// Added in W11.
+    pub scene_unique_nodes: HashMap<String, HashSet<String>>,
+    /// Scripts attached to a node that isn't a scene root, or to the root of
+    /// an inherited scene: `%Name` lookups there use another owner. Added in
+    /// W11.
+    pub non_root_scripts: HashSet<String>,
 }
 impl ProjectAnalysis {
     pub fn from_tree(tree: &tree_sitter::Tree, source: &str) -> Self {
@@ -161,6 +170,9 @@ impl ProjectAnalysis {
     fn collect_scene(&mut self, scene: &str, text: &str) {
         let mut resources: HashMap<String, String> = HashMap::new();
         let mut node_scripts: HashMap<String, String> = HashMap::new();
+        let mut unique_nodes: Vec<String> = Vec::new();
+        // Instanced nodes: their children belong to the instanced scene.
+        let mut instance_nodes: Vec<String> = Vec::new();
         let mut current_node: Option<String> = None;
         let mut connections = Vec::new();
         for line in text.lines() {
@@ -183,11 +195,15 @@ impl ProjectAnalysis {
                     let Some(name) = attribute(trimmed, "name") else {
                         continue;
                     };
-                    current_node = Some(match attribute(trimmed, "parent") {
+                    let node_path = match attribute(trimmed, "parent") {
                         None => ".".to_string(),
                         Some(parent) if parent == "." => name,
                         Some(parent) => format!("{}/{}", parent, name),
-                    });
+                    };
+                    if trimmed.contains(" instance=") {
+                        instance_nodes.push(node_path.clone());
+                    }
+                    current_node = Some(node_path);
                 } else if trimmed.starts_with("[connection ") {
                     if let (Some(signal), Some(from), Some(to), Some(method)) = (
                         attribute(trimmed, "signal"),
@@ -205,12 +221,34 @@ impl ProjectAnalysis {
                     if let Some(id) = ext_resource_id(value) {
                         node_scripts.insert(node.clone(), id);
                     }
+                } else if trimmed.trim_end() == "unique_name_in_owner = true" {
+                    unique_nodes.push(node.clone());
                 }
             }
         }
         if let Some(script) = node_scripts.get(".").and_then(|id| resources.get(id)) {
             self.scene_root_scripts
                 .insert(scene.to_string(), script.clone());
+        }
+        let is_inherited = instance_nodes.iter().any(|path| path == ".");
+        for (node, id) in &node_scripts {
+            if (node != "." || is_inherited)
+                && let Some(script) = resources.get(id)
+            {
+                self.non_root_scripts.insert(script.clone());
+            }
+        }
+        if !is_inherited {
+            let mut owned = HashSet::new();
+            for node in unique_nodes {
+                let in_instance = instance_nodes
+                    .iter()
+                    .any(|instance| node.starts_with(&format!("{}/", instance)));
+                if node != "." && !in_instance {
+                    owned.insert(node);
+                }
+            }
+            self.scene_unique_nodes.insert(scene.to_string(), owned);
         }
         for (signal, from, to, method) in connections {
             let target_script = node_scripts

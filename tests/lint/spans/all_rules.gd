@@ -57,3 +57,17 @@ func newer_rules(value):
 	yield(get_tree(), "idle_frame")
 	return [preloaded, missing_icon, stats]
 	print("unreachable")
+
+
+var broken_type: Array[
+	int
+] = []
+
+
+func w11_rules(items: Array[Node], a: Vector2, b: Vector2) -> bool:
+	if items.size() > 0:
+		print(a.distance_to(b) < 4.0)
+	for item in items:
+		if item.visible:
+			return true
+	return false

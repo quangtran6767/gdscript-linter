@@ -2,10 +2,11 @@
 
 ## What should an agent run after editing?
 
-Run `gdguard lint --fix --format json PATH`, inspect every remaining issue's
-`help`, `range` and `explain`, edit what needs judgment, then lint the project
-again. Use exit 2 as a tool/config failure, never as evidence of clean code.
-Fix output for disk files is JSON on stdout; fixes and status go to stderr.
+Run `gdguard lint --fix --format agent PATH` (short text; `--format json`
+for programs), read every remaining issue's help and fixes, edit what needs
+judgment, then lint the project again. Use exit 2 as a tool/config failure, never as evidence of clean code.
+With `--format json`, fix output for disk files is JSON on stdout and the
+`Fixed ...` line goes to stderr.
 See [agent integration](agents.md) for the JSON fields and hook setup.
 
 ## Does gdguard infer types or replace Godot warnings?

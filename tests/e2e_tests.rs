@@ -433,7 +433,7 @@ fn lint_sample_project_sarif_output() {
             .as_array()
             .expect("valid e2e fixture and report")
             .len(),
-        26
+        28
     );
     assert!(
         report["runs"][0]["tool"]["driver"]["rules"]
@@ -469,7 +469,7 @@ fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
     ]);
     assert_eq!(hidden.exit_code, 0, "{}", hidden.stderr);
     assert!(
-        hidden.stdout.contains("26 issues hidden by baseline."),
+        hidden.stdout.contains("28 issues hidden by baseline."),
         "{}",
         hidden.stdout
     );
@@ -489,7 +489,7 @@ fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
     assert_eq!(new_issue.exit_code, 1, "{}", new_issue.stderr);
     let report: serde_json::Value =
         serde_json::from_str(&new_issue.stdout).expect("valid e2e fixture and report");
-    assert_eq!(report["summary"]["baseline_hidden"], 26);
+    assert_eq!(report["summary"]["baseline_hidden"], 28);
     assert_eq!(
         report["issues"]
             .as_array()

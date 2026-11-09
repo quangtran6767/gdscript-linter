@@ -88,6 +88,13 @@ scripts/player.gd
    |                      ^^^^^^^^^^^^^^^^^^^^^
    = help: Add `@onready var node := $Path` at the top of the script and use the variable in `_process()`.
 
+ 16:5 info [prefer-is-empty-call] Use `inventory.is_empty()` to check whether `inventory` is empty.
+   |
+16 |     if len(inventory) == 0:
+   |        ^^^^^^^^^^^^^^^^^^^
+   = help: Replace `len(inventory) == 0` with `inventory.is_empty()`.
+   = fix (safe): Replace with `inventory.is_empty()`
+
  16:5 warning [prefer-is-empty] Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero
    |
 16 |     if len(inventory) == 0:
@@ -101,6 +108,13 @@ scripts/player.gd
    |                               ^^^^^^
    = help: Remove 'source', or rename it to '_source' if the function signature must stay the same.
    = fix (unsafe): Rename it to '_source'
+
+ 28:9 info [prefer-is-empty-call] Use `not inventory.is_empty()` to check whether `inventory` is empty.
+   |
+28 |     return len(inventory) > 0
+   |            ^^^^^^^^^^^^^^^^^^
+   = help: Replace `len(inventory) > 0` with `not inventory.is_empty()`.
+   = fix (safe): Replace with `not inventory.is_empty()`
 
  28:9 warning [prefer-not-is-empty] Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero
    |
@@ -168,4 +182,4 @@ scripts/ui/hud.gd
    |                                                                                                     ^^^^^^^^^^^^^^^^^^
    = help: Split the line, for example by wrapping arguments in parentheses or extracting a variable.
 
-Found 26 problems (9 errors, 15 warnings, 2 infos) in 3 files. 7 fixable with --fix.
+Found 28 problems (9 errors, 15 warnings, 4 infos) in 3 files. 9 fixable with --fix.

@@ -8,8 +8,8 @@
     "files": 5,
     "errors": 9,
     "warnings": 15,
-    "infos": 2,
-    "fixable": 7,
+    "infos": 4,
+    "fixable": 9,
     "baseline_hidden": 0
   },
   "issues": [
@@ -409,6 +409,47 @@
     },
     {
       "file": "scripts/player.gd",
+      "rule": "prefer-is-empty-call",
+      "origin": "builtin",
+      "severity": "info",
+      "message": "Use `inventory.is_empty()` to check whether `inventory` is empty.",
+      "help": "Replace `len(inventory) == 0` with `inventory.is_empty()`.",
+      "range": {
+        "start": {
+          "line": 16,
+          "column": 5,
+          "byte": 310
+        },
+        "end": {
+          "line": 16,
+          "column": 24,
+          "byte": 329
+        }
+      },
+      "snippet": "\tif len(inventory) == 0:",
+      "explain": "gdguard explain prefer-is-empty-call",
+      "fixes": [
+        {
+          "description": "Replace with `inventory.is_empty()`",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 310
+                },
+                "end": {
+                  "byte": 329
+                }
+              },
+              "replacement": "inventory.is_empty()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "scripts/player.gd",
       "rule": "prefer-is-empty",
       "origin": "custom",
       "severity": "warning",
@@ -484,6 +525,47 @@
                 }
               },
               "replacement": "_source"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "prefer-is-empty-call",
+      "origin": "builtin",
+      "severity": "info",
+      "message": "Use `not inventory.is_empty()` to check whether `inventory` is empty.",
+      "help": "Replace `len(inventory) > 0` with `not inventory.is_empty()`.",
+      "range": {
+        "start": {
+          "line": 28,
+          "column": 9,
+          "byte": 566
+        },
+        "end": {
+          "line": 28,
+          "column": 27,
+          "byte": 584
+        }
+      },
+      "snippet": "\treturn len(inventory) > 0",
+      "explain": "gdguard explain prefer-is-empty-call",
+      "fixes": [
+        {
+          "description": "Replace with `not inventory.is_empty()`",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 566
+                },
+                "end": {
+                  "byte": 584
+                }
+              },
+              "replacement": "not inventory.is_empty()"
             }
           ]
         }

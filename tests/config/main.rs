@@ -10,7 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use gdguard::linter::api::{self, Config, RuleLevel};
 use gdguard::linter::config::{
     CliRuleOverrides, CompiledConfig, find_config_file, load_and_validate, load_config_file,
-    parse_config,
+    parse_config, validate_rule_ids,
 };
 use gdguard::linter::diagnostic::Severity;
 use gdguard::linter::{LintRunOptions, lint_files};
@@ -171,6 +171,60 @@ fn an_empty_config_is_valid() {
     let config = parse("").unwrap();
     assert!(config.rules.is_empty());
     assert!(config.overrides.is_empty());
+    assert!(!config.fix_format);
+}
+
+#[test]
+fn parses_the_fix_section() {
+    assert!(parse("[fix]\nformat = true\n").unwrap().fix_format);
+    assert!(!parse("[fix]\nformat = false\n").unwrap().fix_format);
+    assert!(!parse("[fix]\n").unwrap().fix_format);
+}
+
+#[test]
+fn parses_fix_unsafe() {
+    let all = parse("[fix]\nunsafe = true\n").unwrap();
+    assert!(all.fix_unsafe_all);
+    assert!(all.fix_unsafe_rules.is_empty());
+    let listed =
+        parse("[fix]\nunsafe = [\"prefer-squared-distance\", \"unused-variable\"]\n").unwrap();
+    assert!(!listed.fix_unsafe_all);
+    assert_eq!(
+        listed.fix_unsafe_rules,
+        vec!["prefer-squared-distance", "unused-variable"]
+    );
+    assert_eq!(
+        parse_error("[fix]\nunsafe = \"all\"\n"),
+        "/project/gdguard.toml: `fix.unsafe`: expected true, false or a list of rule ids"
+    );
+}
+
+#[test]
+fn error_unknown_rule_in_fix_unsafe() {
+    let error =
+        validate_rule_ids(&parse("[fix]\nunsafe = [\"prefer-squared-distanse\"]\n").unwrap())
+            .unwrap_err()
+            .to_string();
+    assert_eq!(
+        error,
+        "/project/gdguard.toml: `fix.unsafe`: unknown rule id \"prefer-squared-distanse\"; did you mean \"prefer-squared-distance\"?"
+    );
+}
+
+#[test]
+fn error_bad_fix_section() {
+    assert_eq!(
+        parse_error("[fix]\nformat = \"yes\"\n"),
+        "/project/gdguard.toml: `fix.format`: expected true or false"
+    );
+    assert_eq!(
+        parse_error("[fix]\nfromat = true\n"),
+        "/project/gdguard.toml: `fix.fromat`: unknown key; expected one of: format, unsafe"
+    );
+    assert_eq!(
+        parse_error("fix = true\n"),
+        "/project/gdguard.toml: `fix`: expected a table"
+    );
 }
 
 // Errors: every message names the file and the key.
@@ -189,7 +243,7 @@ fn error_invalid_toml() {
 fn error_unknown_section() {
     assert_eq!(
         parse_error("[rule]\n"),
-        "/project/gdguard.toml: `rule`: unknown key; expected one of: rules, custom_rules, lint, overrides"
+        "/project/gdguard.toml: `rule`: unknown key; expected one of: rules, custom_rules, lint, overrides, fix"
     );
 }
 

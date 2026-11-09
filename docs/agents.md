@@ -18,13 +18,21 @@ The hook tries `gdguard`, then `gdscript-formatter`, or an absolute path in
    `.claude/skills/gdguard/SKILL.md`, or append the
    [agent snippet](../integrations/claude-code/AGENTS.snippet.md) to your
    project's agent instructions. Run `gdguard init` in the game
-   to enable the starter custom rule.
+   to enable the starter custom rule. Under `[fix]`, set `format = true`
+   so each edited file is also formatted, and list the unsafe fixes your
+   project accepts, for example
+   `unsafe = ["prefer-squared-distance", "prefer-array-method", "prefer-unique-node-name"]`,
+   so the hook applies those too.
 
 The hook reads `.tool_input.file_path` (or `.path`) from stdin, skips other
-extensions, and runs `lint --fix --format json` on each `.gd` file. A clean
-file returns silently. Remaining issues return a short summary and JSON on
-stderr with exit 2. Tool failures also return exit 2 with their error, so
-they do not look clean. Paths are decoded as JSON and passed as a single
+extensions, and runs `lint --fix --format agent` on each `.gd` file, so safe
+fixes (and formatting, with `[fix] format = true`) land before the agent
+sees anything. A clean file returns silently and costs the agent no
+tokens. Remaining issues return on stderr with exit 2, as short text: each
+issue's location, rule and message, its source line, help and the fixes
+that need review. Set `GDGUARD_HOOK_FORMAT=json` for the full JSON report
+instead. Tool failures also return exit 2 with their error, so they do not
+look clean. Paths are decoded as JSON and passed as a single
 argument, including spaces, quotes and Unicode.
 
 This is feedback after an edit. It does not undo the edit or lint shell
@@ -36,12 +44,24 @@ linter, including its Python fallback without `jq`.
 ## Recommended loop for any agent
 
 ```sh
-gdguard lint --fix --format json scripts/player.gd
+gdguard lint --fix --format agent scripts/player.gd
 gdguard explain unused-argument
-gdguard lint --format json scripts/player.gd
+gdguard lint --format agent scripts/player.gd
 ```
 
-Read `issues[].help` and `fixes` after safe fixes. Review each unsafe fix
+`--format agent` prints only what's left to do, in a few lines per issue:
+
+```text
+scripts/player.gd:5:6: warning [unused-variable] Variable 'speed' is never used.
+  > var speed := 10
+  help: Use the value, remove the declaration, or prefix an intentional unused binding with `_`.
+  unsafe fix: Remove unused variable 'speed'
+1 issue (1 warning). Rule details: gdguard explain <rule>
+Unsafe fixes may change behavior: review each, then edit the code or run gdguard lint --fix-unsafe.
+```
+
+Use `--format json` when a program reads the result (byte ranges and fix
+edits are only in JSON). Read the help and fixes after safe fixes. Review each unsafe fix
 and suggestion in context, edit the code, and re-lint until exit 0. Fix
 tool/config errors (exit 2) before interpreting diagnostics. Keep ignore
 comments specific and include ` -- reason`. Do not extend a baseline to

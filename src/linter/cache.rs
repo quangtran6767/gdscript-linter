@@ -23,7 +23,9 @@ use crate::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span
 
 // The W10 review changes fix safety and adds source-slice fixes. Drop older
 // results so cached safe fixes cannot bypass the corrected dependency check.
-pub const CACHE_VERSION: u32 = 6;
+// W11 adds five built-in rules: results cached before them would hide their
+// diagnostics, since the package version didn't change.
+pub const CACHE_VERSION: u32 = 7;
 
 /// The cache file, relative to the folder of `gdguard.toml`.
 pub const CACHE_PATH: &str = ".gdguard/cache/lint.json";

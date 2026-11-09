@@ -19,6 +19,10 @@ paths = [".gdguard/rules"]
 exclude = ["addons/**", ".godot/**"]
 baseline = ".gdguard/baseline.json"
 
+[fix]
+format = true
+unsafe = ["prefer-squared-distance", "prefer-array-method"]
+
 [[overrides]]
 files = ["tests/**"]
 rules = { private-access = "off" }
@@ -34,6 +38,25 @@ options are errors. Custom options are passed through.
 Paths and globs are relative to the config directory. `*` does not cross
 `/`; `**` does. A matched directory excludes its descendants. Excludes
 apply to explicitly named files too. Custom rules need a registered folder.
+
+## Fix and format automatically
+
+With `[fix] format = true`, `lint --fix` and `--fix-unsafe` also format
+every file they check with the formatter, even when no fix applied or the
+file wasn't formatted before. Use it in projects where agents edit code:
+the post-edit hook then leaves each edited file fixed and formatted, so
+agents never spend a turn on formatting. The formatter runs with its
+structure check, so it can't change what the code does; a file it can't
+parse stays as it is. `--diff` shows the formatting too. The summary
+reads `Fixed 2 problems in 1 file, formatted 3 files`. The default is
+`false`: the fix engine then only keeps already formatted files formatted.
+
+`unsafe` makes `lint --fix` apply unsafe fixes as well: `true` for every
+rule, or a list of rule ids. Unsafe fixes can change behavior in rare
+cases (each rule's page in [the rule reference](rules.md) says how), so
+list the rules your project accepts. With it, an agent's edits are fixed
+by the hook without the agent spending a turn. Unknown ids are config
+errors. Suggestions are never applied.
 
 ## Ignore comments
 
@@ -76,12 +99,20 @@ issues hidden; changing the issue line or introducing another occurrence
 reveals an issue. Baselines apply to lint and fix reports. Pretty output
 reports the hidden count; JSON adds `summary.baseline_hidden`.
 
+A baseline hides issues from reports but doesn't stop fixes: `--fix`
+still applies the safe fixes of baselined issues in the files it checks.
+With `[fix].format`, format the project (`gdguard .`) before
+`--update-baseline`: reformatting a baselined line changes its text, and
+the issue then shows up again.
+
 Commit `.gdguard/baseline.json`; review intentional updates as code changes.
 
 ## Output, exit codes and cache
 
-`lint --format pretty|compact|json|github|sarif` selects a reporter. The
-default is pretty in a terminal, compact otherwise. GitHub output uses
+`lint --format pretty|compact|json|github|sarif|agent` selects a reporter.
+The default is pretty in a terminal, compact otherwise. `agent` is short
+text for coding agents: each issue's compact line, its source line, help
+and fixes, then a summary line; see [the agent guide](agents.md). GitHub output uses
 workflow annotations; SARIF 2.1.0 includes metadata for reported rules.
 Both convert columns to UTF-16; JSON uses UTF-8 byte positions.
 

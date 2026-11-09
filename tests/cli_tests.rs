@@ -187,7 +187,7 @@ fn bad_subcommand_and_format_arguments_are_usage_errors() {
     let cases: [(&[&str], &str); 5] = [
         (
             &["lint", "--format", "xml", "a.gd"],
-            "gdguard: error: --format expects pretty, compact, json, github or sarif, got 'xml'\n",
+            "gdguard: error: --format expects pretty, compact, json, github, sarif or agent, got 'xml'\n",
         ),
         (
             &["lint", "--list-rules", "--format", "sarif"],

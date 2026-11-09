@@ -177,6 +177,46 @@ fn compact_snapshot() {
 }
 
 #[test]
+fn agent_snapshot() {
+    assert_snapshot(
+        "agent.txt",
+        &render(OutputFormat::Agent, &sample_report(), false),
+    );
+}
+
+#[test]
+fn agent_summary_counts_hidden_issues_and_cuts_long_lines() {
+    let source = format!("var value = \"{}\"\n", "x".repeat(200));
+    let diagnostic = diagnostic_on(
+        &source,
+        "value",
+        "some-rule",
+        Severity::Warning,
+        "A message",
+        None,
+        Vec::new(),
+    );
+    let report = LintReport {
+        files: vec![FileDiagnostics {
+            path: "a.gd".to_string(),
+            source: source.clone(),
+            diagnostics: vec![diagnostic],
+        }],
+        files_checked: 1,
+        baseline_hidden: 4,
+        rule_metas: Vec::new(),
+    };
+    let expected_line = format!("  > {}...\n", &source[..120]);
+    assert_eq!(
+        render(OutputFormat::Agent, &report, false),
+        format!(
+            "a.gd:1:5: warning [some-rule] A message\n{}1 issue (1 warning), 4 hidden by baseline. Rule details: gdguard explain <rule>\n",
+            expected_line
+        )
+    );
+}
+
+#[test]
 fn github_snapshot() {
     assert_snapshot(
         "github.txt",
@@ -288,6 +328,7 @@ fn empty_report_prints_nothing_except_json() {
     };
     assert_eq!(render(OutputFormat::Pretty, &report, false), "");
     assert_eq!(render(OutputFormat::Compact, &report, false), "");
+    assert_eq!(render(OutputFormat::Agent, &report, false), "");
     let json: serde_json::Value =
         serde_json::from_str(&render(OutputFormat::Json, &report, false)).unwrap();
     assert_eq!(json["summary"]["files"], 2);

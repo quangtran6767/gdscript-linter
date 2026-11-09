@@ -94,6 +94,15 @@ pub struct Config {
     pub max_line_length: Option<usize>,
     /// `None` means: use `.editorconfig`, then the default (4).
     pub indent_size: Option<usize>,
+    /// `[fix].format`: `--fix` and `--fix-unsafe` also format every file
+    /// they check, not only files that were formatted before. Added in W11.
+    pub fix_format: bool,
+    /// `[fix].unsafe = true`: `--fix` also applies every unsafe fix, like
+    /// `--fix-unsafe`. Added in W11.
+    pub fix_unsafe_all: bool,
+    /// `[fix].unsafe = ["rule-id", ...]`: `--fix` also applies the unsafe
+    /// fixes of these rules. Added in W11.
+    pub fix_unsafe_rules: Vec<String>,
 }
 
 /// A config or rule-file error. The CLI prints it and exits with code 2.

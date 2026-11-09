@@ -226,6 +226,61 @@ fn formats_the_result_only_when_the_input_was_formatted() {
 }
 
 #[test]
+fn fix_format_formats_every_file() {
+    let project = TempProject::new();
+    project.write(
+        "gdguard.toml",
+        "[custom_rules]\npaths = [\"rules\"]\n\n[fix]\nformat = true\n",
+    );
+    project.write("rules/spaced-call.yml", SPACED_CALL);
+
+    // No fix applies, but the file is still formatted.
+    let without_fixes = fix(&project, "var  a=1\n", false);
+    assert_eq!(without_fixes.output, "var a = 1\n");
+    assert_eq!(without_fixes.applied, 0);
+
+    // Unformatted input with a fix: fixed, then formatted.
+    let with_fixes = fix(&project, "var  a=1\nfunc f():\n\told_call(1)\n", false);
+    assert_eq!(
+        with_fixes.output,
+        "var a = 1\n\n\nfunc f():\n\tnew_call(1)\n"
+    );
+    assert_eq!(with_fixes.applied, 1);
+    assert!(with_fixes.remaining.is_empty());
+
+    // Code the formatter can't parse is left as it is.
+    let broken = "var  a=1\nfunc (:\n";
+    assert_eq!(fix(&project, broken, false).output, broken);
+}
+
+#[test]
+fn fix_format_is_idempotent_when_the_formatter_needs_two_passes() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "[fix]\nformat = true\n");
+    // The formatter splits this inline annotation on its first pass and
+    // joins it on the second; `--fix` must reach the final text at once.
+    let source = "func f(seconds: int) -> int:\n\t@warning_ignore(\"integer_division\") var hours := seconds / 3600\n\treturn hours\n";
+    let once = fix(&project, source, false);
+    assert_eq!(
+        once.output,
+        "func f(seconds: int) -> int:\n\t@warning_ignore(\"integer_division\")\n\tvar hours := seconds / 3600\n\treturn hours\n"
+    );
+    assert_eq!(fix(&project, &once.output, false).output, once.output);
+}
+
+#[test]
+fn fix_format_reports_remaining_issues_in_the_formatted_text() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "[fix]\nformat = true\n");
+    let result = fix(&project, "var  badName=1\n", false);
+    assert_eq!(result.output, "var badName = 1\n");
+    assert_eq!(rules_of(&result), vec!["variable-name"]);
+    // The span points into the formatted text.
+    let span = &result.remaining[0].span;
+    assert_eq!(&result.output[span.start_byte..span.end_byte], "badName");
+}
+
+#[test]
 fn source_with_syntax_errors_is_left_unchanged() {
     let project = TempProject::new();
     project.with_rules(&[("prefer-is-empty.yml", PREFER_IS_EMPTY)]);
@@ -296,6 +351,119 @@ fn builtin_fix_no_else_return() {
 }
 
 #[test]
+fn builtin_fix_single_line_container_type() {
+    check_builtin_fixture("single_line_container_type", false);
+}
+
+#[test]
+fn builtin_fix_prefer_is_empty_call() {
+    check_builtin_fixture("prefer_is_empty_call", false);
+}
+
+/// Unsafe fixes: applied with `--fix-unsafe`, never by a plain `--fix`.
+fn check_unsafe_builtin_fixture(name: &str) {
+    check_builtin_fixture(name, true);
+    let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fix/builtin");
+    let path = folder.join(format!("{}.input.gd", name));
+    let input = fs::read_to_string(&path).unwrap();
+    let safe_only = api::fix_source(&path, &input, &Config::default(), false).unwrap();
+    assert_eq!(safe_only.output, input, "fixture {}", name);
+}
+
+#[test]
+fn builtin_fix_prefer_squared_distance_is_unsafe() {
+    check_unsafe_builtin_fixture("prefer_squared_distance");
+}
+
+#[test]
+fn builtin_fix_prefer_array_method_is_unsafe() {
+    check_unsafe_builtin_fixture("prefer_array_method");
+}
+
+#[test]
+fn fix_unsafe_config_applies_the_listed_rules_with_plain_fix() {
+    let project = TempProject::new();
+    let source = "var nodes: Array[Node] = []\n\n\nfunc near(a: Vector2, b: Vector2) -> bool:\n\treturn a.distance_to(b) < 4.0\n\n\nfunc any_visible() -> bool:\n\tfor node in nodes:\n\t\tif node.visible:\n\t\t\treturn true\n\treturn false\n";
+
+    project.write(
+        "gdguard.toml",
+        "[fix]\nunsafe = [\"prefer-squared-distance\"]\n",
+    );
+    let listed = fix(&project, source, false);
+    assert!(
+        listed
+            .output
+            .contains("a.distance_squared_to(b) < 4.0 * 4.0")
+    );
+    assert!(listed.output.contains("for node in nodes:"));
+    assert_eq!(rules_of(&listed), vec!["prefer-array-method"]);
+
+    project.write("gdguard.toml", "[fix]\nunsafe = true\n");
+    let all = fix(&project, source, false);
+    assert!(all.output.contains("a.distance_squared_to(b) < 4.0 * 4.0"));
+    assert!(all.output.contains("return nodes.any("), "{}", all.output);
+    assert!(all.remaining.is_empty());
+}
+
+#[test]
+fn prefer_unique_node_name_uses_the_scene_of_the_root_script() {
+    let project = TempProject::new();
+    project.write("project.godot", "config_version=5\n");
+    let scene = |script: &str| {
+        format!(
+            "[gd_scene format=3]\n\n[ext_resource type=\"Script\" path=\"res://{}\" id=\"1\"]\n\n[node name=\"Hud\" type=\"Control\"]\nscript = ExtResource(\"1\")\n\n[node name=\"Panel\" type=\"Panel\" parent=\".\"]\n\n[node name=\"Button\" type=\"Button\" parent=\"Panel\"]\nunique_name_in_owner = true\n\n[node name=\"Plain\" type=\"Label\" parent=\"Panel\"]\n",
+            script
+        )
+    };
+    let source = "class_name Hud\nextends Control\n\n\nfunc _ready() -> void:\n\t$Panel/Button.text = \"Go\"\n\t$\"Panel/Button\".text = \"Go\"\n\t$Panel/Plain.text = \"x\"\n\t$Panel.show()\n";
+
+    // Root script: unique nodes are reported, with an unsafe fix.
+    project.write("hud.gd", source);
+    project.write("hud.tscn", &scene("hud.gd"));
+    let path = project.root.join("hud.gd");
+    let fixed = api::fix_source(&path, source, &Config::default(), true).unwrap();
+    assert_eq!(
+        fixed.output,
+        "class_name Hud\nextends Control\n\n\nfunc _ready() -> void:\n\t%Button.text = \"Go\"\n\t%Button.text = \"Go\"\n\t$Panel/Plain.text = \"x\"\n\t$Panel.show()\n"
+    );
+    let safe_only = api::fix_source(&path, source, &Config::default(), false).unwrap();
+    assert_eq!(safe_only.output, source);
+
+    // Also attached to a child node elsewhere: `%` would use another owner.
+    project.write(
+        "menu.tscn",
+        "[gd_scene format=3]\n\n[ext_resource type=\"Script\" path=\"res://hud.gd\" id=\"1\"]\n\n[node name=\"Menu\" type=\"Control\"]\n\n[node name=\"Hud\" type=\"Control\" parent=\".\"]\nscript = ExtResource(\"1\")\n",
+    );
+    let shared = api::lint_source(&path, source, &Config::default()).unwrap();
+    assert!(
+        !shared
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.rule == "prefer-unique-node-name")
+    );
+}
+
+#[test]
+fn prefer_unique_node_name_skips_inherited_scenes() {
+    let project = TempProject::new();
+    project.write("project.godot", "config_version=5\n");
+    let source = "extends Control\n\n\nfunc _ready() -> void:\n\t$Button.text = \"Go\"\n";
+    project.write("hud.gd", source);
+    project.write(
+        "hud.tscn",
+        "[gd_scene format=3]\n\n[ext_resource type=\"Script\" path=\"res://hud.gd\" id=\"1\"]\n[ext_resource type=\"PackedScene\" path=\"res://base.tscn\" id=\"2\"]\n\n[node name=\"Hud\" instance=ExtResource(\"2\")]\nscript = ExtResource(\"1\")\n\n[node name=\"Button\" type=\"Button\" parent=\".\"]\nunique_name_in_owner = true\n",
+    );
+    let result =
+        api::lint_source(&project.root.join("hud.gd"), source, &Config::default()).unwrap();
+    assert!(
+        !result
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.rule == "prefer-unique-node-name")
+    );
+}
+
+#[test]
 fn builtin_fix_unused_argument_is_unsafe() {
     check_builtin_fixture("unused_argument", true);
     let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fix/builtin");
@@ -340,7 +508,9 @@ fn run(directory: &Path, args: &[&str], stdin: Option<&str>) -> CommandOutput {
     {
         let mut child_stdin = child.stdin.take().unwrap();
         if let Some(input) = stdin {
-            child_stdin.write_all(input.as_bytes()).unwrap();
+            // The CLI may exit (for example on a usage error) before reading
+            // stdin; the broken pipe is expected then.
+            let _ = child_stdin.write_all(input.as_bytes());
         }
     }
     let output = child.wait_with_output().unwrap();
@@ -352,6 +522,43 @@ fn run(directory: &Path, args: &[&str], stdin: Option<&str>) -> CommandOutput {
 }
 
 const PASS_SOURCE: &str = "func f():\n\tprint(1)\n\tpass\n";
+
+#[test]
+fn cli_fix_with_fix_format_counts_formatted_files() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "[fix]\nformat = true\n");
+    project.write("a.gd", PASS_SOURCE);
+    project.write("b.gd", "var  b=1\n");
+    project.write("c.gd", "var c = 1\n");
+
+    let diff = run(&project.root, &["lint", "--diff", "b.gd"], None);
+    assert_eq!(diff.exit_code, 1, "stderr: {}", diff.stderr);
+    assert!(
+        diff.stdout.contains("-var  b=1\n+var b = 1\n"),
+        "{}",
+        diff.stdout
+    );
+    assert_eq!(project.read("b.gd"), "var  b=1\n");
+
+    let output = run(
+        &project.root,
+        &[
+            "lint", "--fix", "--format", "compact", "a.gd", "b.gd", "c.gd",
+        ],
+        None,
+    );
+    assert_eq!(output.exit_code, 0, "stderr: {}", output.stderr);
+    assert_eq!(
+        output.stdout,
+        "Fixed 1 problem in 1 file, formatted 1 file\n"
+    );
+    assert_eq!(project.read("a.gd"), "func f():\n\tprint(1)\n");
+    assert_eq!(project.read("b.gd"), "var b = 1\n");
+    assert_eq!(project.read("c.gd"), "var c = 1\n");
+
+    let again = run(&project.root, &["lint", "--fix", "."], None);
+    assert_eq!(again.stdout, "Fixed 0 problems in 0 files\n");
+}
 
 #[test]
 fn cli_fix_writes_files_and_reports_the_rest() {

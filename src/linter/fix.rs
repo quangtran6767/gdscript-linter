@@ -4,7 +4,8 @@
 //! One file goes through these steps:
 //!
 //! 1. Lint, then collect the first fix of each diagnostic that the safety
-//!    level allows (`Safe`, plus `Unsafe` with `--fix-unsafe`).
+//!    level allows (`Safe`, plus `Unsafe` with `--fix-unsafe` or for the
+//!    rules `[fix].unsafe` lists).
 //! 2. Sort the fixes by position and keep only those that don't overlap a
 //!    fix already chosen. Skipped fixes come back on the next pass.
 //! 3. Apply the chosen fixes and re-parse. If the result has syntax errors,
@@ -12,7 +13,7 @@
 //!    drop them, and report them as `fix-failed` at the end.
 //! 4. Re-lint and repeat, for at most `MAX_FIX_PASSES` passes, stopping when
 //!    no fix is left.
-//! 5. If the input was formatted, format the result.
+//! 5. If the input was formatted, or `[fix].format` is on, format the result.
 
 use std::path::Path;
 
@@ -25,6 +26,10 @@ use crate::{FormatterConfiguration, format_gdscript};
 /// fix that keeps producing new issues can't loop forever.
 pub const MAX_FIX_PASSES: usize = 10;
 
+/// With `[fix].format`, the formatter runs at most this many times, until
+/// its output stops changing.
+const MAX_FORMAT_PASSES: usize = 3;
+
 /// The rule id of the diagnostic reported when a fix would break the code.
 pub const FIX_FAILED_RULE_ID: &str = "fix-failed";
 
@@ -36,6 +41,9 @@ pub struct FixedSource {
     pub output: String,
     /// How many fixes were applied, over all passes.
     pub applied: usize,
+    /// True when `[fix].format` is on and the formatter changed the text.
+    /// Keeping an already formatted file formatted doesn't count.
+    pub formatted: bool,
     /// Diagnostics left in `output`, plus one `fix-failed` diagnostic for
     /// each issue whose fix was dropped. Sorted by position.
     pub remaining: Vec<Diagnostic>,
@@ -78,7 +86,14 @@ pub fn fix_source_with_settings(
     let mut applied = 0;
     if linter.has_syntax_errors(source)? {
         let mut candidates = Vec::new();
-        collect_candidates(&diagnostics, source, allow_unsafe, &[], &mut candidates);
+        collect_candidates(
+            &diagnostics,
+            source,
+            allow_unsafe,
+            settings,
+            &[],
+            &mut candidates,
+        );
         let chosen = choose_non_overlapping(candidates);
         let mut all_edits: Vec<Edit> = Vec::new();
         for candidate in &chosen {
@@ -92,6 +107,7 @@ pub fn fix_source_with_settings(
             return Ok(FixedSource {
                 output: source.to_string(),
                 applied: 0,
+                formatted: false,
                 remaining: diagnostics,
             });
         };
@@ -107,6 +123,7 @@ pub fn fix_source_with_settings(
             &diagnostics,
             &current,
             allow_unsafe,
+            settings,
             &failed_keys,
             &mut candidates,
         );
@@ -125,14 +142,39 @@ pub fn fix_source_with_settings(
         diagnostics = lint_with_settings(linter, path, &current, settings, providers)?;
     }
 
-    if applied > 0 {
+    // Step 5. With `[fix].format`, every file is formatted, with the
+    // formatter's structure check so formatting can never change the code.
+    // Otherwise only a file that was formatted before is kept formatted.
+    let mut formatted = false;
+    if settings.format_on_fix || applied > 0 {
         let mut formatter_config = FormatterConfiguration::default();
         crate::editorconfig::apply_editorconfig_to_formatter_config(&mut formatter_config, path);
-        if is_formatted(source, &formatter_config)
-            && let Ok(formatted) = format_gdscript(&current, &formatter_config)
-            && formatted != current
+        formatter_config.safe = settings.format_on_fix;
+        let should_format = settings.format_on_fix || is_formatted(source, &formatter_config);
+        if should_format && settings.format_on_fix {
+            // A few shapes need more than one formatter pass to settle (for
+            // example an inline annotation on a local variable), so format
+            // until the text stops changing. That keeps `--fix` idempotent.
+            let mut formatted_source = current.clone();
+            for _pass in 0..MAX_FORMAT_PASSES {
+                let Ok(next) = format_gdscript(&formatted_source, &formatter_config) else {
+                    break;
+                };
+                if next == formatted_source {
+                    break;
+                }
+                formatted_source = next;
+            }
+            if formatted_source != current {
+                current = formatted_source;
+                formatted = true;
+                diagnostics = lint_with_settings(linter, path, &current, settings, providers)?;
+            }
+        } else if should_format
+            && let Ok(formatted_source) = format_gdscript(&current, &formatter_config)
+            && formatted_source != current
         {
-            current = formatted;
+            current = formatted_source;
             diagnostics = lint_with_settings(linter, path, &current, settings, providers)?;
         }
     }
@@ -140,7 +182,8 @@ pub fn fix_source_with_settings(
     if !failed_keys.is_empty() {
         let mut failed_diagnostics = Vec::new();
         for diagnostic in &diagnostics {
-            let Some(edits) = first_allowed_fix_edits(diagnostic, allow_unsafe) else {
+            let allows_unsafe = allow_unsafe || settings.allows_unsafe_fix(&diagnostic.rule);
+            let Some(edits) = first_allowed_fix_edits(diagnostic, allows_unsafe) else {
                 continue;
             };
             let key = fix_key(&diagnostic.rule, edits, &current);
@@ -161,6 +204,7 @@ pub fn fix_source_with_settings(
     Ok(FixedSource {
         output: current,
         applied,
+        formatted,
         remaining: diagnostics,
     })
 }
@@ -206,15 +250,19 @@ fn fix_key(rule: &str, edits: &[Edit], source: &str) -> FixKey {
 }
 
 /// Collects one fix per diagnostic, skipping fixes that failed before.
+/// `allow_unsafe` (from `--fix-unsafe`) allows every unsafe fix;
+/// `settings` (`[fix].unsafe`) allows those of some rules.
 fn collect_candidates(
     diagnostics: &[Diagnostic],
     source: &str,
     allow_unsafe: bool,
+    settings: &FileSettings,
     failed_keys: &[FixKey],
     candidates: &mut Vec<FixCandidate>,
 ) {
     for diagnostic in diagnostics {
-        let Some(edits) = first_allowed_fix_edits(diagnostic, allow_unsafe) else {
+        let allows_unsafe = allow_unsafe || settings.allows_unsafe_fix(&diagnostic.rule);
+        let Some(edits) = first_allowed_fix_edits(diagnostic, allows_unsafe) else {
             continue;
         };
         let key = fix_key(&diagnostic.rule, edits, source);

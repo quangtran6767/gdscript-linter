@@ -186,6 +186,22 @@
               }
             },
             {
+              "id": "prefer-is-empty-call",
+              "shortDescription": {
+                "text": "Emptiness checks on arrays, dictionaries and strings use is_empty()."
+              },
+              "fullDescription": {
+                "text": "`items.is_empty()` states the intent better than `items.size() > 0` or `len(items) == 0`. Only identifiers whose type is declared (or set from a literal like `[]`) as an Array, Dictionary, packed array or String are reported, so the safe fix never changes behavior."
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "fixable": true,
+                "origin": "builtin"
+              }
+            },
+            {
               "id": "prefer-not-is-empty",
               "shortDescription": {
                 "text": "Use `not $X.is_empty()` instead of comparing `len($X)` to zero"
@@ -375,7 +391,7 @@
         },
         {
           "ruleId": "signal-name",
-          "ruleIndex": 15,
+          "ruleIndex": 16,
           "level": "error",
           "message": {
             "text": "Signal name 'OnDefeated' should be in snake_case format"
@@ -398,7 +414,7 @@
         },
         {
           "ruleId": "unused-signal",
-          "ruleIndex": 19,
+          "ruleIndex": 20,
           "level": "warning",
           "message": {
             "text": "Signal 'OnDefeated' is never emitted or connected in this project."
@@ -467,7 +483,7 @@
         },
         {
           "ruleId": "variable-name",
-          "ruleIndex": 20,
+          "ruleIndex": 21,
           "level": "error",
           "message": {
             "text": "Variable name 'targetName' should be in snake_case or _private_snake_case format"
@@ -559,7 +575,7 @@
         },
         {
           "ruleId": "private-access",
-          "ruleIndex": 13,
+          "ruleIndex": 14,
           "level": "error",
           "message": {
             "text": "Private variable '_health' should not be accessed from outside its class"
@@ -582,7 +598,7 @@
         },
         {
           "ruleId": "unnecessary-pass",
-          "ruleIndex": 17,
+          "ruleIndex": 18,
           "level": "warning",
           "message": {
             "text": "Unnecessary 'pass' statement when other statements are present"
@@ -605,7 +621,7 @@
         },
         {
           "ruleId": "scene-connection-missing-method",
-          "ruleIndex": 14,
+          "ruleIndex": 15,
           "level": "error",
           "message": {
             "text": "Scene 'res://scenes/player.tscn' connects signal 'body_entered' of node 'Hurtbox' to method '_on_hurtbox_body_entered', which this script doesn't define."
@@ -628,7 +644,7 @@
         },
         {
           "ruleId": "unused-argument",
-          "ruleIndex": 18,
+          "ruleIndex": 19,
           "level": "note",
           "message": {
             "text": "Function argument 'delta' is unused. Consider removing it or prefixing with '_'"
@@ -673,6 +689,29 @@
           ]
         },
         {
+          "ruleId": "prefer-is-empty-call",
+          "ruleIndex": 11,
+          "level": "note",
+          "message": {
+            "text": "Use `inventory.is_empty()` to check whether `inventory` is empty."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 16,
+                  "startColumn": 5,
+                  "endLine": 16,
+                  "endColumn": 24
+                }
+              }
+            }
+          ]
+        },
+        {
           "ruleId": "prefer-is-empty",
           "ruleIndex": 10,
           "level": "warning",
@@ -697,7 +736,7 @@
         },
         {
           "ruleId": "unused-argument",
-          "ruleIndex": 18,
+          "ruleIndex": 19,
           "level": "note",
           "message": {
             "text": "Function argument 'source' is unused. Consider removing it or prefixing with '_'"
@@ -719,8 +758,31 @@
           ]
         },
         {
-          "ruleId": "prefer-not-is-empty",
+          "ruleId": "prefer-is-empty-call",
           "ruleIndex": 11,
+          "level": "note",
+          "message": {
+            "text": "Use `not inventory.is_empty()` to check whether `inventory` is empty."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 28,
+                  "startColumn": 9,
+                  "endLine": 28,
+                  "endColumn": 27
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "prefer-not-is-empty",
+          "ruleIndex": 12,
           "level": "warning",
           "message": {
             "text": "Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero"
@@ -766,7 +828,7 @@
         },
         {
           "ruleId": "prefer-uid-path",
-          "ruleIndex": 12,
+          "ruleIndex": 13,
           "level": "warning",
           "message": {
             "text": "Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'."
@@ -789,7 +851,7 @@
         },
         {
           "ruleId": "prefer-uid-path",
-          "ruleIndex": 12,
+          "ruleIndex": 13,
           "level": "warning",
           "message": {
             "text": "Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'."
@@ -835,7 +897,7 @@
         },
         {
           "ruleId": "prefer-uid-path",
-          "ruleIndex": 12,
+          "ruleIndex": 13,
           "level": "warning",
           "message": {
             "text": "Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'."
@@ -904,7 +966,7 @@
         },
         {
           "ruleId": "standalone-expression",
-          "ruleIndex": 16,
+          "ruleIndex": 17,
           "level": "warning",
           "message": {
             "text": "Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect"

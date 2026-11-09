@@ -1,0 +1,6 @@
+tests/lint/input/single_line_container_type.gd:28:single-line-container-type:error: Keep the Array type on one line; Godot rejects a line break inside its brackets.
+tests/lint/input/single_line_container_type.gd:31:declaration-order:warning: constant `TABLE` should come before variables
+tests/lint/input/single_line_container_type.gd:31:single-line-container-type:error: Keep the Dictionary type on one line; Godot rejects a line break inside its brackets.
+tests/lint/input/single_line_container_type.gd:33:single-line-container-type:error: Keep the Array type on one line; Godot rejects a line break inside its brackets.
+tests/lint/input/single_line_container_type.gd:38:single-line-container-type:error: Keep the Array type on one line; Godot rejects a line break inside its brackets.
+tests/lint/input/single_line_container_type.gd:41:single-line-container-type:error: Keep the Array type on one line; Godot rejects a line break inside its brackets.

@@ -12,8 +12,10 @@
 ::error file=scripts/player.gd,line=2,col=1,endLine=2,endColumn=24,title=scene-connection-missing-method::Scene 'res://scenes/player.tscn' connects signal 'body_entered' of node 'Hurtbox' to method '_on_hurtbox_body_entered', which this script doesn't define.
 ::notice file=scripts/player.gd,line=12,col=15,endLine=12,endColumn=20,title=unused-argument::Function argument 'delta' is unused. Consider removing it or prefixing with '_'
 ::error file=scripts/player.gd,line=14,col=19,endLine=14,endColumn=40,title=no-get-node-in-process::Don't look up nodes in `_process()`; cache the node in an `@onready` variable
+::notice file=scripts/player.gd,line=16,col=5,endLine=16,endColumn=24,title=prefer-is-empty-call::Use `inventory.is_empty()` to check whether `inventory` is empty.
 ::warning file=scripts/player.gd,line=16,col=5,endLine=16,endColumn=24,title=prefer-is-empty::Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero
 ::notice file=scripts/player.gd,line=20,col=31,endLine=20,endColumn=37,title=unused-argument::Function argument 'source' is unused. Consider removing it or prefixing with '_'
+::notice file=scripts/player.gd,line=28,col=9,endLine=28,endColumn=27,title=prefer-is-empty-call::Use `not inventory.is_empty()` to check whether `inventory` is empty.
 ::warning file=scripts/player.gd,line=28,col=9,endLine=28,endColumn=27,title=prefer-not-is-empty::Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero
 ::warning file=scripts/ui/hud.gd,line=1,col=1,endLine=1,endColumn=20,title=missing-class-name::Script has no class_name.
 ::warning file=scripts/ui/hud.gd,line=3,col=30,endLine=3,endColumn=56,title=prefer-uid-path::Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'.

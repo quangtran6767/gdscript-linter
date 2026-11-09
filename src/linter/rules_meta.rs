@@ -20,7 +20,7 @@ struct BuiltinInfo {
     good_example: &'static str,
 }
 
-const BUILTIN_RULES: [BuiltinInfo; 40] = [
+const BUILTIN_RULES: [BuiltinInfo; 45] = [
     BuiltinInfo {
         id: "assigned-but-never-read",
         severity: Severity::Warning,
@@ -220,6 +220,33 @@ const BUILTIN_RULES: [BuiltinInfo; 40] = [
         good_example: "func f():\n\tpass\n",
     },
     BuiltinInfo {
+        id: "prefer-array-method",
+        severity: Severity::Info,
+        fixable: true,
+        description: "Loops that rebuild any(), all(), filter(), map() or a copy use the Array method.",
+        rationale: "`items.any(...)` or `result.assign(items.filter(...))` states the intent in one line instead of a loop. Only loops over an identifier known to be an Array are reported, with one statement in the body and no comments, `await`, assignments or nested functions. The fix is unsafe: the lambda captures local variables by value.",
+        bad_example: "func any_ready(items: Array[Node]) -> bool:\n\tfor item in items:\n\t\tif item.is_node_ready():\n\t\t\treturn true\n\treturn false\n",
+        good_example: "func any_ready(items: Array[Node]) -> bool:\n\treturn items.any(func(item: Node): return item.is_node_ready())\n",
+    },
+    BuiltinInfo {
+        id: "prefer-is-empty-call",
+        severity: Severity::Info,
+        fixable: true,
+        description: "Emptiness checks on arrays, dictionaries and strings use is_empty().",
+        rationale: "`items.is_empty()` states the intent better than `items.size() > 0` or `len(items) == 0`. Only identifiers whose type is declared (or set from a literal like `[]`) as an Array, Dictionary, packed array or String are reported, so the safe fix never changes behavior.",
+        bad_example: "func has_items(items: Array) -> bool:\n\treturn items.size() > 0\n",
+        good_example: "func has_items(items: Array) -> bool:\n\treturn not items.is_empty()\n",
+    },
+    BuiltinInfo {
+        id: "prefer-squared-distance",
+        severity: Severity::Warning,
+        fixable: true,
+        description: "Distance and length comparisons on vectors use the squared forms.",
+        rationale: "`distance_squared_to()` and `length_squared()` skip a square root, which matters in per-frame range checks. Receivers must be known float vectors (declared Vector2/3/4, `position`, `global_position`, or their sums and differences) and the threshold free of calls. The fix is unsafe: a negative threshold or rounding exactly on the boundary can change the result.",
+        bad_example: "func near(a: Vector2, b: Vector2) -> bool:\n\treturn a.distance_to(b) < 40.0\n",
+        good_example: "func near(a: Vector2, b: Vector2) -> bool:\n\treturn a.distance_squared_to(b) < 40.0 * 40.0\n",
+    },
+    BuiltinInfo {
         id: "prefer-uid-path",
         severity: Severity::Warning,
         fixable: true,
@@ -227,6 +254,15 @@ const BUILTIN_RULES: [BuiltinInfo; 40] = [
         rationale: "UID paths keep working when files are moved or renamed. Only paths with a known UID (from `.uid` files, `.import` files or scene headers) are reported, and the safe fix replaces the path with the UID.",
         bad_example: "const Data = preload(\"res://data.gd\")\n",
         good_example: "const Data = preload(\"uid://cexampledata\")\n",
+    },
+    BuiltinInfo {
+        id: "prefer-unique-node-name",
+        severity: Severity::Info,
+        fixable: true,
+        description: "Scripts reach their scene's unique nodes with %Name instead of a $path.",
+        rationale: "`%Button` keeps working when the scene tree is rearranged; `$Panel/Button` breaks. Reported only when the script is the root script of its scenes and every one marks the node `unique_name_in_owner`. The fix is unsafe: the script may also be used where the scan can't see it.",
+        bad_example: "extends Control\n\nfunc _ready() -> void:\n\t$Panel/Button.text = \"Go\"\n",
+        good_example: "extends Control\n\nfunc _ready() -> void:\n\t%Button.text = \"Go\"\n",
     },
     BuiltinInfo {
         id: "private-access",
@@ -281,6 +317,15 @@ const BUILTIN_RULES: [BuiltinInfo; 40] = [
         rationale: "The GDScript style guide names signals in snake_case, usually in the past tense, like Godot's built-in signals.",
         bad_example: "signal OnDefeated\n",
         good_example: "signal defeated\n",
+    },
+    BuiltinInfo {
+        id: "single-line-container-type",
+        severity: Severity::Error,
+        fixable: true,
+        description: "Array[...] and Dictionary[...] types stay on one line.",
+        rationale: "Godot 4.7 rejects a line break inside the brackets of a variable, constant, return or loop type (\"Expected type for collection\"), but the bundled parser accepts it, so `parse-error` doesn't catch it. Parameter types and `\\` continuations are accepted by Godot and not reported. The safe fix joins the type on one line.",
+        bad_example: "func living() -> Array[\n\tNode\n]:\n\treturn []\n",
+        good_example: "func living() -> Array[Node]:\n\treturn []\n",
     },
     BuiltinInfo {
         id: "standalone-expression",
@@ -436,6 +481,7 @@ mod tests {
                 | "missing-resource-path"
                 | "prefer-uid-path"
                 | "scene-connection-missing-method"
+                | "prefer-unique-node-name"
         ) {
             let root = std::env::temp_dir().join(format!(
                 "gdguard-meta-{}-{}-{:?}-{}",
@@ -466,6 +512,21 @@ mod tests {
                         "script = ExtResource(\"1\")\n\n",
                         "[node name=\"Button\" type=\"Button\" parent=\".\"]\n\n",
                         "[connection signal=\"pressed\" from=\"Button\" to=\".\" method=\"_on_button_pressed\"]\n",
+                    ),
+                )
+                .unwrap();
+            }
+            if info.id == "prefer-unique-node-name" {
+                std::fs::write(
+                    root.join("hud.tscn"),
+                    concat!(
+                        "[gd_scene format=3]\n\n",
+                        "[ext_resource type=\"Script\" path=\"res://example.gd\" id=\"1\"]\n\n",
+                        "[node name=\"Hud\" type=\"Control\"]\n",
+                        "script = ExtResource(\"1\")\n\n",
+                        "[node name=\"Panel\" type=\"Panel\" parent=\".\"]\n\n",
+                        "[node name=\"Button\" type=\"Button\" parent=\"Panel\"]\n",
+                        "unique_name_in_owner = true\n",
                     ),
                 )
                 .unwrap();

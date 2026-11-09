@@ -23,6 +23,15 @@ impl Project {
     }
 
     fn hook(&self, path: &Path, search_path: Option<&Path>) -> Output {
+        self.hook_with_env(path, search_path, &[])
+    }
+
+    fn hook_with_env(
+        &self,
+        path: &Path,
+        search_path: Option<&Path>,
+        envs: &[(&str, &str)],
+    ) -> Output {
         let script =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("integrations/claude-code/hooks/lint-gd.sh");
         let mut command = Command::new("sh");
@@ -35,6 +44,9 @@ impl Project {
             .stderr(Stdio::piped());
         if let Some(search_path) = search_path {
             command.env("PATH", search_path);
+        }
+        for (name, value) in envs {
+            command.env(name, value);
         }
         let mut child = command.spawn().expect("hook needs POSIX sh");
         let payload = serde_json::json!({
@@ -69,24 +81,84 @@ fn clean_file_returns_nothing() {
     assert!(output.stderr.is_empty());
 }
 
+const DIRTY_SOURCE: &str =
+    "var badName = 1\n# gdguard-ignore-next-line unused-argument -- stale\nfunc f():\n\tpass\n";
+
 #[test]
 #[cfg_attr(windows, ignore = "requires POSIX sh")]
-fn dirty_file_returns_remaining_json_and_applies_safe_fixes() {
+fn dirty_file_returns_short_text_and_applies_safe_fixes() {
     let project = Project::new("dirty");
     let path = project.root.join("dirty.gd");
-    fs::write(
-        &path,
-        "var badName = 1\n# gdguard-ignore-next-line unused-argument -- stale\nfunc f():\n\tpass\n",
-    )
-    .unwrap();
+    fs::write(&path, DIRTY_SOURCE).unwrap();
     let output = project.hook(&path, None);
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    let mut lines = stderr.lines();
+    assert_eq!(
+        lines.next(),
+        Some("gdguard: safe fixes are applied; these issues remain. Fix them and lint again.")
+    );
+    assert!(
+        stderr.contains("dirty.gd:1:5: error [variable-name]"),
+        "{}",
+        stderr
+    );
+    assert!(stderr.contains("  > var badName = 1\n"), "{}", stderr);
+    assert!(stderr.contains("1 issue (1 error)"), "{}", stderr);
+    assert!(stderr.contains("Fixed 1 problem in 1 file"), "{}", stderr);
+    assert!(!stderr.contains('{'), "no JSON by default: {}", stderr);
+    assert!(!fs::read_to_string(path).unwrap().contains("gdguard-ignore"));
+}
+
+#[test]
+#[cfg_attr(windows, ignore = "requires POSIX sh")]
+fn json_format_returns_remaining_json() {
+    let project = Project::new("dirty-json");
+    let path = project.root.join("dirty.gd");
+    fs::write(&path, DIRTY_SOURCE).unwrap();
+    let output = project.hook_with_env(&path, None, &[("GDGUARD_HOOK_FORMAT", "json")]);
+    assert_eq!(output.status.code(), Some(2));
     let stderr = String::from_utf8(output.stderr).unwrap();
     let (_, json) = stderr.split_once('\n').unwrap();
     let report: serde_json::Value = serde_json::from_str(json).unwrap();
     assert_eq!(report["issues"][0]["rule"], "variable-name");
     assert!(!fs::read_to_string(path).unwrap().contains("gdguard-ignore"));
+}
+
+#[test]
+#[cfg_attr(windows, ignore = "requires POSIX sh")]
+fn unknown_hook_format_is_a_tool_error() {
+    let project = Project::new("bad-format");
+    let path = project.root.join("clean.gd");
+    fs::write(&path, "var value = 1\n").unwrap();
+    let output = project.hook_with_env(&path, None, &[("GDGUARD_HOOK_FORMAT", "xml")]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("GDGUARD_HOOK_FORMAT must be agent or json, got xml")
+    );
+}
+
+#[test]
+#[cfg_attr(windows, ignore = "requires POSIX sh")]
+fn fix_format_config_formats_the_edited_file() {
+    let project = Project::new("fix-format");
+    fs::write(project.root.join("gdguard.toml"), "[fix]\nformat = true\n").unwrap();
+    let path = project.root.join("messy.gd");
+    fs::write(
+        &path,
+        "var value = 1\nfunc f() -> void:\n\tprint(  value )\n",
+    )
+    .unwrap();
+    let output = project.hook(&path, None);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    assert_eq!(
+        fs::read_to_string(path).unwrap(),
+        "var value = 1\n\n\nfunc f() -> void:\n\tprint(value)\n"
+    );
 }
 
 #[test]
@@ -147,7 +219,9 @@ fn python_fallback_decodes_escaped_paths_without_jq() {
     let output = project.hook(&path, Some(&tools_dir));
     assert_eq!(output.status.code(), Some(2));
     let stderr = String::from_utf8(output.stderr).unwrap();
-    let (_, json) = stderr.split_once('\n').unwrap();
-    let report: serde_json::Value = serde_json::from_str(json).unwrap();
-    assert_eq!(report["issues"][0]["rule"], "variable-name");
+    assert!(
+        stderr.contains("space \"quoted\" / unicode-đ.gd:1:5: error [variable-name]"),
+        "{}",
+        stderr
+    );
 }

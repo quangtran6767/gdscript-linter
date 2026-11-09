@@ -63,6 +63,14 @@ current_wave: done
   identify variable categories. 636 workspace / 620 feature-off tests;
   fmt, clippy, builds and temporary-copy manual checks pass. See the review
   diffs in docs/handoff/w10.md. No amend, push or tag.
+- W11 complete (maintainer request: agents shouldn't spend tokens on
+  lint feedback): `[fix] format`, `[fix] unsafe`, `--format agent` (the
+  hook's default), and five base rules learned from mark-my-spell
+  (`single-line-container-type`, `prefer-is-empty-call`,
+  `prefer-squared-distance`, `prefer-array-method`,
+  `prefer-unique-node-name`). 661 workspace / 645 feature-off tests;
+  temp-copy dogfood with Godot 4.7.2 shows no new errors. See
+  docs/handoff/w11.md. Not pushed.
 - Next: the maintainer tests the tool first. Do not start any task, tag or
   release until they say so. Never send anything upstream to GDQuest.
 - User explicitly authorized commits and pushes to origin/w4-a on 2026-11-09.

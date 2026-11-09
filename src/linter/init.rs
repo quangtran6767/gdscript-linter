@@ -164,6 +164,12 @@ paths = [\".gdguard/rules\"]
 exclude = [\"addons/**\", \".godot/**\"]
 # baseline = \".gdguard/baseline.json\"
 
+[fix]
+# Also format every file `lint --fix` checks, so agents never fix formatting.
+# format = true
+# Unsafe fixes `lint --fix` applies too: true, or a list of rule ids.
+# unsafe = [\"prefer-squared-distance\", \"prefer-array-method\"]
+
 # Rule settings for some files only. Later entries win.
 # [[overrides]]
 # files = [\"tests/**\"]

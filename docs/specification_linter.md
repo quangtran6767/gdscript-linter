@@ -218,6 +218,9 @@ pub struct Config {
     pub overrides: Vec<ConfigOverride>,           // [[overrides]], later entries win
     pub max_line_length: Option<usize>,           // None: .editorconfig, then 100
     pub indent_size: Option<usize>,               // None: .editorconfig, then 4
+    pub fix_format: bool,                         // [fix].format (W11, additive)
+    pub fix_unsafe_all: bool,                     // [fix].unsafe = true (W11)
+    pub fix_unsafe_rules: Vec<String>,            // [fix].unsafe = [ids] (W11)
 }
 
 /// Displays as "<path>: `<key>`: <message>", leaving out the parts that are None.
@@ -244,7 +247,7 @@ pub fn run(args: &InitArgs) -> i32;
 ```
 
 `lint --format` parses into `output::OutputFormat { Pretty, Compact, Json,
-Github, Sarif }` (`src/linter/output/mod.rs`, Track A).
+Github, Sarif, Agent }` (`Agent` added in W11) (`src/linter/output/mod.rs`, Track A).
 
 ## Configuration (`gdguard.toml`)
 
@@ -267,6 +270,10 @@ paths = [".gdguard/rules"]           # folders of *.yml rule files
 [lint]
 exclude = ["addons/**", ".godot/**"]
 baseline = ".gdguard/baseline.json"  # optional
+
+[fix]
+format = true                        # optional, default false (W11)
+unsafe = ["prefer-squared-distance"] # optional: true, false or rule ids (W11)
 
 [[overrides]]
 files = ["tests/**"]
@@ -435,7 +442,13 @@ parser may lag newer Godot syntax; Godot remains the authoritative checker.
 4. Re-lint and repeat until no fix is left, for at most 10 passes.
 5. If at least one fix was applied and the original file was formatted
    (formatting it gives the same text), format the result. That way we
-   never reformat files the user doesn't format.
+   never reformat files the user doesn't format. With `[fix].format = true`
+   (W11), every checked file is formatted, whether or not a fix applied or
+   it was formatted before, using its EditorConfig settings and the
+   formatter's structure check (`safe`), repeated (at most 3 runs) until
+   the text stops changing so one `--fix` run is idempotent; a file the
+   formatter can't parse or whose structure would change stays unformatted. Remaining
+   diagnostics refer to the formatted text.
 6. A file that already has syntax errors is not fixed, with one exception
    (W9): when the allowed fixes applied together leave no syntax error at
    all (for example `godot3-syntax` replacing `onready`/`tool`), that result
@@ -444,6 +457,12 @@ parser may lag newer Godot syntax; Godot remains the authoritative checker.
    write anything. Exit code 1 when a file would change, else 0.
 
 `fix-failed` is a built-in id: it can be set in `[rules]` like any rule.
+
+`[fix].unsafe` (W11) lets `--fix` apply unsafe fixes too: `true` for every
+rule, or a list of rule ids (built-in or custom; an unknown id is a config
+error naming `fix.unsafe`, with a suggestion). `--fix-unsafe` still applies
+all of them. Suggestions are never applied. The setting is per config file,
+not per `[[overrides]]` entry.
 
 Built-in fixes: `unnecessary-pass` (Safe, when `pass` is alone on its line),
 `no-else-return` (Safe: `elif` → `if` when every earlier branch returns, and
@@ -484,7 +503,7 @@ signals, methods and inner classes moving remain Safe.
 ```
 gdguard lint [FILES...]                 # default: current directory, recursively
   --fix | --fix-unsafe | --diff
-  --format pretty|compact|json|github|sarif   (default: pretty on a TTY, compact otherwise)
+  --format pretty|compact|json|github|sarif|agent   (default: pretty on a TTY, compact otherwise)
   --config <PATH>
   --no-cache
   --baseline <PATH> | --update-baseline
@@ -500,6 +519,8 @@ gdguard lsp                              # language server on stdin/stdout
 
 - `--fix`/`--fix-unsafe` write the files, print the report of the issues
   left, then `Fixed N problems in M files` (on stderr for machine formats).
+  M counts files with at least one applied fix. When `[fix].format`
+  changed K > 0 files, `, formatted K files` is appended (singular for 1).
   The exit code follows the issues left.
 - `--stdin-filename <PATH>` reads the source from stdin; `PATH` finds the
   config and is shown in output. It can't be combined with file arguments.
@@ -643,6 +664,17 @@ SARIF does not export fixes yet.
 
 ## AI agent integration
 
+- `--format agent` (W11) is short text for agents. Per issue: the compact
+  line `file:line:col: severity [rule] message`, then `  > <trimmed source
+  line>` (cut to 120 characters with `...`), `  help: <help>` when present,
+  and one `  safe fix: `, `  unsafe fix: ` or `  suggestion: ` line per fix
+  with its description. Then one summary line: `N issues (E errors, W
+  warnings, I infos)` (zero counts left out, singular for 1), `, H hidden
+  by baseline` when H > 0, and `. Rule details: gdguard explain <rule>`.
+  A line `Safe fixes: run gdguard lint --fix.` follows when any issue has a
+  safe fix, and a line about reviewing unsafe fixes when any has one. A
+  clean report prints nothing. With `--fix` it goes to stdout, like
+  pretty and compact.
 - Run `lint --fix --format json`, review remaining `help` and `fixes`, use
   `explain` when unsure, edit, and re-lint until exit 0. Review unsafe fixes
   and suggestions; never add ignore comments without a ` -- reason`.
@@ -650,8 +682,10 @@ SARIF does not export fixes yet.
   for `Edit|Write|MultiEdit`, settings, a skill and an AGENTS snippet.
 - The hook decodes stdin JSON with `jq`, or Python 3 without jq. It checks
   `.gd` files, runs safe fixes, returns nothing when clean, or returns a
-  short summary plus JSON on stderr with exit 2 when issues remain. Tool
-  errors also return feedback with exit 2.
+  short summary plus the `agent` report on stderr with exit 2 when issues
+  remain (W11; `GDGUARD_HOOK_FORMAT=json` returns the JSON report instead,
+  any other value is a tool error). Tool errors also return feedback with
+  exit 2.
 - Binary lookup: `GDGUARD_BIN`, otherwise `gdguard`, then
   `gdscript-formatter` (legacy compatibility alias).
 - User guides: `docs/configuration.md`, `docs/custom_rules.md`,
@@ -908,6 +942,64 @@ unsaved buffer) relative to the root.
   is enabled, so cached fixes follow the correct formatter/source-slice path.
   The review fix invalidates original W10 caches containing unsafe edits
   incorrectly classified as Safe.
+
+### W11 rules
+
+Base rules learned from a working game project (mark-my-spell). Cache
+version 7 drops results cached before them.
+
+- `single-line-container-type` (Error, Safe fix, syntax-only): a `type`
+  node whose parent is a `variable_statement`, `const_statement`,
+  `function_definition` (return type) or `for_statement`, outside lambdas
+  and parameter lists, holding `Array[...]` or `Dictionary[...]` with a line
+  break not preceded by `\`. Godot 4.7.2 rejects these ("Expected type for
+  collection after ..."); it accepts parameter and lambda types and `\`
+  continuations. The fix removes whitespace and `\` inside the type and
+  puts one space after each comma; no fix when the type contains a comment.
+- `prefer-is-empty-call` (Info, Safe fix, semantic): `x.size()` or
+  `len(x)` for Array, `Array[T]`, Dictionary, `Dictionary[K, V]` or a
+  packed array, and `x.length()` or `len(x)` for String, compared with the
+  integer `0` or `1`, either operand order. `== 0`, `<= 0`, `< 1` give
+  `x.is_empty()`; `!= 0`, `> 0`, `>= 1` give `not x.is_empty()`,
+  parenthesized when the parent is a non-logical binary operator or a unary
+  operator other than `not`. `x` must be an identifier whose symbol has
+  that declared type or a literal initializer (`[]`, `{}`, a string,
+  `Packed*Array(...)`). Comparisons containing comments are skipped.
+- `prefer-squared-distance` (Warning, Unsafe fix, semantic): `<`, `<=`, `>`
+  or `>=` with `V.distance_to(x)` or `V.length()` on either side, where V
+  is a float vector: an identifier declared (or literal-initialized) as
+  `Vector2`/`Vector3`/`Vector4`, an unresolved `position`/`global_position`,
+  an identifier chain ending in one of them, or `+`/`-` of such vectors. The
+  other operand must be pure (identifiers, attribute reads, numbers,
+  `+ - * /`, parentheses) and not a non-positive literal. The fix renames
+  the method to `distance_squared_to`/`length_squared` and replaces the
+  threshold T with `T * T` (integers up to 1,000,000 are squared to a
+  literal; compound T is parenthesized). Unsafe: a negative threshold or
+  rounding on the boundary can change the result.
+- `prefer-array-method` (Info, Unsafe fix, semantic): a `for E in S` where
+  S is an identifier typed `Array`/`Array[T]` and the body is one statement
+  with no comments, `await`, assignments, lambdas, functions, loops, `match`,
+  `break`/`continue` or errors. Boolean scan: `if P: return true` (no
+  elif/else, P on one line) directly followed by `return false` gives
+  `return S.any(func(E[: T]): return P)`; reversed booleans give `.all`
+  with P negated (`not X` → `X`, De Morgan over `and`/`or`, `==` ↔ `!=`,
+  otherwise `not (P)`). Accumulator: a `var R` with an empty `[]` value (and
+  an Array type, if typed) directly before the loop, R not mentioned in P or
+  X, R ≠ S; `R.append(E)` gives `R.assign(S)`, `R.append(X)` gives
+  `R.assign(S.map(func(E[: T]): return X))`, `if P: R.append(E)` gives
+  `R.assign(S.filter(func(E[: T]): return P))`. The lambda parameter keeps
+  the loop variable's type, else the array's element type. Reported on the
+  `for` keyword.
+- `prefer-unique-node-name` (Info, Unsafe fix, project): `$path` or
+  `$"path"` (relative, no `..`, `%` or `:`) outside inner classes, when the
+  script is the root script of at least one scene, is attached to no other
+  node, and every such scene owns a node at that path with
+  `unique_name_in_owner = true`. The fix gives `%Name` (`%"Name"` when the
+  last segment isn't an identifier). `ProjectAnalysis` gains (additive)
+  `scene_unique_nodes` (scene → owned unique node paths; nodes under an
+  instanced node are left out, inherited scenes have no entry) and
+  `non_root_scripts` (scripts on non-root nodes or on an inherited scene's
+  root).
 
 ## Scripted rules in JS (`src/linter/script/`)
 

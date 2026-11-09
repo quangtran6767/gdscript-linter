@@ -42,12 +42,22 @@ errors=$(mktemp) || { rm -f "$report"; exit 2; }
 trap 'rm -f "$report" "$errors"' 0
 trap 'exit 2' HUP INT TERM
 
-"$binary" lint --fix --format json "$file" >"$report" 2>"$errors"
+# Short text by default; GDGUARD_HOOK_FORMAT=json returns the full JSON report.
+format=${GDGUARD_HOOK_FORMAT:-agent}
+case "$format" in
+    agent | json) ;;
+    *)
+        printf 'gdguard hook: GDGUARD_HOOK_FORMAT must be agent or json, got %s\n' "$format" >&2
+        exit 2
+        ;;
+esac
+
+"$binary" lint --fix --format "$format" "$file" >"$report" 2>"$errors"
 status=$?
 case "$status" in
     0) exit 0 ;;
     1)
-        printf '%s\n' 'gdguard: issues remain after safe fixes. Read help/fixes, fix the code, and lint again.' >&2
+        printf '%s\n' 'gdguard: safe fixes are applied; these issues remain. Fix them and lint again.' >&2
         cat "$report" >&2
         ;;
     *)

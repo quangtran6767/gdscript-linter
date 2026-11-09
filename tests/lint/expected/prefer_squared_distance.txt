@@ -1,0 +1,8 @@
+tests/lint/input/prefer_squared_distance.gd:12:declaration-order:warning: method `good` should come before inner classes
+tests/lint/input/prefer_squared_distance.gd:37:prefer-squared-distance:warning: Compare `distance_squared_to()` with the squared threshold instead of `distance_to()`.
+tests/lint/input/prefer_squared_distance.gd:38:prefer-squared-distance:warning: Compare `distance_squared_to()` with the squared threshold instead of `distance_to()`.
+tests/lint/input/prefer_squared_distance.gd:39:prefer-squared-distance:warning: Compare `length_squared()` with the squared threshold instead of `length()`.
+tests/lint/input/prefer_squared_distance.gd:40:prefer-squared-distance:warning: Compare `length_squared()` with the squared threshold instead of `length()`.
+tests/lint/input/prefer_squared_distance.gd:41:prefer-squared-distance:warning: Compare `distance_squared_to()` with the squared threshold instead of `distance_to()`.
+tests/lint/input/prefer_squared_distance.gd:42:prefer-squared-distance:warning: Compare `length_squared()` with the squared threshold instead of `length()`.
+tests/lint/input/prefer_squared_distance.gd:44:prefer-squared-distance:warning: Compare `length_squared()` with the squared threshold instead of `length()`.

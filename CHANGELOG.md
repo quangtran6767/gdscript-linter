@@ -6,6 +6,11 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
+- Linter: `[fix] format = true` in `gdguard.toml` makes `lint --fix`/`--fix-unsafe` format every checked file (with the formatter's structure check), so agents never fix formatting by hand. The summary adds `, formatted K files`.
+- Linter: five built-in rules learned from a working game project: `single-line-container-type` (error, safe fix; Godot rejects a line break inside `Array[...]`/`Dictionary[...]` types but the parser accepts it), `prefer-is-empty-call` (info, safe fix), `prefer-squared-distance` (warning, unsafe fix), `prefer-array-method` (info, unsafe fix: loops to `any`/`all`/`filter`/`map`/`assign`) and `prefer-unique-node-name` (info, unsafe fix: `$Path/Node` to `%Node` for the scene's unique nodes).
+- Linter: `[fix] unsafe = true` or `unsafe = ["rule-id", ...]` makes `lint --fix` (and the agent hook) apply those unsafe fixes too.
+- Project API (additive): `ProjectAnalysis::scene_unique_nodes` and `ProjectAnalysis::non_root_scripts`.
+- Linter: `lint --format agent` prints short text for coding agents: each issue's location, rule and message, its source line, help and fixes, then one summary line. The Claude Code hook uses it by default (`GDGUARD_HOOK_FORMAT=json` restores the JSON report).
 - Linter: default warning `declaration-order` shares the formatter's top-level reorder plan; fixes formatted and unformatted files without reformatting declaration bodies, preserves comments, annotations and regions, and requires unsafe fixes for reversed initializer dependencies. Files with disabled formatting regions or top-level `@warning_ignore_start`/`@warning_ignore_restore` annotations are reported without a fix.
 
 - Linter: new built-in rules `duplicate-class-name`, `missing-class-name` (autoloads exempt; unsafe fix adds a free PascalCase name), `scene-connection-missing-method`, `missing-resource-path`, `prefer-uid-path` (safe fix to the resource's `uid://`), `self-assignment`, `unreachable-code`, `duplicate-dictionary-key` and `godot3-syntax` (safe/unsafe fixes for `tool`, `onready`, `export`, `yield`, `instance()` and string-method `connect`).

@@ -1,7 +1,8 @@
 //! Owner: Track A. Reporters: pretty, compact and json (W2), github and sarif
-//! (W4). Each reporter writes into a `String` so it can be tested without a
-//! terminal; the CLI prints the result.
+//! (W4), agent (W11). Each reporter writes into a `String` so it can be
+//! tested without a terminal; the CLI prints the result.
 
+pub mod agent;
 pub mod compact;
 pub mod github;
 pub mod json;
@@ -18,6 +19,8 @@ pub enum OutputFormat {
     Json,
     Github,
     Sarif,
+    /// Short text for coding agents. Added in W11.
+    Agent,
 }
 
 impl OutputFormat {
@@ -28,6 +31,7 @@ impl OutputFormat {
             "json" => Some(OutputFormat::Json),
             "github" => Some(OutputFormat::Github),
             "sarif" => Some(OutputFormat::Sarif),
+            "agent" => Some(OutputFormat::Agent),
             _ => None,
         }
     }
@@ -39,6 +43,7 @@ impl OutputFormat {
             OutputFormat::Json => "json",
             OutputFormat::Github => "github",
             OutputFormat::Sarif => "sarif",
+            OutputFormat::Agent => "agent",
         }
     }
 }
@@ -135,6 +140,7 @@ pub fn write_report(
         OutputFormat::Json => json::write_json(report, output)?,
         OutputFormat::Github => github::write_github(report, output),
         OutputFormat::Sarif => sarif::write_sarif(report, output)?,
+        OutputFormat::Agent => agent::write_agent(report, output),
     }
     Ok(())
 }

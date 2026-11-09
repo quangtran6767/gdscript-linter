@@ -18,9 +18,9 @@ Requires Rust 1.89+. Prebuilt binaries are attached to tagged
 ## Agent loop
 
 ```sh
-gdguard lint --fix --format json .   # apply safe fixes, report the rest
+gdguard lint --fix --format agent .  # apply safe fixes, report the rest briefly
 gdguard explain <rule>               # why a rule fires and how to fix it
-gdguard lint --format json .         # re-lint after manual repairs
+gdguard lint --format json .         # full JSON for programs
 ```
 
 - Each JSON diagnostic has the file, rule, severity, message, help, source
@@ -41,9 +41,11 @@ hook.
 **[All built-in rules, with examples →](docs/rules.md)** ·
 `gdguard lint --list-rules` · `gdguard explain <rule>`
 
-Built-in rules cover naming, declaration order, likely bugs, unused code and
-Godot 3 syntax, plus project checks (`class_name`, `load`/`preload` paths,
-scene connections, unused signals). For type errors, add Godot's own check:
+Built-in rules cover naming, declaration order, likely bugs, unused code,
+Godot 3 syntax and Godot idioms (`is_empty()`, squared distances, Array
+methods, `%UniqueNode`), plus project checks (`class_name`, `load`/`preload`
+paths, scene connections, unused signals). To let `lint --fix` apply
+selected unsafe fixes too, set `[fix] unsafe = [...]` in `gdguard.toml`. For type errors, add Godot's own check:
 `gdguard lint --godot /path/to/godot .` (or set `GDGUARD_GODOT`).
 
 Add project rules without rebuilding, as [YAML](docs/custom_rules.md) or

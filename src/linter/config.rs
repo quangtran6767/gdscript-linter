@@ -65,6 +65,21 @@ pub struct FileSettings {
     pub levels: BTreeMap<String, RuleLevel>,
     /// Options set for a rule id (the table form minus `level`).
     pub rule_options: BTreeMap<String, toml::Table>,
+    /// `[fix].format`: the fix engine formats the file even when it wasn't
+    /// formatted before.
+    pub format_on_fix: bool,
+    /// `[fix].unsafe = true`: `--fix` applies every unsafe fix.
+    pub unsafe_fix_all: bool,
+    /// `[fix].unsafe = [...]`: `--fix` applies the unsafe fixes of these rules.
+    pub unsafe_fix_rules: Vec<String>,
+}
+
+impl FileSettings {
+    /// True when `--fix` may apply an unsafe fix of `rule_id` because of
+    /// `[fix].unsafe`. `--fix-unsafe` applies them regardless.
+    pub fn allows_unsafe_fix(&self, rule_id: &str) -> bool {
+        self.unsafe_fix_all || self.unsafe_fix_rules.iter().any(|id| id == rule_id)
+    }
 }
 
 /// Finds the nearest `gdguard.toml` for a file or folder, searching upward.
@@ -256,11 +271,55 @@ pub fn parse_config(config_path: &Path, text: &str) -> Result<Config, ConfigErro
                     config.overrides.push(config_override);
                 }
             }
+            "fix" => {
+                let Some(fix_table) = section_value.as_table() else {
+                    return Err(key_error(
+                        config_path,
+                        "fix",
+                        "expected a table".to_string(),
+                    ));
+                };
+                for (key, value) in fix_table {
+                    match key.as_str() {
+                        "format" => {
+                            let Some(format) = value.as_bool() else {
+                                return Err(key_error(
+                                    config_path,
+                                    "fix.format",
+                                    "expected true or false".to_string(),
+                                ));
+                            };
+                            config.fix_format = format;
+                        }
+                        "unsafe" => {
+                            if let Some(all) = value.as_bool() {
+                                config.fix_unsafe_all = all;
+                            } else if value.is_array() {
+                                config.fix_unsafe_rules =
+                                    parse_string_array(value, "fix.unsafe", config_path)?;
+                            } else {
+                                return Err(key_error(
+                                    config_path,
+                                    "fix.unsafe",
+                                    "expected true, false or a list of rule ids".to_string(),
+                                ));
+                            }
+                        }
+                        _ => {
+                            return Err(key_error(
+                                config_path,
+                                &format!("fix.{}", key),
+                                "unknown key; expected one of: format, unsafe".to_string(),
+                            ));
+                        }
+                    }
+                }
+            }
             _ => {
                 return Err(key_error(
                     config_path,
                     section_name,
-                    "unknown key; expected one of: rules, custom_rules, lint, overrides"
+                    "unknown key; expected one of: rules, custom_rules, lint, overrides, fix"
                         .to_string(),
                 ));
             }
@@ -482,6 +541,20 @@ pub fn validate_rule_ids_with_providers(
             });
         }
     }
+    for rule_id in &config.fix_unsafe_rules {
+        if known_ids.contains(rule_id) {
+            continue;
+        }
+        let mut message = format!("unknown rule id \"{}\"", rule_id);
+        if let Some(suggestion) = closest_name(rule_id, &known_ids) {
+            message.push_str(&format!("; did you mean \"{}\"?", suggestion));
+        }
+        return Err(ConfigError {
+            path: config.config_path.clone(),
+            key: Some("fix.unsafe".to_string()),
+            message,
+        });
+    }
     Ok(())
 }
 
@@ -673,6 +746,9 @@ impl CompiledConfig {
             linter_config,
             levels,
             rule_options,
+            format_on_fix: self.config.fix_format,
+            unsafe_fix_all: self.config.fix_unsafe_all,
+            unsafe_fix_rules: self.config.fix_unsafe_rules.clone(),
         }
     }
 }
