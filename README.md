@@ -38,8 +38,11 @@ hook.
 
 ## Rules
 
+**[All built-in rules, with examples →](docs/rules.md)**
+
 ```sh
 gdguard lint --list-rules
+gdguard explain <rule>
 gdguard test-rules .gdguard/rules
 ```
 
@@ -86,6 +89,7 @@ Commit `gdguard.toml`, your rules and any baseline. Ignore `.gdguard/cache/`.
 
 ## More
 
+[Built-in rules](docs/rules.md) ·
 [Configuration](docs/configuration.md) ·
 [Migrating from gdlint](docs/migration.md) · [FAQ](docs/faq.md) ·
 [Specification](docs/specification_linter.md) ·

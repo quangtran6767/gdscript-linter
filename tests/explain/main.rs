@@ -279,3 +279,37 @@ fn cli_list_rules_text_and_json_include_custom_rules() {
     let rules = document["rules"].as_array().unwrap();
     assert_eq!(rules[rules.len() - 1]["id"], "no-print-left");
 }
+
+/// docs/rules.md documents every built-in rule with its default level, and
+/// nothing else, so the README's rule reference can't drift from the code.
+#[test]
+fn rules_reference_lists_every_built_in_rule_with_its_level() {
+    let document = include_str!("../../docs/rules.md");
+    let metas = gdguard::linter::rules_meta::builtin_rule_metas();
+    for meta in &metas {
+        assert!(
+            document.contains(&format!("\n### `{}`\n", meta.id)),
+            "docs/rules.md has no section for `{}`",
+            meta.id
+        );
+        let row = format!(
+            "| [`{}`](#{}) | {} |",
+            meta.id,
+            meta.id,
+            meta.default_severity.as_str()
+        );
+        assert!(
+            document.contains(&row),
+            "docs/rules.md table row for `{}` is missing or has the wrong level",
+            meta.id
+        );
+    }
+    let mut headings = 0;
+    for line in document.lines() {
+        if line.starts_with("### `") {
+            headings += 1;
+        }
+    }
+    assert_eq!(headings, metas.len(), "docs/rules.md lists unknown rules");
+    assert!(document.contains(&format!("gdguard has {} built-in rules", metas.len())));
+}

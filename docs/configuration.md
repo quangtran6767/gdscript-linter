@@ -1,5 +1,8 @@
 # Linter configuration
 
+See [the built-in rules](rules.md) for every rule id, its default level and
+its fix.
+
 The executable is `gdguard`. `init` creates
 `gdguard.toml` and `.gdguard/rules/prefer-is-empty.yml` at the Godot project
 root (or current directory without `project.godot`).
