@@ -36,7 +36,7 @@ complete docs.
    - a FAQ, including type inference limits, Godot's own warnings, and how
      to write a rule;
    - every example re-run.
-4. **Upstream:** write `docs/upstream_proposal.md`, listing which general
+4. **Upstream (cancelled 2026-11-09: never send anything to GDQuest):** write `docs/upstream_proposal.md`, listing which general
    improvements (spans, JSON output, fix engine) could go to GDQuest and how
    to split them into PRs. Don't open the PRs; the user decides.
 

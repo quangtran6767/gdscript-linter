@@ -45,6 +45,7 @@ current_wave: done
   dry run, CLI-first docs and short README. See docs/handoff/w8-*.md.
 - W8 checks: 591 workspace / 575 feature-off tests; fmt/clippy/release;
   Godot 4.7.2 native smoke 0 failures.
-- Next: maintainer-only steps (version tag, upstream PRs, real-game dogfood).
+- Next: the maintainer tests the tool first. Do not start any task, tag or
+  release until they say so. Never send anything upstream to GDQuest.
 - User explicitly authorized commits and pushes to origin/w4-a on 2026-11-09.
 - No real-game project path was provided; sample dogfooding passed.

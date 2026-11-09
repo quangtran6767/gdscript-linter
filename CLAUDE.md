@@ -43,3 +43,5 @@ completion or release validation.
   updates in the same change.
 - Keep the formatter's behavior and CLI unchanged unless the task says
   otherwise.
+- Never send code, PRs, issues or proposals upstream to GDQuest
+  (maintainer decision, 2026-11-09).

@@ -34,4 +34,4 @@ packages CLI/legacy alias/native libraries and shared addon/rule assets, then
 creates a **draft** GitHub release for review. Review all platform jobs and
 assets before publishing it. Local Linux validation cannot establish that
 all remote targets compile. No tag or release is created as part of roadmap
-completion. Upstream contribution proposals are separate from release work.
+completion. Nothing is ever sent upstream to GDQuest.

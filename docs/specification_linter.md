@@ -900,8 +900,8 @@ export default {
   a draft release for maintainer review. Version tags remain explicit user
   actions; roadmap completion does not publish a release.
 - Docs are split into `docs/configuration.md`, `docs/custom_rules.md`,
-  `docs/js_rules.md`, `docs/agents.md` and `docs/editors.md`; the README
-  links to them.
+  `docs/js_rules.md`, `docs/agents.md` and `docs/editors.md`. The README
+  covers only the CLI and agent loop; `docs/editors.md` is not linked from it.
 - docs/migration.md, docs/faq.md and docs/releasing.md cover adoption,
-  analysis limits and packaging. docs/upstream_proposal.md proposes separate
-  spans/JSON/fix-engine contributions; no upstream PR is opened automatically.
+  analysis limits and packaging. Nothing from this fork is contributed
+  upstream to GDQuest (maintainer decision, 2026-11-09).

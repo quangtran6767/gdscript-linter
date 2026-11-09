@@ -24,6 +24,6 @@ release and benchmark notes. CHANGELOG: Added/Changed entries for W8.
 
 ## Remaining (maintainer decisions)
 
-- Choose the version and push a tag to trigger the draft release.
-- Decide whether to send any `docs/upstream_proposal.md` PRs to GDQuest.
-- Dogfood on a real game project (none provided so far).
+- The maintainer tests the tool first; no further task starts before that.
+- Then: choose the version and push a tag to trigger the draft release.
+- Never send anything upstream to GDQuest (maintainer decision).

@@ -10,7 +10,7 @@ This file documents the changes made to the formatter with each release.
 - CLI: actionable parse-error diagnostics prevent malformed source from appearing clean; tolerate Godot's valid empty enums.
 - CLI: generated 1000-file cold/warm benchmark, signal-scene cache invalidation and an automated agent safe-fix/manual-repair/re-lint test.
 - Release: noninteractive dry-run/package helper, CLI and legacy alias archives, native assets, type declarations and example rules; tag-triggered workflow creates a reviewable draft.
-- Docs: CLI-first README, migration, FAQ, release guide and upstream contribution proposals.
+- Docs: short CLI-first README, migration, FAQ and release guide.
 
 - Optional stdio LSP diagnostics, UTF-16 positions, versioned quick fixes/fix-all and config reload, sharing the CLI pipeline.
 - Optional path-aware Godot lint/fix APIs, guarded individual edits, config caching and lint panel; legacy lint_gdscript remains available. Native/LSP parity is covered on every sample script.

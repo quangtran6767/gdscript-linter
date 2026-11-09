@@ -1,4 +1,4 @@
-# W8-B: rename, release, docs, upstream (solo)
+# W8-B: rename, release, docs (solo)
 
 ## Summary
 
@@ -24,7 +24,8 @@ or extension setup (that stays in `docs/editors.md`).
 - [x] Docs: README, `docs/migration.md`, `docs/faq.md`,
   `docs/releasing.md`; every `docs/*.md` reviewed for the new names. Local
   links checked.
-- [x] Upstream: `docs/upstream_proposal.md`. No PRs opened.
+- [ ] Upstream proposal: dropped. The maintainer decided nothing is ever
+  sent to GDQuest; the drafted `docs/upstream_proposal.md` was removed.
 
 ## Release dry run (2026-11-09)
 
