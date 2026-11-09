@@ -21,9 +21,9 @@ use crate::linter::config::FileSettings;
 use crate::linter::custom::loader::find_rule_files;
 use crate::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span};
 
-// W10 adds a default rule without changing the package version. Drop W9
-// results so existing projects see declaration-order immediately.
-pub const CACHE_VERSION: u32 = 5;
+// The W10 review changes fix safety and adds source-slice fixes. Drop older
+// results so cached safe fixes cannot bypass the corrected dependency check.
+pub const CACHE_VERSION: u32 = 6;
 
 /// The cache file, relative to the folder of `gdguard.toml`.
 pub const CACHE_PATH: &str = ".gdguard/cache/lint.json";

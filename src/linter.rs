@@ -638,8 +638,8 @@ fn prepare_jobs(
                 .disabled_rules
                 .contains("declaration-order")
             {
-                // Reorder fix availability depends on whether this file is
-                // formatted, including settings the other lint rules ignore.
+                // Reorder fixes use different paths for formatted and raw
+                // files, including settings the other lint rules ignore.
                 let mut formatter = crate::FormatterConfiguration::default();
                 crate::editorconfig::apply_editorconfig_to_formatter_config(
                     &mut formatter,

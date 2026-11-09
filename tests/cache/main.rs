@@ -131,14 +131,47 @@ fn w9_cache_does_not_hide_the_new_default_declaration_order_rule() {
 }
 
 #[test]
+fn original_w10_cache_cannot_reuse_an_incorrectly_safe_reorder_fix() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "");
+    project.write("a.gd", "var a = 1\n@export var b = a\n");
+    project.lint(&["a.gd"]);
+    let mut cached: serde_json::Value = serde_json::from_str(&project.read(CACHE)).unwrap();
+    cached["version"] = 5.into();
+    for entry in cached["files"].as_object_mut().unwrap().values_mut() {
+        for diagnostic in entry["diagnostics"].as_array_mut().unwrap() {
+            if diagnostic["rule"] == "declaration-order" {
+                diagnostic["fixes"][0]["safety"] = "safe".into();
+            }
+        }
+    }
+    project.write(CACHE, &serde_json::to_string(&cached).unwrap());
+    project.lint(&["a.gd"]);
+    let refreshed: serde_json::Value = serde_json::from_str(&project.read(CACHE)).unwrap();
+    let entry = refreshed["files"]
+        .as_object()
+        .unwrap()
+        .values()
+        .next()
+        .unwrap();
+    let diagnostic = entry["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|diagnostic| diagnostic["rule"] == "declaration-order")
+        .unwrap();
+    assert_eq!(diagnostic["fixes"][0]["safety"], "unsafe");
+}
+
+#[test]
 fn reorder_fix_cache_tracks_formatter_only_editorconfig_settings() {
     let project = TempProject::new();
     project.write("gdguard.toml", "");
     project.write(
         "a.gd",
-        "var a = 1\nsignal changed\n\n\nfunc f():\n\tprint(\"body\")\n",
+        "var a = 1\nvar b = 2\nsignal changed\n\n\nfunc f():\n\tprint(\"body\")\n",
     );
-    let fix_count = || {
+    let replacement = || {
         project.lint(&["a.gd"]);
         let cached: serde_json::Value = serde_json::from_str(&project.read(CACHE)).unwrap();
         let entry = cached["files"]
@@ -153,21 +186,27 @@ fn reorder_fix_cache_tracks_formatter_only_editorconfig_settings() {
             .iter()
             .find(|diagnostic| diagnostic["rule"] == "declaration-order")
             .unwrap();
-        order["fixes"].as_array().unwrap().len()
+        order["fixes"][0]["edits"][0]["replacement"]
+            .as_str()
+            .unwrap()
+            .to_string()
     };
-    assert_eq!(fix_count(), 1);
+    let formatted_fix = replacement();
+    assert!(formatted_fix.contains("var a = 1\nvar b = 2"));
     project.write(
         ".editorconfig",
         "root = true\n[*.gd]\nindent_style = space\n",
     );
-    assert_eq!(fix_count(), 0);
+    let raw_fix = replacement();
+    assert!(raw_fix.contains("var a = 1\n\nvar b = 2"));
+    assert!(raw_fix.contains("\tprint(\"body\")"));
     project.write(
         ".editorconfig",
         "root = true\n[*.gd]\nindent_style = tab\ngdscript_formatter_quote_style = single\n",
     );
-    assert_eq!(fix_count(), 0);
+    assert_eq!(replacement(), raw_fix);
     project.write(".editorconfig", "root = true\n[*.gd]\nindent_style = tab\n");
-    assert_eq!(fix_count(), 1);
+    assert_eq!(replacement(), formatted_fix);
 }
 
 #[test]

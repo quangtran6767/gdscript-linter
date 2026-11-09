@@ -601,18 +601,26 @@ The [GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scri
 
 ### `declaration-order`
 
-**warning** · fix: safe (unsafe when a moved initializer references a later member)
+**warning** · fix: safe (unsafe when a member-variable dependency changes order)
 
 Top-level declarations follow the formatter's style-guide order, within each
 `#region` group. Inner classes are not checked. One diagnostic names the first
-declaration that should move earlier.
+declaration that should move earlier, distinguishing regular, exported,
+static and onready variables.
 
 The fix keeps attached comments and annotations together and splits inline
-`class_name X extends Y`, just like `gdguard --reorder-code`. It is offered only
-for already-formatted files, so declaration bodies keep their formatting.
-Files with `# fmt: off` regions are reported without a fix; files with parse
-errors are skipped. Moving a variable ahead of a member its computed initializer reads
-requires `--fix-unsafe`. Per W10, a bare alias (`var b = a`) is safe. Disable with `[rules] declaration-order = "off"`.
+`class_name X extends Y`. For formatted files it matches
+`gdguard --reorder-code`; for unformatted files it moves original source
+slices, preserving declaration bodies, file prefix and suffix, and trailing
+comments. Moved items get one blank line between them, two before and after
+functions and inner classes. Files with `# fmt: off` regions are reported
+without a fix; files with parse errors are skipped.
+
+The fix requires `--fix-unsafe` when an initializer references a member variable
+that was declared before it but would be declared after it. Bare identifiers
+(`var b = a`) and `self.a` count, and all variable kinds are checked even if a
+variable keeps the same numeric position. Disable with
+`[rules] declaration-order = "off"`.
 
 Bad:
 

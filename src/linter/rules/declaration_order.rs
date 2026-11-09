@@ -49,35 +49,145 @@ impl Rule for DeclarationOrderRule {
                 before_description
             ),
             help: Some(
-                "Use the formatter's top-level declaration order within each #region group. Format the file first to enable its reorder fix."
+                "Reorder top-level declarations within each #region group, keeping their comments, annotations and body formatting."
                     .to_string(),
             ),
             span: Span::from_node(&node),
             fixes: Vec::new(),
         };
 
-        // Use the formatter only on already-formatted input: moving code must
-        // never quietly reformat declaration bodies. Share its marker scanner
-        // so strings containing `# fmt: off` don't suppress a valid fix.
+        // Share the formatter's marker scanner so strings containing
+        // `# fmt: off` don't suppress a valid fix.
         if crate::parser::find_disabled_regions(context.source).is_empty() {
             let mut config = FormatterConfiguration::default();
             crate::editorconfig::apply_editorconfig_to_formatter_config(&mut config, context.path);
-            if crate::linter::fix::is_formatted(context.source, &config) {
+            let reordered = if crate::linter::fix::is_formatted(context.source, &config) {
                 config.reorder_code = true;
-                if let Ok(reordered) = format_gdscript(context.source, &config) {
-                    diagnostic.fixes.push(Fix {
-                        description: "Reorder top-level declarations".to_string(),
-                        safety: reorder_safety(root, &plan, &source_order, context.source),
-                        edits: vec![Edit {
-                            span: Span::from_byte_range(context.source, 0, context.source.len()),
-                            replacement: reordered,
-                        }],
-                    });
-                }
+                format_gdscript(context.source, &config).ok()
+            } else {
+                reorder_source_slices(root, &plan, context.source)
+            };
+            if let Some(reordered) = reordered {
+                diagnostic.fixes.push(Fix {
+                    description: "Reorder top-level declarations".to_string(),
+                    safety: reorder_safety(root, &plan, context.source),
+                    edits: vec![Edit {
+                        span: Span::from_byte_range(context.source, 0, context.source.len()),
+                        replacement: reordered,
+                    }],
+                });
             }
         }
         diagnostics.push(diagnostic);
     }
+}
+
+/// Move complete declaration blocks without changing any text inside them.
+fn reorder_source_slices(root: Node, plan: &ReorderPlan, source: &str) -> Option<String> {
+    let mut slices = Vec::with_capacity(plan.items.len());
+    let mut first_start = source.len();
+    let mut last_end = 0;
+    let mut last_declaration_end = 0;
+    let mut last_declaration_row = 0;
+    for item in &plan.items {
+        let node = declaration_node(root, item);
+        if node.end_byte() > last_declaration_end {
+            last_declaration_end = node.end_byte();
+            last_declaration_row = node.end_position().row;
+        }
+    }
+    for item in &plan.items {
+        let node = declaration_node(root, item);
+        let mut start = node.start_byte();
+        let mut end = node.end_byte();
+        if item.split_extends {
+            for index in 0..node.named_child_count() {
+                let child = node
+                    .named_child(index as u32)
+                    .expect("class header child exists");
+                if child.kind() == "extends_statement" {
+                    end = child.start_byte();
+                    // The inline header is split into two declarations. Its
+                    // separating whitespace (or continuation) isn't a body.
+                    end = start
+                        + source[start..end]
+                            .trim_end_matches([' ', '\t', '\r', '\n', '\\'])
+                            .len();
+                    break;
+                }
+            }
+        }
+        for &index in &item.child_indices_attached_before_declaration {
+            let attached = root.child(index).expect("attached child belongs to root");
+            start = start.min(attached.start_byte());
+            end = end.max(attached.end_byte());
+        }
+        for &index in &item.child_indices_attached_after_declaration {
+            let attached = root.child(index).expect("attached child belongs to root");
+            // Standalone file-ending comments stay in the suffix. Inline
+            // comments still travel with the declaration on their line.
+            if attached.kind() == "comment"
+                && attached.start_byte() >= last_declaration_end
+                && attached.start_position().row > last_declaration_row
+            {
+                continue;
+            }
+            end = end.max(attached.end_byte());
+        }
+        // Tree-sitter includes the CR of CRLF in some comment ranges. Keep
+        // the whole line ending in the separator (or unchanged file suffix).
+        if source.as_bytes().get(end - 1) == Some(&b'\r') {
+            end -= 1;
+        }
+        first_start = first_start.min(start);
+        last_end = last_end.max(end);
+        slices.push(start..end);
+    }
+    let mut reordered = String::with_capacity(source.len());
+    reordered.push_str(&source[..first_start]);
+    let newline = if source.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    for index in 0..plan.items.len() {
+        if index > 0 {
+            let previous = plan.items[index - 1].declaration_kind;
+            let current = plan.items[index].declaration_kind;
+            let blank_lines = if matches!(
+                previous,
+                DeclarationKind::Method | DeclarationKind::InnerClass
+            ) || matches!(
+                current,
+                DeclarationKind::Method | DeclarationKind::InnerClass
+            ) {
+                2
+            } else {
+                1
+            };
+            for _ in 0..=blank_lines {
+                reordered.push_str(newline);
+            }
+        }
+        reordered.push_str(&source[slices[index].clone()]);
+    }
+    reordered.push_str(&source[last_end..]);
+
+    // A diagnostic's edit can also be applied directly by API clients. Verify
+    // the fallback itself, independently of the CLI fix engine's rollback.
+    let parsed = crate::parser::ParseInput::new(&reordered, &FormatterConfiguration::default())?;
+    if parsed.has_parse_errors {
+        return None;
+    }
+    let checked = build_reorder_plan(parsed.tree.root_node(), &reordered);
+    for index in 1..checked.items.len() {
+        let previous = &checked.items[index - 1];
+        let current = &checked.items[index];
+        if (previous.child_index, previous.sub_child) > (current.child_index, current.sub_child) {
+            return None;
+        }
+    }
+    Some(reordered)
 }
 
 fn declaration_node<'tree>(root: Node<'tree>, item: &ReorderItem) -> Node<'tree> {
@@ -100,10 +210,10 @@ fn describe_declaration(root: Node, item: &ReorderItem, source: &str) -> String 
         DeclarationKind::Signal => "signal",
         DeclarationKind::Enum => "enum",
         DeclarationKind::Constant => "constant",
-        DeclarationKind::StaticVariable
-        | DeclarationKind::ExportVariable
-        | DeclarationKind::RegularVariable
-        | DeclarationKind::OnReadyVariable => "variable",
+        DeclarationKind::StaticVariable => "static variable",
+        DeclarationKind::ExportVariable => "exported variable",
+        DeclarationKind::RegularVariable => "variable",
+        DeclarationKind::OnReadyVariable => "onready variable",
         DeclarationKind::Method => "method",
         DeclarationKind::InnerClass => "inner class",
         DeclarationKind::RegionStartOrEnd => "region marker",
@@ -138,45 +248,34 @@ fn category_name(kind: DeclarationKind) -> &'static str {
     }
 }
 
-fn reorder_safety(
-    root: Node,
-    plan: &ReorderPlan,
-    source_order: &[usize],
-    source: &str,
-) -> FixSafety {
-    for source_index in 0..source_order.len() {
-        let index = source_order[source_index];
+fn reorder_safety(root: Node, plan: &ReorderPlan, source: &str) -> FixSafety {
+    for index in 0..plan.items.len() {
         let item = &plan.items[index];
-        if index == source_index
-            || !matches!(
-                item.declaration_kind,
-                DeclarationKind::StaticVariable
-                    | DeclarationKind::ExportVariable
-                    | DeclarationKind::RegularVariable
-                    | DeclarationKind::OnReadyVariable
-            )
-        {
+        if !matches!(
+            item.declaration_kind,
+            DeclarationKind::StaticVariable
+                | DeclarationKind::ExportVariable
+                | DeclarationKind::RegularVariable
+                | DeclarationKind::OnReadyVariable
+        ) {
             continue;
         }
         let node = declaration_node(root, item);
         let Some(value) = node.child_by_field_name("value") else {
             continue;
         };
-        // W10 explicitly permits a bare member alias (`var b = a`) while
-        // requiring unsafe opt-in for computed initializers (`a + 1`).
-        if value.kind() == "identifier" {
-            continue;
-        }
         for later in &plan.items[index + 1..] {
             // Only member variables have declaration-ordered initialization;
             // methods and compile-time declarations can move safely.
-            if !matches!(
-                later.declaration_kind,
-                DeclarationKind::StaticVariable
-                    | DeclarationKind::ExportVariable
-                    | DeclarationKind::RegularVariable
-                    | DeclarationKind::OnReadyVariable
-            ) {
+            if later.child_index >= item.child_index
+                || !matches!(
+                    later.declaration_kind,
+                    DeclarationKind::StaticVariable
+                        | DeclarationKind::ExportVariable
+                        | DeclarationKind::RegularVariable
+                        | DeclarationKind::OnReadyVariable
+                )
+            {
                 continue;
             }
             let later_node = declaration_node(root, later);

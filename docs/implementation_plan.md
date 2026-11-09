@@ -331,6 +331,8 @@ See docs/handoff/w9.md.
 ## W10: solo, default declaration order and shorter rules docs (2026-11-09)
 
 - [x] Default warning `declaration-order`, using the formatter's reorder plan.
+- [x] Review corrections: pairwise dependency safety (including bare reads),
+      unformatted source-slice fixes and precise variable-category messages.
 - [x] Safe/unsafe reorder fixes, region/comment/annotation preservation,
       disabled-formatting guard and fix/re-lint regression coverage.
 - [x] Rule metadata/reference/spec, shorter README Rules section, snapshots,

@@ -6,17 +6,23 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
-- Linter: default warning `declaration-order` shares the formatter's top-level reorder plan; fixes already-formatted files, preserves comments, annotations and regions, and requires unsafe fixes for initializer dependencies. Files with disabled formatting regions are reported without a fix.
+- Linter: default warning `declaration-order` shares the formatter's top-level reorder plan; fixes formatted and unformatted files without reformatting declaration bodies, preserves comments, annotations and regions, and requires unsafe fixes for reversed initializer dependencies. Files with disabled formatting regions are reported without a fix.
 
 - Linter: new built-in rules `duplicate-class-name`, `missing-class-name` (autoloads exempt; unsafe fix adds a free PascalCase name), `scene-connection-missing-method`, `missing-resource-path`, `prefer-uid-path` (safe fix to the resource's `uid://`), `self-assignment`, `unreachable-code`, `duplicate-dictionary-key` and `godot3-syntax` (safe/unsafe fixes for `tool`, `onready`, `export`, `yield`, `instance()` and string-method `connect`).
 - Docs: `docs/rules.md` documents every built-in rule (level, fix, why, bad and good examples), linked from the README; a test keeps it in sync with the rule metadata.
 - CLI: optional Godot check. `lint --godot <PATH>` or `GDGUARD_GODOT` loads the linted scripts in headless Godot 4 once per project and reports its errors as `godot-error`, after fixes are written.
 - Project API (additive): `ProjectIndex::has_member_in_script`, `ProjectIndex::scripts_declaring`, and `ProjectAnalysis` scene connections, connected methods, UID maps and scene root scripts.
 
+### Fixed
+
+- `declaration-order`: check every member-variable dependency pair, including bare identifiers, `self.member`, static/onready variables and variables whose numeric position stays unchanged. Safe fixes no longer move an initializer ahead of a variable it previously read after initialization.
+- `declaration-order`: reorder unformatted files using original source slices with deterministic spacing, preserving bodies, attached comments/annotations, region boundaries, inline extends and trailing file text. Messages name exported/static/onready variables precisely.
+- Cache: invalidate original W10 results so incorrectly classified safe reorder fixes cannot be reused.
+
 ### Changed
 
 - Docs: shorter README Rules section links the complete 40-rule reference and custom-rule guides.
-- Cache: invalidate pre-W10 results and track formatter EditorConfig settings for declaration-order fix availability.
+- Cache: invalidate pre-W10 results and track formatter EditorConfig settings for cached declaration-order fixes.
 
 - Linter: two scripts with the same `class_name` no longer stop `lint` with exit 2. Both are linted, `duplicate-class-name` reports them, and the ambiguous name resolves to Unknown.
 - Linter: `unused-private-function` counts methods named by `.tscn` connections as used.

@@ -1,0 +1,1 @@
+tests/lint/input/declaration_order_exported.gd:5:declaration-order:warning: exported variable `max_health` should come before variables

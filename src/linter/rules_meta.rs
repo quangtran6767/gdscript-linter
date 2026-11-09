@@ -62,7 +62,7 @@ const BUILTIN_RULES: [BuiltinInfo; 40] = [
         severity: Severity::Warning,
         fixable: true,
         description: "Top-level declarations follow the formatter's style-guide order.",
-        rationale: "A consistent declaration order makes scripts easier to scan. The formatter's reorder plan keeps region groups, comments and annotations together. Fixes require an already-formatted file without fmt: off regions; moving a computed variable initializer ahead of a referenced member requires an unsafe fix (W10 treats a bare alias as safe).",
+        rationale: "A consistent declaration order makes scripts easier to scan. The formatter's reorder plan keeps region groups, comments and annotations together. Fixes preserve declaration bodies in formatted and unformatted files, except files with fmt: off regions. Reversing a member-variable initializer dependency requires an unsafe fix, including bare identifiers and self.member reads.",
         bad_example: "var health = 100\nsignal died\n",
         good_example: "signal died\nvar health = 100\n",
     },

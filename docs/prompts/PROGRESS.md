@@ -57,6 +57,12 @@ current_wave: done
   invalidation. 625 workspace / 609 feature-off tests; fmt, clippy, builds,
   120 formatter comparisons and temp-project fix/re-lint pass. See
   docs/handoff/w10.md. Do not push, tag or release.
+- W10 review fix-up complete: reversed initializer dependencies (including
+  bare/self reads and unchanged numeric positions) require unsafe opt-in;
+  unformatted source-slice fixes preserve bodies and file edges; messages
+  identify variable categories. 636 workspace / 620 feature-off tests;
+  fmt, clippy, builds and temporary-copy manual checks pass. See the review
+  diffs in docs/handoff/w10.md. No amend, push or tag.
 - Next: the maintainer tests the tool first. Do not start any task, tag or
   release until they say so. Never send anything upstream to GDQuest.
 - User explicitly authorized commits and pushes to origin/w4-a on 2026-11-09.

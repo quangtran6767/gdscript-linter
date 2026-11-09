@@ -456,14 +456,25 @@ quote), `missing-class-name` (Unsafe: insert `class_name <Name>`) and
 `idle_frame` → `process_frame`, `.instance()` → `.instantiate()`,
 `connect("sig", target, "method")` → `connect("sig", target.method)`).
 
-`declaration-order` (W10) reuses the formatter's reorder plan. Its full-file
-fix is offered only when the file is already formatted using its editorconfig
-settings and has no disabled formatting region. It preserves declaration body
-formatting and matches `gdguard --reorder-code`. The fix is Safe unless a moved
-variable initializer references another member placed after it (Unsafe).
-W10 explicitly treats a bare alias (`var b = a`) as Safe; computed reads
-like `a + 1` require unsafe opt-in.
-Re-linting the fixed output must report no declaration-order issue.
+`declaration-order` (W10, corrected after review) reuses the formatter's
+reorder plan and offers a full-file fix unless formatting is disabled by a
+`# fmt: off` region. For a file already formatted with its EditorConfig
+settings, use `format_gdscript` with `reorder_code` so the result matches
+`gdguard --reorder-code`. Otherwise move original source slices for each
+plan item, including its attached comments/annotations and split inline
+extends, without reformatting declaration bodies. Preserve text before the
+first item and after the last, including standalone trailing comments.
+Use one blank line between items, two before/after functions and inner
+classes; preserve CRLF separators when present. The source-slice result must
+parse and re-lint without declaration-order, retaining every declaration.
+
+The fix is Unsafe whenever an initializer reads a member variable declared
+before it in the source but after it in the new order. Check every variable
+pair, including bare identifiers and `self.member`, and all variable kinds
+(regular, exported, static and onready), even when a variable's numeric item
+index does not change. A pre-existing reference to a later variable that
+remains later does not by itself make the reorder unsafe. Constants, enums,
+signals, methods and inner classes moving remain Safe.
 
 ## CLI
 
@@ -886,11 +897,14 @@ unsaved buffer) relative to the root.
   the first declaration that belongs earlier and naming what it precedes.
   Inner class bodies are not checked; files with parse errors are skipped.
   Disabled formatting regions do not suppress the diagnostic, but prevent
-  its fix. `[rules] declaration-order = "off"` disables it. See "Fix engine"
+  its fix. Messages distinguish regular, exported, static and onready
+  variables. `[rules] declaration-order = "off"` disables it. See "Fix engine"
   for availability and safety; default formatter behavior is unchanged.
 - Invalidate pre-W10 lint caches even when the package version is unchanged.
   Cache keys include formatter EditorConfig settings while declaration-order
-  is enabled, so cached fix availability follows the current formatting policy.
+  is enabled, so cached fixes follow the correct formatter/source-slice path.
+  The review fix invalidates original W10 caches containing unsafe edits
+  incorrectly classified as Safe.
 
 ## Scripted rules in JS (`src/linter/script/`)
 
