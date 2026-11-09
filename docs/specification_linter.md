@@ -611,7 +611,7 @@ comments, unsafe-fix allowlists and explain. A specific check wins over its
 group within one rules table; later overrides win over earlier tables.
 Baselines keep granular identities and fingerprints for compatibility.
 Custom-rule IDs cannot collide with either public or legacy built-in IDs.
-Cache version 8 invalidates older diagnostics.
+Cache version 9 invalidates older diagnostics, including cached explicit-loop warnings when inference is allowed.
 
 `type-annotations` is a default warning with no fixes. It requires explicit
 annotations on function/lambda returns, function/lambda parameters, variables,
@@ -620,7 +620,7 @@ arguments. Property getter/setter signatures inherit the property's type.
 `Variant` is accepted explicitly for dynamic values. Packed array types
 already specify their element type. `allow_inferred` is the only option,
 a boolean defaulting to false; true accepts `:=` declarations/default
-parameters without promising inference correctness. Syntax errors suppress
+parameters and implicit loop-variable types without promising inference correctness. Syntax errors suppress
 annotation checks; valid empty enums remain supported. Godot validates types.
 `prefer-squared-distance` now defaults to info and retains its unsafe fix.
 

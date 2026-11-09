@@ -131,6 +131,40 @@ fn w9_cache_does_not_hide_the_new_default_declaration_order_rule() {
 }
 
 #[test]
+fn old_cache_cannot_restore_explicit_loop_warnings_when_inference_is_allowed() {
+    let project = TempProject::new();
+    project.write(
+        "a.gd",
+        "func run(values: Array[int]) -> void:\n\tfor value in values:\n\t\tprint(value)\n",
+    );
+    project.write("gdguard.toml", "");
+    assert!(project.lint(&["a.gd"]).contains("Loop variable"));
+    let strict: serde_json::Value = serde_json::from_str(&project.read(CACHE)).unwrap();
+    let old_diagnostics = strict["files"]
+        .as_object()
+        .unwrap()
+        .values()
+        .next()
+        .unwrap()["diagnostics"]
+        .clone();
+
+    project.write(
+        "gdguard.toml",
+        "[rules]\ntype-annotations = { allow_inferred = true }\n",
+    );
+    assert!(project.lint(&["a.gd"]).is_empty());
+    let mut cached: serde_json::Value = serde_json::from_str(&project.read(CACHE)).unwrap();
+    cached["version"] = 8.into();
+    // Preserve the current file/settings hashes so only the cache version
+    // stops a previous implementation's now-obsolete loop diagnostic.
+    for entry in cached["files"].as_object_mut().unwrap().values_mut() {
+        entry["diagnostics"] = old_diagnostics.clone();
+    }
+    project.write(CACHE, &serde_json::to_string(&cached).unwrap());
+    assert!(project.lint(&["a.gd"]).is_empty());
+}
+
+#[test]
 fn original_w10_cache_cannot_reuse_an_incorrectly_safe_reorder_fix() {
     let project = TempProject::new();
     project.write("gdguard.toml", "");

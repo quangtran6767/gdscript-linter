@@ -11,6 +11,7 @@ This file documents the changes made to the formatter with each release.
 
 ### Changed
 
+- `type-annotations.allow_inferred = true` also permits implicit loop-variable typing. Strict mode still requires loop annotations; function/lambda signatures, container types and class-name requirements remain unchanged. Cache version 9 drops older loop diagnostics.
 - `prefer-squared-distance` defaults to info instead of warning; its fix remains unsafe.
 - Cache version 8 invalidates results predating consolidated rules and type annotations.
 

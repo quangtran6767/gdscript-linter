@@ -73,9 +73,10 @@ impl Rule for TypeAnnotationsRule {
                     }
                 }
                 "for_statement" => {
-                    // A loop has no `:=` syntax. Its element type remains
-                    // required even when inferred declarations are allowed.
-                    if node.child_by_field_name("type").is_none() {
+                    // Loops have no `:=` syntax: omitting the annotation
+                    // requests implicit inference. As with `:=`, Godot
+                    // validates the resulting type when inference is allowed.
+                    if !self.allow_inferred && node.child_by_field_name("type").is_none() {
                         if let Some(name) = node.child_by_field_name("left") {
                             report(
                                 name,

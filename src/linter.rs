@@ -63,7 +63,7 @@ pub struct LinterConfig {
     pub disabled_rules: HashSet<String>,
     pub max_line_length: usize,
     pub indent_size: usize,
-    /// Whether `type-annotations` accepts `:=` in place of explicit types.
+    /// Whether `type-annotations` accepts `:=` and implicit loop-variable types.
     pub allow_inferred_types: bool,
 }
 

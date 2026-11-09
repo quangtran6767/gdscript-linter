@@ -11,7 +11,7 @@ See [agent integration](agents.md) for the JSON fields and hook setup.
 
 ## Does gdguard infer types or replace Godot warnings?
 
-`type-annotations` requires annotations, including function return types, but does not validate their correctness or infer missing types. It is a warning by default; `allow_inferred = true` permits `:=`. Cross-file member checks use explicit
+`type-annotations` requires annotations, including function return types, but does not validate their correctness or infer missing types. It is a warning by default; `allow_inferred = true` permits `:=` and implicit loop-variable types. Cross-file member checks use explicit
 project `class_name` types and declared inheritance. If a missing base,
 cycle, engine base or dynamic accessor makes absence uncertain, no missing
 member is reported. Engine completion, static type diagnostics and runtime

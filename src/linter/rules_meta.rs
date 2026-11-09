@@ -341,7 +341,7 @@ const BUILTIN_RULES: [BuiltinInfo; 46] = [
         severity: Severity::Warning,
         fixable: false,
         description: "Functions, parameters, variables, constants, signals and containers declare types.",
-        rationale: "Explicit types document contracts and let Godot check them. Includes function and lambda return types (including void), parameters, variables, constants, for-loop variables, signal parameters and Array/Dictionary arguments. Property accessors inherit their property's type. Explicit Variant is allowed for intentional dynamic values. With allow_inferred = true, := declarations and parameters are accepted without proving their inferred type. Types are never guessed or inserted automatically.",
+        rationale: "Explicit types document contracts and let Godot check them. Includes function and lambda return types (including void), parameters, variables, constants, for-loop variables, signal parameters and Array/Dictionary arguments. Property accessors inherit their property's type. Explicit Variant is allowed for intentional dynamic values. With allow_inferred = true, := declarations/default parameters and implicit loop-variable types are accepted without proving their inferred type. Types are never guessed or inserted automatically.",
         bad_example: "func f():\n\tpass\n",
         good_example: "func f() -> void:\n\tpass\n",
     },

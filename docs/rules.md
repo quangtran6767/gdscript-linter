@@ -66,7 +66,7 @@ Old check IDs still work in config, overrides, `--disable`, ignore comments, `ex
 
 Functions, parameters, variables, constants, signals and containers declare types.
 
-Explicit types document contracts and let Godot check them. Includes function and lambda return types (including void), parameters, variables, constants, for-loop variables, signal parameters and Array/Dictionary arguments. Property accessors inherit their property's type. Explicit Variant is allowed for intentional dynamic values. With allow_inferred = true, := declarations and parameters are accepted without proving their inferred type. Types are never guessed or inserted automatically.
+Explicit types document contracts and let Godot check them. Includes function and lambda return types (including void), parameters, variables, constants, for-loop variables, signal parameters and Array/Dictionary arguments. Property accessors inherit their property's type. Explicit Variant is allowed for intentional dynamic values. With allow_inferred = true, := declarations/default parameters and implicit loop-variable types are accepted without proving their inferred type. Types are never guessed or inserted automatically.
 
 Bad:
 
@@ -82,14 +82,14 @@ func f() -> void:
 	pass
 ```
 
-The default requires explicit annotations. To allow `:=` for declarations and default parameters:
+The default requires explicit annotations. To allow `:=` for declarations/default parameters and implicit loop-variable types:
 
 ```toml
 [rules]
 type-annotations = { level = "warning", allow_inferred = true }
 ```
 
-This option permits inference syntax; it does not verify that Godot can infer a useful type. Untyped `var x = 1` still reports. Functions and lambdas still need return types and loops need element annotations. Empty signals need no parameter annotations. Getter/setter types come from their property. `Variant` is an intentional escape hatch, and packed arrays already specify their element type. No fixes are offered.
+This option permits inference syntax; it does not verify that Godot can infer a useful type. Untyped `var x = 1` still reports. Functions and lambdas still need return types. With this option, loop variables may use implicit typing; with it off, loops require element annotations. Empty signals need no parameter annotations. Getter/setter types come from their property. `Variant` is an intentional escape hatch, and packed arrays already specify their element type. No fixes are offered.
 
 ## Syntax and Godot 4 compatibility
 

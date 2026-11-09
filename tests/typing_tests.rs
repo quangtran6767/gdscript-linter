@@ -113,6 +113,41 @@ fn inference_is_an_explicit_option_and_does_not_waive_function_contracts() {
 }
 
 #[test]
+fn inference_option_allows_implicit_loop_variables() {
+    for source in [
+        "func run(values: Array[int]) -> void:\n\tfor value in values:\n\t\tprint(value)\n",
+        "func run() -> void:\n\tfor index in range(10):\n\t\tprint(index)\n",
+        "func run() -> void:\n\tfor index in 10:\n\t\tprint(index)\n",
+        "func run(values: PackedStringArray) -> void:\n\tfor value in values:\n\t\tprint(value)\n",
+        "func run(values: Variant) -> void:\n\tfor value in values:\n\t\tprint(value)\n",
+    ] {
+        // This option allows inference syntax without asserting that the
+        // resulting type is non-Variant. Godot checks the actual types.
+        assert!(
+            typing(
+                source,
+                "[rules]\ntype-annotations = { allow_inferred = true }\n"
+            )
+            .is_empty(),
+            "{source}"
+        );
+        let strict = typing(source, "");
+        assert_eq!(strict.len(), 1, "{source}");
+        assert!(strict[0].message.starts_with("Loop variable"));
+    }
+}
+
+#[test]
+fn loop_inference_can_be_overridden_per_folder() {
+    let source =
+        "func run(values: Array[int]) -> void:\n\tfor value in values:\n\t\tprint(value)\n";
+    let settings = "[rules]\ntype-annotations = { allow_inferred = true }\n[[overrides]]\nfiles = ['example.gd']\nrules = { type-annotations = { allow_inferred = false } }\n";
+    let issues = typing(source, settings);
+    assert_eq!(issues.len(), 1);
+    assert!(issues[0].message.starts_with("Loop variable"));
+}
+
+#[test]
 fn supports_levels_ignores_and_folder_overrides() {
     assert!(
         typing(

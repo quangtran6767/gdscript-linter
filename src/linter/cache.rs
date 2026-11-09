@@ -25,8 +25,8 @@ use crate::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span
 // results so cached safe fixes cannot bypass the corrected dependency check.
 // W11 adds five built-in rules: results cached before them would hide their
 // diagnostics, since the package version didn't change.
-// Consolidated diagnostic identities and new type-annotation checks.
-pub const CACHE_VERSION: u32 = 8;
+// Inference-enabled typing no longer requires explicit loop-variable types.
+pub const CACHE_VERSION: u32 = 9;
 
 /// The cache file, relative to the folder of `gdguard.toml`.
 pub const CACHE_PATH: &str = ".gdguard/cache/lint.json";
