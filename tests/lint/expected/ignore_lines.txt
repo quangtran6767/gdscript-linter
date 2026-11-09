@@ -1,6 +1,16 @@
-tests/lint/input/ignore_lines.gd:1:constant-name:error: Constant name 'bad_const' should be in CONSTANT_CASE format
-tests/lint/input/ignore_lines.gd:10:unused-private-function:warning: Private function '_private_method' is never referenced in this file.
+tests/lint/input/ignore_lines.gd:1:naming-convention:error: Constant name 'bad_const' should be in CONSTANT_CASE format
+tests/lint/input/ignore_lines.gd:1:type-annotations:warning: Constant 'bad_const' needs a type annotation.
+tests/lint/input/ignore_lines.gd:3:type-annotations:warning: Constant 'ignored_bad_const_1' needs a type annotation.
+tests/lint/input/ignore_lines.gd:6:type-annotations:warning: Constant 'ignored_bad_const_2' needs a type annotation.
+tests/lint/input/ignore_lines.gd:10:type-annotations:warning: Function '_private_method' needs a return type.
+tests/lint/input/ignore_lines.gd:10:unused-code:warning: Private function '_private_method' is never referenced in this file.
 tests/lint/input/ignore_lines.gd:14:declaration-order:warning: method `bad` should come before inner classes
+tests/lint/input/ignore_lines.gd:14:type-annotations:warning: Function 'bad' needs a return type.
+tests/lint/input/ignore_lines.gd:15:type-annotations:warning: Variable 'obj' needs a type annotation.
 tests/lint/input/ignore_lines.gd:16:private-access:error: Private method '_private_method' should not be called from outside its class
-tests/lint/input/ignore_lines.gd:18:constant-name:error: Constant name 'badConstName' should be in CONSTANT_CASE format
+tests/lint/input/ignore_lines.gd:18:naming-convention:error: Constant name 'badConstName' should be in CONSTANT_CASE format
+tests/lint/input/ignore_lines.gd:18:type-annotations:warning: Constant 'badConstName' needs a type annotation.
 tests/lint/input/ignore_lines.gd:18:max-line-length:warning: Line is too long. Found 104 characters, maximum allowed is 100
+tests/lint/input/ignore_lines.gd:21:type-annotations:warning: Function 'ignored' needs a return type.
+tests/lint/input/ignore_lines.gd:22:type-annotations:warning: Variable 'obj' needs a type annotation.
+tests/lint/input/ignore_lines.gd:35:type-annotations:warning: Constant 'anotherBadConstName' needs a type annotation.

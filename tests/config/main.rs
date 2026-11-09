@@ -573,7 +573,7 @@ fn lint_source_applies_overrides_and_options() {
         "[rules]\nmax-line-length = { level = \"error\", max = 20 }\n\n[[overrides]]\nfiles = [\"tests/**\"]\nrules = { max-line-length = \"off\" }\n",
     );
     let config = load_and_validate(&config_path).unwrap();
-    let source = "var text = \"0123456789\"\n";
+    let source = "var text: String = \"0123456789\"\n";
 
     let result = api::lint_source(&project.root.join("src/a.gd"), source, &config).unwrap();
     assert_eq!(result.diagnostics.len(), 1);
@@ -596,7 +596,7 @@ fn lint_project_files(files: &[PathBuf]) -> Vec<(String, Severity, usize)> {
     for file in &report.files {
         for diagnostic in &file.diagnostics {
             results.push((
-                diagnostic.rule.clone(),
+                diagnostic.check_id().to_string(),
                 diagnostic.severity,
                 diagnostic.span.start.line,
             ));
@@ -612,7 +612,7 @@ fn lint_files_runs_custom_rules_with_builtin_rules_sorted_by_position() {
     project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
     let file = project.write(
         "a.gd",
-        "func f(items):\n\tif len(items) == 0:\n\t\tpass\n\nfunc badName():\n\tpass\n",
+        "func f(items: Variant) -> void:\n\tif len(items) == 0:\n\t\tpass\n\nfunc badName() -> void:\n\tpass\n",
     );
 
     let results = lint_project_files(&[file]);
@@ -633,7 +633,7 @@ fn custom_rule_levels_come_from_rules_and_overrides() {
         "[rules]\nprefer-is-empty = \"error\"\n\n[custom_rules]\npaths = [\"rules\"]\n\n[[overrides]]\nfiles = [\"tests/**\"]\nrules = { prefer-is-empty = \"off\" }\n",
     );
     project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
-    let source = "var empty = len([]) == 0\n";
+    let source = "var empty: bool = len([]) == 0\n";
     let game_file = project.write("game/a.gd", source);
     let test_file = project.write("tests/a.gd", source);
 
@@ -651,7 +651,7 @@ fn cli_disable_and_inline_ignores_apply_to_custom_rules() {
     project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
     let file = project.write(
         "a.gd",
-        "var a = len([]) == 0  # gdlint-ignore prefer-is-empty\nvar b = len([]) == 0\n",
+        "var a: bool = len([]) == 0  # gdlint-ignore prefer-is-empty\nvar b: bool = len([]) == 0\n",
     );
 
     let results = lint_project_files(std::slice::from_ref(&file));
@@ -692,7 +692,7 @@ fn lint_source_runs_custom_rules_from_the_config() {
 
     let result = api::lint_source(
         &project.root.join("a.gd"),
-        "var empty = len([]) == 0\n",
+        "var empty: bool = len([]) == 0\n",
         &config,
     )
     .unwrap();
@@ -738,7 +738,7 @@ fn gdguard_ignores_apply_to_custom_rules_and_unused_ones_are_reported() {
     project.write("rules/prefer-is-empty.yml", PREFER_IS_EMPTY_RULE);
     let file = project.write(
         "a.gd",
-        "# gdguard-ignore-file prefer-is-empty -- generated code\nvar a = len([]) == 0\nvar b = 1 # gdguard-ignore prefer-is-empty\n",
+        "# gdguard-ignore-file prefer-is-empty -- generated code\nvar a: bool = len([]) == 0\nvar b: int = 1 # gdguard-ignore prefer-is-empty\n",
     );
 
     let results = lint_project_files(std::slice::from_ref(&file));
@@ -767,8 +767,7 @@ fn gdguard_ignores_apply_to_custom_rules_and_unused_ones_are_reported() {
 #[test]
 fn fix_removes_unused_ignore_comments() {
     let project = TempProject::new();
-    let source =
-        "var a = 1 # gdguard-ignore constant-name\n# gdguard-ignore-next-line\nvar b = 2\n";
+    let source = "var a: int = 1 # gdguard-ignore constant-name\n# gdguard-ignore-next-line\nvar b: int = 2\n";
     let result = api::fix_source(
         &project.root.join("a.gd"),
         source,
@@ -776,6 +775,6 @@ fn fix_removes_unused_ignore_comments() {
         false,
     )
     .unwrap();
-    assert_eq!(result.output, "var a = 1\nvar b = 2\n");
+    assert_eq!(result.output, "var a: int = 1\nvar b: int = 2\n");
     assert_eq!(result.applied, 2);
 }

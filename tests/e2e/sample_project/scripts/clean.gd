@@ -2,7 +2,7 @@
 class_name Clean
 extends Node
 
-var _timer := 0.0
+var _timer: float = 0.0
 
 
 func _process(delta: float) -> void:

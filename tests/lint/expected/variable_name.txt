@@ -1,4 +1,11 @@
+tests/lint/input/variable_name.gd:3:type-annotations:warning: Variable 'good_variable' needs a type annotation.
+tests/lint/input/variable_name.gd:4:type-annotations:warning: Variable '_private_variable' needs a type annotation.
 tests/lint/input/variable_name.gd:6:declaration-order:warning: variable `PreloadName` should come before variable `_private_variable`
-tests/lint/input/variable_name.gd:13:variable-name:error: Variable name 'badVariableName' should be in snake_case or _private_snake_case format
-tests/lint/input/variable_name.gd:14:variable-name:error: Variable name 'BAD_VARIABLE_NAME' should be in snake_case or _private_snake_case format
-tests/lint/input/variable_name.gd:15:variable-name:error: Variable name 'Bad_Variable_Name' should be in snake_case or _private_snake_case format
+tests/lint/input/variable_name.gd:6:type-annotations:warning: Variable 'PreloadName' needs a type annotation.
+tests/lint/input/variable_name.gd:7:type-annotations:warning: Variable 'LoadName' needs a type annotation.
+tests/lint/input/variable_name.gd:13:naming-convention:error: Variable name 'badVariableName' should be in snake_case or _private_snake_case format
+tests/lint/input/variable_name.gd:13:type-annotations:warning: Variable 'badVariableName' needs a type annotation.
+tests/lint/input/variable_name.gd:14:naming-convention:error: Variable name 'BAD_VARIABLE_NAME' should be in snake_case or _private_snake_case format
+tests/lint/input/variable_name.gd:14:type-annotations:warning: Variable 'BAD_VARIABLE_NAME' needs a type annotation.
+tests/lint/input/variable_name.gd:15:naming-convention:error: Variable name 'Bad_Variable_Name' should be in snake_case or _private_snake_case format
+tests/lint/input/variable_name.gd:15:type-annotations:warning: Variable 'Bad_Variable_Name' needs a type annotation.

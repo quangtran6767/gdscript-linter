@@ -34,6 +34,9 @@ pub fn builtin_rule_ids() -> Vec<&'static str> {
     ids.push(crate::linter::godot_check::GODOT_ERROR_RULE_ID);
     ids.push(crate::linter::fix::FIX_FAILED_RULE_ID);
     ids.push(crate::linter::ignore_patterns::UNUSED_IGNORE_RULE_ID);
+    for group in super::rule_groups::RULE_GROUPS {
+        ids.push(group.id);
+    }
     ids
 }
 
@@ -41,6 +44,7 @@ pub fn builtin_rule_ids() -> Vec<&'static str> {
 fn builtin_rule_options(rule_id: &str) -> &'static [&'static str] {
     match rule_id {
         "max-line-length" => &["max"],
+        "type-annotations" => &["allow_inferred"],
         _ => &[],
     }
 }
@@ -78,7 +82,11 @@ impl FileSettings {
     /// True when `--fix` may apply an unsafe fix of `rule_id` because of
     /// `[fix].unsafe`. `--fix-unsafe` applies them regardless.
     pub fn allows_unsafe_fix(&self, rule_id: &str) -> bool {
-        self.unsafe_fix_all || self.unsafe_fix_rules.iter().any(|id| id == rule_id)
+        self.unsafe_fix_all
+            || self
+                .unsafe_fix_rules
+                .iter()
+                .any(|id| id == rule_id || id == super::rule_groups::rule_id(rule_id))
     }
 }
 
@@ -407,6 +415,13 @@ fn parse_rules_table(
                         ));
                     }
                 }
+                if rule_id == "type-annotations" && option_value.as_bool().is_none() {
+                    return Err(key_error(
+                        config_path,
+                        &option_key,
+                        "expected a boolean".to_string(),
+                    ));
+                }
             }
         }
         rules.insert(rule_id.clone(), setting);
@@ -729,9 +744,26 @@ impl CompiledConfig {
         {
             linter_config.max_line_length = max as usize;
         }
+        if let Some(value) = rule_options
+            .get("type-annotations")
+            .and_then(|options| options.get("allow_inferred"))
+            .and_then(toml::Value::as_bool)
+        {
+            linter_config.allow_inferred_types = value;
+        }
 
         for disabled_rule in &cli.disabled_rules {
-            levels.insert(disabled_rule.clone(), RuleLevel::Off);
+            let checks = super::rule_groups::checks(disabled_rule);
+            if checks.is_empty() {
+                levels.insert(disabled_rule.clone(), RuleLevel::Off);
+                if disabled_rule == "variable-name" {
+                    levels.insert("load-variable-name".to_string(), RuleLevel::Off);
+                }
+            } else {
+                for check in checks {
+                    levels.insert((*check).to_string(), RuleLevel::Off);
+                }
+            }
         }
         if let Some(max_line_length) = cli.max_line_length {
             linter_config.max_line_length = max_line_length;
@@ -741,6 +773,15 @@ impl CompiledConfig {
             if *level == RuleLevel::Off {
                 linter_config.disabled_rules.insert(rule_id.clone());
             }
+        }
+        // The loaded-resource naming check shares the variable visitor.
+        // Keep that visitor alive when this specific check is re-enabled.
+        if levels.get("variable-name") == Some(&RuleLevel::Off)
+            && levels
+                .get("load-variable-name")
+                .is_some_and(|level| *level != RuleLevel::Off)
+        {
+            linter_config.disabled_rules.remove("variable-name");
         }
         FileSettings {
             linter_config,
@@ -758,9 +799,24 @@ fn merge_rule_settings(
     levels: &mut BTreeMap<String, RuleLevel>,
     rule_options: &mut BTreeMap<String, toml::Table>,
 ) {
+    // Apply groups first within each table: a specific legacy check can
+    // override its group. Later override tables still take precedence.
+    for group in super::rule_groups::RULE_GROUPS {
+        if let Some(level) = rules.get(group.id).and_then(|setting| setting.level) {
+            for check in group.checks {
+                levels.insert((*check).to_string(), level);
+            }
+        }
+    }
     for (rule_id, setting) in rules {
+        if !super::rule_groups::checks(rule_id).is_empty() {
+            continue;
+        }
         if let Some(level) = setting.level {
             levels.insert(rule_id.clone(), level);
+            if rule_id == "variable-name" && !rules.contains_key("load-variable-name") {
+                levels.insert("load-variable-name".to_string(), level);
+            }
         }
         if setting.options.is_empty() {
             continue;

@@ -9,7 +9,9 @@ root (or current directory without `project.godot`).
 
 ```toml
 [rules]
-unused-argument = "error"
+unused-code = "error"
+naming-convention = "error"
+type-annotations = { level = "warning", allow_inferred = false }
 max-line-length = { level = "warning", max = 120 }
 
 [custom_rules]
@@ -38,6 +40,12 @@ options are errors. Custom options are passed through.
 Paths and globs are relative to the config directory. `*` does not cross
 `/`; `**` does. A matched directory excludes its descendants. Excludes
 apply to explicitly named files too. Custom rules need a registered folder.
+
+## Consolidated rules and typing
+
+Use `naming-convention` for naming, `unused-code` for unused declarations and redundant `pass`, and `redundant-expression` for self-comparisons, self-assignments and ineffective expressions. Reports use these group IDs; JSON also includes the original `check` ID. Legacy IDs continue to work in config, overrides, `--disable`, ignores, unsafe-fix allowlists and baselines. Within one rules table, a specific check setting overrides its group. Later matching override tables win over both. CLI disables win last.
+
+`type-annotations` is a warning by default and requires explicit types for functions/lambdas, parameters, variables, constants, loop variables, signal parameters and Array/Dictionary arguments. Use `allow_inferred = true` to accept `:=` declarations and default parameters, or set the level to `off` for a gradual migration. Explicit `Variant` is allowed. This checks annotation presence; Godot checks type correctness. No type fixes are applied, even with `--fix-unsafe`.
 
 ## Fix and format automatically
 

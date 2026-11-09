@@ -22,6 +22,7 @@ fn diagnostic_on(
 ) -> Diagnostic {
     let start_byte = source.find(needle).unwrap();
     Diagnostic {
+        check: None,
         rule: rule.to_string(),
         severity,
         message: message.to_string(),

@@ -1,8 +1,12 @@
+tests/lint/input/prefer_squared_distance.gd:3:type-annotations:warning: Constant 'RANGE' needs a type annotation.
+tests/lint/input/prefer_squared_distance.gd:8:type-annotations:warning: Parameter '_other' needs a type annotation.
 tests/lint/input/prefer_squared_distance.gd:12:declaration-order:warning: method `good` should come before inner classes
-tests/lint/input/prefer_squared_distance.gd:37:prefer-squared-distance:warning: Compare `distance_squared_to()` with the squared threshold instead of `distance_to()`.
-tests/lint/input/prefer_squared_distance.gd:38:prefer-squared-distance:warning: Compare `distance_squared_to()` with the squared threshold instead of `distance_to()`.
-tests/lint/input/prefer_squared_distance.gd:39:prefer-squared-distance:warning: Compare `length_squared()` with the squared threshold instead of `length()`.
-tests/lint/input/prefer_squared_distance.gd:40:prefer-squared-distance:warning: Compare `length_squared()` with the squared threshold instead of `length()`.
-tests/lint/input/prefer_squared_distance.gd:41:prefer-squared-distance:warning: Compare `distance_squared_to()` with the squared threshold instead of `distance_to()`.
-tests/lint/input/prefer_squared_distance.gd:42:prefer-squared-distance:warning: Compare `length_squared()` with the squared threshold instead of `length()`.
-tests/lint/input/prefer_squared_distance.gd:44:prefer-squared-distance:warning: Compare `length_squared()` with the squared threshold instead of `length()`.
+tests/lint/input/prefer_squared_distance.gd:21:type-annotations:warning: Variable 'unknown' needs a type annotation.
+tests/lint/input/prefer_squared_distance.gd:37:prefer-squared-distance:info: Compare `distance_squared_to()` with the squared threshold instead of `distance_to()`.
+tests/lint/input/prefer_squared_distance.gd:38:prefer-squared-distance:info: Compare `distance_squared_to()` with the squared threshold instead of `distance_to()`.
+tests/lint/input/prefer_squared_distance.gd:39:prefer-squared-distance:info: Compare `length_squared()` with the squared threshold instead of `length()`.
+tests/lint/input/prefer_squared_distance.gd:40:prefer-squared-distance:info: Compare `length_squared()` with the squared threshold instead of `length()`.
+tests/lint/input/prefer_squared_distance.gd:41:prefer-squared-distance:info: Compare `distance_squared_to()` with the squared threshold instead of `distance_to()`.
+tests/lint/input/prefer_squared_distance.gd:42:prefer-squared-distance:info: Compare `length_squared()` with the squared threshold instead of `length()`.
+tests/lint/input/prefer_squared_distance.gd:43:type-annotations:warning: Variable 'start' needs a type annotation.
+tests/lint/input/prefer_squared_distance.gd:44:prefer-squared-distance:info: Compare `length_squared()` with the squared threshold instead of `length()`.

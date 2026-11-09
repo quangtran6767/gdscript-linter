@@ -28,6 +28,7 @@ pub mod semantic_rules;
 pub mod signal_name;
 pub mod single_line_container_type;
 pub mod standalone_expression;
+pub mod type_annotations;
 pub mod unnecessary_pass;
 pub mod unreachable_code;
 pub mod unused_argument;
@@ -109,6 +110,14 @@ pub struct RuleDefinition {
 /// List of all the rules available in the linter. The linter will only run
 /// these plus the ones that have not been disabled in the config.
 pub const ALL_RULES: &[RuleDefinition] = &[
+    RuleDefinition {
+        name: "type-annotations",
+        create: |config| {
+            Box::new(type_annotations::TypeAnnotationsRule {
+                allow_inferred: config.allow_inferred_types,
+            })
+        },
+    },
     RuleDefinition {
         name: "declaration-order",
         create: |_config| Box::new(declaration_order::DeclarationOrderRule),
@@ -306,7 +315,11 @@ pub const SEMANTIC_RULE_IDS: &[&str] = &[
 ];
 pub fn semantic_rules_enabled(config: &LinterConfig) -> bool {
     for id in SEMANTIC_RULE_IDS {
-        if !config.disabled_rules.contains(*id) {
+        if !config.disabled_rules.contains(*id)
+            && !config
+                .disabled_rules
+                .contains(super::rule_groups::rule_id(id))
+        {
             return true;
         }
     }

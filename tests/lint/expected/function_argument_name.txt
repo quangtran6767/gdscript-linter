@@ -1,6 +1,16 @@
-tests/lint/input/function_argument_name.gd:13:function-argument-name:error: Function argument 'badArg' should be in snake_case or _private_snake_case format
-tests/lint/input/function_argument_name.gd:13:function-argument-name:error: Function argument 'BadArg' should be in snake_case or _private_snake_case format
-tests/lint/input/function_argument_name.gd:13:function-argument-name:error: Function argument '_BadUnusedArg' should be in snake_case or _private_snake_case format
-tests/lint/input/function_argument_name.gd:16:function-argument-name:error: Function argument 'badArg' should be in snake_case or _private_snake_case format
-tests/lint/input/function_argument_name.gd:16:function-argument-name:error: Function argument 'BadArg' should be in snake_case or _private_snake_case format
-tests/lint/input/function_argument_name.gd:16:function-argument-name:error: Function argument '_BadUnusedArg' should be in snake_case or _private_snake_case format
+tests/lint/input/function_argument_name.gd:3:type-annotations:warning: Function 'good_function' needs a return type.
+tests/lint/input/function_argument_name.gd:3:type-annotations:warning: Parameter 'used_arg' needs a type annotation.
+tests/lint/input/function_argument_name.gd:3:type-annotations:warning: Parameter '_unused_arg' needs a type annotation.
+tests/lint/input/function_argument_name.gd:6:type-annotations:warning: Function 'good_typed_function' needs a return type.
+tests/lint/input/function_argument_name.gd:13:type-annotations:warning: Function 'bad_function' needs a return type.
+tests/lint/input/function_argument_name.gd:13:naming-convention:error: Function argument 'badArg' should be in snake_case or _private_snake_case format
+tests/lint/input/function_argument_name.gd:13:type-annotations:warning: Parameter 'badArg' needs a type annotation.
+tests/lint/input/function_argument_name.gd:13:naming-convention:error: Function argument 'BadArg' should be in snake_case or _private_snake_case format
+tests/lint/input/function_argument_name.gd:13:type-annotations:warning: Parameter 'BadArg' needs a type annotation.
+tests/lint/input/function_argument_name.gd:13:naming-convention:error: Function argument '_BadUnusedArg' should be in snake_case or _private_snake_case format
+tests/lint/input/function_argument_name.gd:13:type-annotations:warning: Parameter '_BadUnusedArg' needs a type annotation.
+tests/lint/input/function_argument_name.gd:16:type-annotations:warning: Function 'bad_typed_function' needs a return type.
+tests/lint/input/function_argument_name.gd:16:naming-convention:error: Function argument 'badArg' should be in snake_case or _private_snake_case format
+tests/lint/input/function_argument_name.gd:16:naming-convention:error: Function argument 'BadArg' should be in snake_case or _private_snake_case format
+tests/lint/input/function_argument_name.gd:16:type-annotations:warning: Array needs an element type.
+tests/lint/input/function_argument_name.gd:16:naming-convention:error: Function argument '_BadUnusedArg' should be in snake_case or _private_snake_case format

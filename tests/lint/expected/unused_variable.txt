@@ -1,3 +1,9 @@
-tests/lint/input/unused_variable.gd:2:unused-variable:warning: Variable 'unused' is never used.
-tests/lint/input/unused_variable.gd:5:unused-variable:warning: Variable 'effect' is never used.
-tests/lint/input/unused_variable.gd:7:unused-variable:warning: Variable 'item' is never used.
+tests/lint/input/unused_variable.gd:1:type-annotations:warning: Function 'f' needs a return type.
+tests/lint/input/unused_variable.gd:2:type-annotations:warning: Variable 'unused' needs a type annotation.
+tests/lint/input/unused_variable.gd:2:unused-code:warning: Variable 'unused' is never used.
+tests/lint/input/unused_variable.gd:3:type-annotations:warning: Variable 'used' needs a type annotation.
+tests/lint/input/unused_variable.gd:4:type-annotations:warning: Variable '_intentional' needs a type annotation.
+tests/lint/input/unused_variable.gd:5:type-annotations:warning: Variable 'effect' needs a type annotation.
+tests/lint/input/unused_variable.gd:5:unused-code:warning: Variable 'effect' is never used.
+tests/lint/input/unused_variable.gd:7:type-annotations:warning: Loop variable 'item' needs a type annotation.
+tests/lint/input/unused_variable.gd:7:unused-code:warning: Variable 'item' is never used.

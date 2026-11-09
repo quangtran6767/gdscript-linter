@@ -1,4 +1,15 @@
+tests/lint/input/duplicated_load.gd:2:type-annotations:warning: Constant 'GOOD_PRELOAD_1' needs a type annotation.
+tests/lint/input/duplicated_load.gd:3:type-annotations:warning: Constant 'GOOD_PRELOAD_2' needs a type annotation.
+tests/lint/input/duplicated_load.gd:5:type-annotations:warning: Variable 'good_load_1' needs a type annotation.
+tests/lint/input/duplicated_load.gd:6:type-annotations:warning: Variable 'good_load_2' needs a type annotation.
+tests/lint/input/duplicated_load.gd:8:type-annotations:warning: Variable 'good_scene_path' needs a type annotation.
+tests/lint/input/duplicated_load.gd:9:type-annotations:warning: Variable 'good_load_3' needs a type annotation.
+tests/lint/input/duplicated_load.gd:10:type-annotations:warning: Variable 'good_load_4' needs a type annotation.
+tests/lint/input/duplicated_load.gd:16:type-annotations:warning: Constant 'BAD_PRELOAD_1' needs a type annotation.
 tests/lint/input/duplicated_load.gd:16:duplicated-load:warning: Duplicated load of '"res://duplicate/path.tscn"'. Consider extracting to a constant.
+tests/lint/input/duplicated_load.gd:17:type-annotations:warning: Constant 'BAD_PRELOAD_2' needs a type annotation.
 tests/lint/input/duplicated_load.gd:17:duplicated-load:warning: Duplicated load of '"res://duplicate/path.tscn"'. Consider extracting to a constant.
+tests/lint/input/duplicated_load.gd:19:type-annotations:warning: Variable 'bad_load_1' needs a type annotation.
 tests/lint/input/duplicated_load.gd:19:duplicated-load:warning: Duplicated load of '"res://another/duplicate/path.tscn"'. Consider extracting to a constant.
+tests/lint/input/duplicated_load.gd:20:type-annotations:warning: Variable 'bad_load_2' needs a type annotation.
 tests/lint/input/duplicated_load.gd:20:duplicated-load:warning: Duplicated load of '"res://another/duplicate/path.tscn"'. Consider extracting to a constant.

@@ -117,6 +117,7 @@ fn build_diagnostic(
     }
 
     Diagnostic {
+        check: None,
         rule: meta.id.clone(),
         // The rule's default; the pipeline applies `[rules]` levels later.
         severity: meta.default_severity,

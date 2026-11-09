@@ -29,6 +29,7 @@ impl Rule for ComparisonWithItselfRule {
             return;
         }
         diagnostics.push(Diagnostic {
+            check: None,
             rule: "comparison-with-itself".to_string(),
             severity: Severity::Warning,
             message: format!(

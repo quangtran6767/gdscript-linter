@@ -252,6 +252,7 @@ fn dict_to_linter_config(dict: &Dictionary<Variant, Variant>) -> LinterConfig {
 
 fn editor_error(source: &str, message: String) -> Diagnostic {
     Diagnostic {
+        check: None,
         rule: "config-error".to_string(),
         severity: Severity::Error,
         message,
@@ -270,6 +271,9 @@ fn payloads_to_array(issues: &[EditorDiagnostic]) -> Array<Dictionary<Variant, V
     for issue in issues {
         let mut item = Dictionary::<Variant, Variant>::new();
         item.set("rule", &GString::from(&issue.rule));
+        if let Some(check) = &issue.check {
+            item.set("check", &GString::from(check));
+        }
         item.set("severity", &GString::from(&issue.severity));
         item.set("message", &GString::from(&issue.message));
         item.set("help", &GString::from(issue.help.as_deref().unwrap_or("")));

@@ -195,7 +195,11 @@ fn covers(comment: &IgnoreComment, diagnostic: &Diagnostic) -> bool {
     if !is_in_scope {
         return false;
     }
-    comment.rules.is_empty() || comment.rules.contains(&diagnostic.rule)
+    comment.rules.is_empty()
+        || comment
+            .rules
+            .iter()
+            .any(|rule| diagnostic.matches_rule(rule))
 }
 
 /// Removes the diagnostics that ignore comments cover. When `report_unused`
@@ -235,7 +239,7 @@ pub fn apply_ignores(
                 used[comment_index][0] = true;
             } else {
                 for (rule_index, rule) in comment.rules.iter().enumerate() {
-                    if *rule == diagnostic.rule {
+                    if diagnostic.matches_rule(rule) {
                         used[comment_index][rule_index] = true;
                     }
                 }
@@ -269,7 +273,7 @@ pub fn apply_ignores(
         let mut unused_rules: Vec<&str> = Vec::new();
         let mut used_rules: Vec<&str> = Vec::new();
         for (rule_index, rule) in comment.rules.iter().enumerate() {
-            if comment_used[rule_index] || disabled_rules.contains(rule) {
+            if comment_used[rule_index] || super::rule_groups::is_disabled(disabled_rules, rule) {
                 used_rules.push(rule);
             } else {
                 unused_rules.push(rule);
@@ -343,6 +347,7 @@ fn unused_ignore_diagnostic(
     }
 
     Diagnostic {
+        check: None,
         rule: UNUSED_IGNORE_RULE_ID.to_string(),
         severity: Severity::Warning,
         message,
@@ -398,6 +403,7 @@ mod tests {
     fn diagnostic(source: &str, rule: &str, needle: &str) -> Diagnostic {
         let start = source.find(needle).unwrap();
         Diagnostic {
+            check: None,
             rule: rule.to_string(),
             severity: Severity::Warning,
             message: String::new(),

@@ -1,3 +1,14 @@
-tests/lint/input/self_assignment.gd:24:self-assignment:warning: 'speed_value' is assigned to itself.
-tests/lint/input/self_assignment.gd:29:self-assignment:warning: 'item' is assigned to itself.
-tests/lint/input/self_assignment.gd:31:self-assignment:warning: 'total' is assigned to itself.
+tests/lint/input/self_assignment.gd:3:type-annotations:warning: Variable 'speed' needs a type annotation.
+tests/lint/input/self_assignment.gd:8:type-annotations:warning: Function 'refresh' needs a return type.
+tests/lint/input/self_assignment.gd:14:type-annotations:warning: Function 'copy' needs a return type.
+tests/lint/input/self_assignment.gd:14:type-annotations:warning: Parameter 'value' needs a type annotation.
+tests/lint/input/self_assignment.gd:15:type-annotations:warning: Variable 'other' needs a type annotation.
+tests/lint/input/self_assignment.gd:23:type-annotations:warning: Function 'set_speed' needs a return type.
+tests/lint/input/self_assignment.gd:23:type-annotations:warning: Parameter 'speed_value' needs a type annotation.
+tests/lint/input/self_assignment.gd:24:redundant-expression:warning: 'speed_value' is assigned to itself.
+tests/lint/input/self_assignment.gd:27:type-annotations:warning: Function 'loop' needs a return type.
+tests/lint/input/self_assignment.gd:27:type-annotations:warning: Parameter 'items' needs a type annotation.
+tests/lint/input/self_assignment.gd:28:type-annotations:warning: Loop variable 'item' needs a type annotation.
+tests/lint/input/self_assignment.gd:29:redundant-expression:warning: 'item' is assigned to itself.
+tests/lint/input/self_assignment.gd:30:type-annotations:warning: Variable 'total' needs a type annotation.
+tests/lint/input/self_assignment.gd:31:redundant-expression:warning: 'total' is assigned to itself.

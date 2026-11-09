@@ -69,6 +69,7 @@ impl Rule for ConstantNameRule {
             help = Some(format!("Rename it to '{}'.", suggestion));
         }
         diagnostics.push(Diagnostic {
+            check: None,
             rule: "constant-name".to_string(),
             severity: Severity::Error,
             message,

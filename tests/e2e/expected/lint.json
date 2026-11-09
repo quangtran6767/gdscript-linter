@@ -7,12 +7,81 @@
   "summary": {
     "files": 5,
     "errors": 9,
-    "warnings": 15,
+    "warnings": 28,
     "infos": 4,
     "fixable": 9,
     "baseline_hidden": 0
   },
   "issues": [
+    {
+      "file": "autoload/game_state.gd",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Constant 'MAX_LIVES' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 7,
+          "byte": 58
+        },
+        "end": {
+          "line": 5,
+          "column": 16,
+          "byte": 67
+        }
+      },
+      "snippet": "const MAX_LIVES = 3",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
+    {
+      "file": "autoload/game_state.gd",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Variable 'score' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 5,
+          "byte": 77
+        },
+        "end": {
+          "line": 7,
+          "column": 10,
+          "byte": 82
+        }
+      },
+      "snippet": "var score := 0",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
+    {
+      "file": "autoload/game_state.gd",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Variable 'lives' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 5,
+          "byte": 92
+        },
+        "end": {
+          "line": 8,
+          "column": 10,
+          "byte": 97
+        }
+      },
+      "snippet": "var lives := MAX_LIVES",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
     {
       "file": "scripts/enemies/enemy.gd",
       "rule": "missing-class-name",
@@ -56,7 +125,8 @@
     },
     {
       "file": "scripts/enemies/enemy.gd",
-      "rule": "signal-name",
+      "rule": "naming-convention",
+      "check": "signal-name",
       "origin": "builtin",
       "severity": "error",
       "message": "Signal name 'OnDefeated' should be in snake_case format",
@@ -74,12 +144,13 @@
         }
       },
       "snippet": "signal OnDefeated",
-      "explain": "gdguard explain signal-name",
+      "explain": "gdguard explain naming-convention",
       "fixes": []
     },
     {
       "file": "scripts/enemies/enemy.gd",
-      "rule": "unused-signal",
+      "rule": "unused-code",
+      "check": "unused-signal",
       "origin": "builtin",
       "severity": "warning",
       "message": "Signal 'OnDefeated' is never emitted or connected in this project.",
@@ -97,12 +168,13 @@
         }
       },
       "snippet": "signal OnDefeated",
-      "explain": "gdguard explain unused-signal",
+      "explain": "gdguard explain unused-code",
       "fixes": []
     },
     {
       "file": "scripts/enemies/enemy.gd",
-      "rule": "enum-name",
+      "rule": "naming-convention",
+      "check": "enum-name",
       "origin": "builtin",
       "severity": "error",
       "message": "Enum name 'state' should be in PascalCase format",
@@ -120,12 +192,13 @@
         }
       },
       "snippet": "enum state {",
-      "explain": "gdguard explain enum-name",
+      "explain": "gdguard explain naming-convention",
       "fixes": []
     },
     {
       "file": "scripts/enemies/enemy.gd",
-      "rule": "enum-member-name",
+      "rule": "naming-convention",
+      "check": "enum-member-name",
       "origin": "builtin",
       "severity": "error",
       "message": "Enum element name 'chase_player' should be in CONSTANT_CASE format",
@@ -143,12 +216,36 @@
         }
       },
       "snippet": "\tchase_player,",
-      "explain": "gdguard explain enum-member-name",
+      "explain": "gdguard explain naming-convention",
       "fixes": []
     },
     {
       "file": "scripts/enemies/enemy.gd",
-      "rule": "variable-name",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Variable 'speed' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 10,
+          "column": 5,
+          "byte": 77
+        },
+        "end": {
+          "line": 10,
+          "column": 10,
+          "byte": 82
+        }
+      },
+      "snippet": "var speed := 120.0",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "naming-convention",
+      "check": "variable-name",
       "origin": "builtin",
       "severity": "error",
       "message": "Variable name 'targetName' should be in snake_case or _private_snake_case format",
@@ -166,12 +263,36 @@
         }
       },
       "snippet": "var targetName := \"\"",
-      "explain": "gdguard explain variable-name",
+      "explain": "gdguard explain naming-convention",
       "fixes": []
     },
     {
       "file": "scripts/enemies/enemy.gd",
-      "rule": "function-name",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Variable 'targetName' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 11,
+          "column": 5,
+          "byte": 96
+        },
+        "end": {
+          "line": 11,
+          "column": 15,
+          "byte": 106
+        }
+      },
+      "snippet": "var targetName := \"\"",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "naming-convention",
+      "check": "function-name",
       "origin": "builtin",
       "severity": "error",
       "message": "Function name 'moveTowards' should be in snake_case, _private_snake_case format",
@@ -189,12 +310,13 @@
         }
       },
       "snippet": "func moveTowards(target: Node2D) -> void:",
-      "explain": "gdguard explain function-name",
+      "explain": "gdguard explain naming-convention",
       "fixes": []
     },
     {
       "file": "scripts/enemies/enemy.gd",
-      "rule": "comparison-with-itself",
+      "rule": "redundant-expression",
+      "check": "comparison-with-itself",
       "origin": "builtin",
       "severity": "warning",
       "message": "Redundant comparison 'target == target' - comparing expression with itself",
@@ -212,7 +334,7 @@
         }
       },
       "snippet": "\tif target == target:",
-      "explain": "gdguard explain comparison-with-itself",
+      "explain": "gdguard explain redundant-expression",
       "fixes": []
     },
     {
@@ -281,7 +403,8 @@
     },
     {
       "file": "scripts/enemies/enemy.gd",
-      "rule": "unnecessary-pass",
+      "rule": "unused-code",
+      "check": "unnecessary-pass",
       "origin": "builtin",
       "severity": "warning",
       "message": "Unnecessary 'pass' statement when other statements are present",
@@ -299,7 +422,7 @@
         }
       },
       "snippet": "\tpass",
-      "explain": "gdguard explain unnecessary-pass",
+      "explain": "gdguard explain unused-code",
       "fixes": [
         {
           "description": "Remove the 'pass' line",
@@ -345,7 +468,77 @@
     },
     {
       "file": "scripts/player.gd",
-      "rule": "unused-argument",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Constant 'SPEED' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 7,
+          "byte": 62
+        },
+        "end": {
+          "line": 6,
+          "column": 12,
+          "byte": 67
+        }
+      },
+      "snippet": "const SPEED = 300.0",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Array needs an element type.",
+      "help": "Use `Array[Type]` or `Dictionary[KeyType, ValueType]`; use `Variant` explicitly for mixed values.",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 16,
+          "byte": 92
+        },
+        "end": {
+          "line": 8,
+          "column": 21,
+          "byte": 97
+        }
+      },
+      "snippet": "var inventory: Array = []",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Variable '_health' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 9,
+          "column": 5,
+          "byte": 107
+        },
+        "end": {
+          "line": 9,
+          "column": 12,
+          "byte": 114
+        }
+      },
+      "snippet": "var _health := 100",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "unused-code",
+      "check": "unused-argument",
       "origin": "builtin",
       "severity": "info",
       "message": "Function argument 'delta' is unused. Consider removing it or prefixing with '_'",
@@ -363,7 +556,7 @@
         }
       },
       "snippet": "func _process(delta: float) -> void:",
-      "explain": "gdguard explain unused-argument",
+      "explain": "gdguard explain unused-code",
       "fixes": [
         {
           "description": "Rename it to '_delta'",
@@ -383,6 +576,29 @@
           ]
         }
       ]
+    },
+    {
+      "file": "scripts/player.gd",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Variable 'health_bar' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 14,
+          "column": 6,
+          "byte": 243
+        },
+        "end": {
+          "line": 14,
+          "column": 16,
+          "byte": 253
+        }
+      },
+      "snippet": "\tvar health_bar = get_node(\"HealthBar\")",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
     },
     {
       "file": "scripts/player.gd",
@@ -491,7 +707,8 @@
     },
     {
       "file": "scripts/player.gd",
-      "rule": "unused-argument",
+      "rule": "unused-code",
+      "check": "unused-argument",
       "origin": "builtin",
       "severity": "info",
       "message": "Function argument 'source' is unused. Consider removing it or prefixing with '_'",
@@ -509,7 +726,7 @@
         }
       },
       "snippet": "func take_damage(amount: int, source: Node) -> void:",
-      "explain": "gdguard explain unused-argument",
+      "explain": "gdguard explain unused-code",
       "fixes": [
         {
           "description": "Rename it to '_source'",
@@ -655,6 +872,29 @@
     },
     {
       "file": "scripts/ui/hud.gd",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Constant 'PLAYER_SCENE' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 7,
+          "byte": 27
+        },
+        "end": {
+          "line": 3,
+          "column": 19,
+          "byte": 39
+        }
+      },
+      "snippet": "const PLAYER_SCENE = preload(\"res://scenes/player.tscn\")",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
+    {
+      "file": "scripts/ui/hud.gd",
       "rule": "prefer-uid-path",
       "origin": "builtin",
       "severity": "warning",
@@ -693,6 +933,29 @@
           ]
         }
       ]
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Variable 'icon_texture' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 5,
+          "byte": 83
+        },
+        "end": {
+          "line": 5,
+          "column": 17,
+          "byte": 95
+        }
+      },
+      "snippet": "var icon_texture = load(\"res://icon.svg\")",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
     },
     {
       "file": "scripts/ui/hud.gd",
@@ -756,6 +1019,29 @@
       },
       "snippet": "var icon_texture = load(\"res://icon.svg\")",
       "explain": "gdguard explain duplicated-load",
+      "fixes": []
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Variable 'other_icon_texture' needs a type annotation.",
+      "help": "Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 5,
+          "byte": 125
+        },
+        "end": {
+          "line": 6,
+          "column": 23,
+          "byte": 143
+        }
+      },
+      "snippet": "var other_icon_texture = load(\"res://icon.svg\")",
+      "explain": "gdguard explain type-annotations",
       "fixes": []
     },
     {
@@ -824,7 +1110,8 @@
     },
     {
       "file": "scripts/ui/hud.gd",
-      "rule": "loop-variable-name",
+      "rule": "naming-convention",
+      "check": "loop-variable-name",
       "origin": "builtin",
       "severity": "error",
       "message": "Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format",
@@ -842,12 +1129,36 @@
         }
       },
       "snippet": "\tfor MyIndex in range(3):",
-      "explain": "gdguard explain loop-variable-name",
+      "explain": "gdguard explain naming-convention",
       "fixes": []
     },
     {
       "file": "scripts/ui/hud.gd",
-      "rule": "standalone-expression",
+      "rule": "type-annotations",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Loop variable 'MyIndex' needs a type annotation.",
+      "help": "Declare the element type: `for item: Type in items:`.",
+      "range": {
+        "start": {
+          "line": 11,
+          "column": 6,
+          "byte": 251
+        },
+        "end": {
+          "line": 11,
+          "column": 13,
+          "byte": 258
+        }
+      },
+      "snippet": "\tfor MyIndex in range(3):",
+      "explain": "gdguard explain type-annotations",
+      "fixes": []
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "redundant-expression",
+      "check": "standalone-expression",
       "origin": "builtin",
       "severity": "warning",
       "message": "Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect",
@@ -865,7 +1176,7 @@
         }
       },
       "snippet": "\tnew_score + 1",
-      "explain": "gdguard explain standalone-expression",
+      "explain": "gdguard explain redundant-expression",
       "fixes": []
     },
     {

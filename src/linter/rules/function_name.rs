@@ -32,6 +32,7 @@ impl Rule for FunctionNameRule {
             help = Some(format!("Rename it to '{}'.", suggestion));
         }
         diagnostics.push(Diagnostic {
+            check: None,
             rule: "function-name".to_string(),
             severity: Severity::Error,
             message: format!(

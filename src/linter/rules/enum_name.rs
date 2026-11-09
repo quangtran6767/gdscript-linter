@@ -32,6 +32,7 @@ impl Rule for EnumNameRule {
             help = Some(format!("Rename it to '{}'.", suggestion));
         }
         diagnostics.push(Diagnostic {
+            check: None,
             rule: "enum-name".to_string(),
             severity: Severity::Error,
             message: format!("Enum name '{}' should be in PascalCase format", name),

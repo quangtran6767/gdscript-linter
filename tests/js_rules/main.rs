@@ -359,7 +359,7 @@ fn project_edits_invalidate_cached_lint_results_in_other_files() {
     .unwrap();
     std::fs::write(
         project.root.join("main.gd"),
-        "class_name Main\nfunc f():\n\treturn old\n",
+        "class_name Main\nfunc f() -> Variant:\n\treturn old\n",
     )
     .unwrap();
     std::fs::write(

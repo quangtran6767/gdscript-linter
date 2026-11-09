@@ -41,11 +41,14 @@ hook.
 **[All built-in rules, with examples →](docs/rules.md)** ·
 `gdguard lint --list-rules` · `gdguard explain <rule>`
 
-Built-in rules cover naming, declaration order, likely bugs, unused code,
+The 29 built-in rules combine related naming, unused-code and expression checks.
+They cover explicit type annotations (including function return types),
+declaration order, likely bugs,
 Godot 3 syntax and Godot idioms (`is_empty()`, squared distances, Array
 methods, `%UniqueNode`), plus project checks (`class_name`, `load`/`preload`
 paths, scene connections, unused signals). To let `lint --fix` apply
-selected unsafe fixes too, set `[fix] unsafe = [...]` in `gdguard.toml`. For type errors, add Godot's own check:
+selected unsafe fixes too, set `[fix] unsafe = [...]` in `gdguard.toml`.
+For type correctness, add Godot's own check:
 `gdguard lint --godot /path/to/godot .` (or set `GDGUARD_GODOT`).
 
 Add project rules without rebuilding, as [YAML](docs/custom_rules.md) or

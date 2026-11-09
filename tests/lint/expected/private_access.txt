@@ -1,3 +1,11 @@
+tests/lint/input/private_access.gd:3:type-annotations:warning: Variable '_private_var' needs a type annotation.
+tests/lint/input/private_access.gd:6:type-annotations:warning: Function '_private_method' needs a return type.
+tests/lint/input/private_access.gd:10:type-annotations:warning: Function 'public_method' needs a return type.
+tests/lint/input/private_access.gd:16:type-annotations:warning: Function 'another_method' needs a return type.
 tests/lint/input/private_access.gd:23:declaration-order:warning: method `good` should come before inner classes
+tests/lint/input/private_access.gd:23:type-annotations:warning: Function 'good' needs a return type.
+tests/lint/input/private_access.gd:24:type-annotations:warning: Variable 'obj' needs a type annotation.
+tests/lint/input/private_access.gd:31:type-annotations:warning: Function 'bad' needs a return type.
+tests/lint/input/private_access.gd:32:type-annotations:warning: Variable 'obj' needs a type annotation.
 tests/lint/input/private_access.gd:33:private-access:error: Private method '_private_method' should not be called from outside its class
 tests/lint/input/private_access.gd:35:private-access:error: Private variable '_private_var' should not be accessed from outside its class

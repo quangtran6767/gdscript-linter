@@ -104,7 +104,7 @@ fn lint_exit_codes_on_sample_project() {
 
     // player.gd has two errors (the custom `no-get-node-in-process`, raised
     // to `error` in gdguard.toml, and a scene connection to a missing
-    // method), two warnings and two infos. Without the errors, only the
+    // method), six warnings (including typing) and two infos. Without the errors, only the
     // warnings count against `--max-warnings`; infos never fail.
     let player = run_in_sample_project(&["lint", "scripts/player.gd"]);
     assert_eq!(player.exit_code, 1);
@@ -113,7 +113,7 @@ fn lint_exit_codes_on_sample_project() {
         "--disable",
         "no-get-node-in-process,scene-connection-missing-method",
         "--max-warnings",
-        "2",
+        "6",
         "scripts/player.gd",
     ]);
     assert_eq!(
@@ -126,7 +126,7 @@ fn lint_exit_codes_on_sample_project() {
         "--disable",
         "no-get-node-in-process,scene-connection-missing-method",
         "--max-warnings",
-        "1",
+        "5",
         "scripts/player.gd",
     ]);
     assert_eq!(player_strict.exit_code, 1);
@@ -177,7 +177,7 @@ fn custom_rules_report_with_config_levels() {
     assert!(output.stdout.contains(
         "scripts/player.gd:16:5: warning [prefer-is-empty] Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero"
     ));
-    assert!(output.stdout.contains("info [unused-argument]"));
+    assert!(output.stdout.contains("info [unused-code]"));
 }
 
 #[test]
@@ -217,6 +217,13 @@ fn copy_folder(source: &Path, destination: &Path) {
     fs::create_dir_all(destination).expect("should create folder");
     for entry in fs::read_dir(source).expect("should list folder") {
         let entry = entry.expect("should read entry");
+        // Other tests write this cache concurrently using temporary files
+        // and atomic renames. Copies need rules, never transient caches.
+        if source.file_name() == Some(std::ffi::OsStr::new(".gdguard"))
+            && entry.file_name() == "cache"
+        {
+            continue;
+        }
         let target = destination.join(entry.file_name());
         if entry.path().is_dir() {
             copy_folder(&entry.path(), &target);
@@ -433,7 +440,7 @@ fn lint_sample_project_sarif_output() {
             .as_array()
             .expect("valid e2e fixture and report")
             .len(),
-        28
+        41
     );
     assert!(
         report["runs"][0]["tool"]["driver"]["rules"]
@@ -469,13 +476,13 @@ fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
     ]);
     assert_eq!(hidden.exit_code, 0, "{}", hidden.stderr);
     assert!(
-        hidden.stdout.contains("28 issues hidden by baseline."),
+        hidden.stdout.contains("41 issues hidden by baseline."),
         "{}",
         hidden.stdout
     );
     fs::write(
         project.root.join("scripts/new.gd"),
-        "class_name NewScript\nvar badName = 1\n",
+        "class_name NewScript\nvar badName: int = 1\n",
     )
     .expect("valid e2e fixture and report");
     let new_issue = project.run(&[
@@ -489,7 +496,7 @@ fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
     assert_eq!(new_issue.exit_code, 1, "{}", new_issue.stderr);
     let report: serde_json::Value =
         serde_json::from_str(&new_issue.stdout).expect("valid e2e fixture and report");
-    assert_eq!(report["summary"]["baseline_hidden"], 28);
+    assert_eq!(report["summary"]["baseline_hidden"], 41);
     assert_eq!(
         report["issues"]
             .as_array()
@@ -560,5 +567,9 @@ export default {
             .iter()
             .any(|issue| issue["rule"] == "project-inventory")
     );
-    assert!(issues.iter().any(|issue| issue["rule"] == "unused-signal"));
+    assert!(
+        issues
+            .iter()
+            .any(|issue| issue["rule"] == "unused-code" && issue["check"] == "unused-signal")
+    );
 }

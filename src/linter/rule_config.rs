@@ -12,12 +12,19 @@ pub fn parse_disabled_rules(rules_string: &str) -> HashSet<String> {
 
 /// Get all available rule names
 pub fn get_all_rule_names() -> Vec<&'static str> {
-    ALL_RULES.iter().map(|rule| rule.name).collect()
+    let mut names = Vec::with_capacity(ALL_RULES.len());
+    for rule in ALL_RULES {
+        let id = super::rule_groups::rule_id(rule.name);
+        if !names.contains(&id) {
+            names.push(id);
+        }
+    }
+    names
 }
 
 /// Validate that all provided rule names are valid
 pub fn validate_rule_names(rules: &HashSet<String>) -> Result<(), Vec<String>> {
-    let valid_rules: HashSet<&str> = get_all_rule_names().into_iter().collect();
+    let valid_rules: HashSet<&str> = super::config::builtin_rule_ids().into_iter().collect();
     let invalid_rules: Vec<String> = rules
         .iter()
         .filter(|rule| !valid_rules.contains(rule.as_str()))

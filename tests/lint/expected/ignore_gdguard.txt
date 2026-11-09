@@ -1,3 +1,6 @@
+tests/lint/input/ignore_gdguard.gd:5:type-annotations:warning: Constant 'bad_const' needs a type annotation.
 tests/lint/input/ignore_gdguard.gd:7:unused-ignore:warning: `gdguard-ignore-next-line` for `signal-name` doesn't suppress any issue
-tests/lint/input/ignore_gdguard.gd:12:unused-ignore:warning: `gdguard-ignore` doesn't suppress any issue
+tests/lint/input/ignore_gdguard.gd:8:type-annotations:warning: Constant 'another_bad' needs a type annotation.
+tests/lint/input/ignore_gdguard.gd:10:type-annotations:warning: Constant 'fine' needs a type annotation.
 tests/lint/input/ignore_gdguard.gd:14:unused-ignore:warning: `gdlint-ignore-next-line` for `private-access` doesn't suppress any issue
+tests/lint/input/ignore_gdguard.gd:15:type-annotations:warning: Variable 'also_clean' needs a type annotation.

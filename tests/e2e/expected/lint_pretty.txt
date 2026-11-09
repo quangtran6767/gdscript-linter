@@ -1,3 +1,22 @@
+autoload/game_state.gd
+ 5:7 warning [type-annotations] Constant 'MAX_LIVES' needs a type annotation.
+  |
+5 | const MAX_LIVES = 3
+  |       ^^^^^^^^^
+  = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
+
+ 7:5 warning [type-annotations] Variable 'score' needs a type annotation.
+  |
+7 | var score := 0
+  |     ^^^^^
+  = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
+
+ 8:5 warning [type-annotations] Variable 'lives' needs a type annotation.
+  |
+8 | var lives := MAX_LIVES
+  |     ^^^^^
+  = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
+
 scripts/enemies/enemy.gd
  1:1 warning [missing-class-name] Script has no class_name.
   |
@@ -6,43 +25,55 @@ scripts/enemies/enemy.gd
   = help: Add `class_name Enemy` (or another unique PascalCase name) above `extends`. Autoload scripts are exempt.
   = fix (unsafe): Add `class_name Enemy`
 
- 3:8 error [signal-name] Signal name 'OnDefeated' should be in snake_case format
+ 3:8 error [naming-convention] Signal name 'OnDefeated' should be in snake_case format
   |
 3 | signal OnDefeated
   |        ^^^^^^^^^^
   = help: Rename it to 'on_defeated'.
 
- 3:8 warning [unused-signal] Signal 'OnDefeated' is never emitted or connected in this project.
+ 3:8 warning [unused-code] Signal 'OnDefeated' is never emitted or connected in this project.
   |
 3 | signal OnDefeated
   |        ^^^^^^^^^^
   = help: Emit/connect the signal, remove it after review, or add a reasoned ignore for usage outside this project.
 
- 5:6 error [enum-name] Enum name 'state' should be in PascalCase format
+ 5:6 error [naming-convention] Enum name 'state' should be in PascalCase format
   |
 5 | enum state {
   |      ^^^^^
   = help: Rename it to 'State'.
 
- 7:2 error [enum-member-name] Enum element name 'chase_player' should be in CONSTANT_CASE format
+ 7:2 error [naming-convention] Enum element name 'chase_player' should be in CONSTANT_CASE format
   |
 7 |     chase_player,
   |     ^^^^^^^^^^^^
   = help: Rename it to 'CHASE_PLAYER'.
 
- 11:5 error [variable-name] Variable name 'targetName' should be in snake_case or _private_snake_case format
+ 10:5 warning [type-annotations] Variable 'speed' needs a type annotation.
+   |
+10 | var speed := 120.0
+   |     ^^^^^
+   = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
+
+ 11:5 error [naming-convention] Variable name 'targetName' should be in snake_case or _private_snake_case format
    |
 11 | var targetName := ""
    |     ^^^^^^^^^^
    = help: Rename it to 'target_name'.
 
- 14:6 error [function-name] Function name 'moveTowards' should be in snake_case, _private_snake_case format
+ 11:5 warning [type-annotations] Variable 'targetName' needs a type annotation.
+   |
+11 | var targetName := ""
+   |     ^^^^^^^^^^
+   = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
+
+ 14:6 error [naming-convention] Function name 'moveTowards' should be in snake_case, _private_snake_case format
    |
 14 | func moveTowards(target: Node2D) -> void:
    |      ^^^^^^^^^^^
    = help: Rename it to 'move_towards'.
 
- 15:5 warning [comparison-with-itself] Redundant comparison 'target == target' - comparing expression with itself
+ 15:5 warning [redundant-expression] Redundant comparison 'target == target' - comparing expression with itself
    |
 15 |     if target == target:
    |        ^^^^^^^^^^^^^^^^
@@ -61,7 +92,7 @@ scripts/enemies/enemy.gd
    |                   ^^^^^^^
    = help: Use a public property or method instead, or make this one public by removing the leading underscore.
 
- 33:2 warning [unnecessary-pass] Unnecessary 'pass' statement when other statements are present
+ 33:2 warning [unused-code] Unnecessary 'pass' statement when other statements are present
    |
 33 |     pass
    |     ^^^^
@@ -75,12 +106,36 @@ scripts/player.gd
   | ^^^^^^^^^^^^^^^^^^^^^^^
   = help: Add `func _on_hurtbox_body_entered(...)` to this script or a base script, or fix the method name in the scene's [connection]. Godot only fails when the signal is emitted.
 
- 12:15 info [unused-argument] Function argument 'delta' is unused. Consider removing it or prefixing with '_'
+ 6:7 warning [type-annotations] Constant 'SPEED' needs a type annotation.
+  |
+6 | const SPEED = 300.0
+  |       ^^^^^
+  = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
+
+ 8:16 warning [type-annotations] Array needs an element type.
+  |
+8 | var inventory: Array = []
+  |                ^^^^^
+  = help: Use `Array[Type]` or `Dictionary[KeyType, ValueType]`; use `Variant` explicitly for mixed values.
+
+ 9:5 warning [type-annotations] Variable '_health' needs a type annotation.
+  |
+9 | var _health := 100
+  |     ^^^^^^^
+  = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
+
+ 12:15 info [unused-code] Function argument 'delta' is unused. Consider removing it or prefixing with '_'
    |
 12 | func _process(delta: float) -> void:
    |               ^^^^^
    = help: Remove 'delta', or rename it to '_delta' if the function signature must stay the same.
    = fix (unsafe): Rename it to '_delta'
+
+ 14:6 warning [type-annotations] Variable 'health_bar' needs a type annotation.
+   |
+14 |     var health_bar = get_node("HealthBar")
+   |         ^^^^^^^^^^
+   = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
 
  14:19 error [no-get-node-in-process] Don't look up nodes in `_process()`; cache the node in an `@onready` variable
    |
@@ -102,7 +157,7 @@ scripts/player.gd
    = help: `is_empty()` states the intent and works on Array, Dictionary, String and packed arrays.
    = fix (safe): Replace with `inventory.is_empty()`
 
- 20:31 info [unused-argument] Function argument 'source' is unused. Consider removing it or prefixing with '_'
+ 20:31 info [unused-code] Function argument 'source' is unused. Consider removing it or prefixing with '_'
    |
 20 | func take_damage(amount: int, source: Node) -> void:
    |                               ^^^^^^
@@ -131,12 +186,24 @@ scripts/ui/hud.gd
   = help: Add `class_name Hud` (or another unique PascalCase name) above `extends`. Autoload scripts are exempt.
   = fix (unsafe): Add `class_name Hud`
 
+ 3:7 warning [type-annotations] Constant 'PLAYER_SCENE' needs a type annotation.
+  |
+3 | const PLAYER_SCENE = preload("res://scenes/player.tscn")
+  |       ^^^^^^^^^^^^
+  = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
+
  3:30 warning [prefer-uid-path] Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'.
   |
 3 | const PLAYER_SCENE = preload("res://scenes/player.tscn")
   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
   = help: UID paths keep working when files are moved or renamed. Replace the path with the UID.
   = fix (safe): Replace with "uid://c4sampleplayer"
+
+ 5:5 warning [type-annotations] Variable 'icon_texture' needs a type annotation.
+  |
+5 | var icon_texture = load("res://icon.svg")
+  |     ^^^^^^^^^^^^
+  = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
 
  5:25 warning [prefer-uid-path] Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.
   |
@@ -151,6 +218,12 @@ scripts/ui/hud.gd
   |                         ^^^^^^^^^^^^^^^^
   = help: Load it once at the top of the script, for example `const Resource = preload("res://icon.svg")`, and reuse the constant.
 
+ 6:5 warning [type-annotations] Variable 'other_icon_texture' needs a type annotation.
+  |
+6 | var other_icon_texture = load("res://icon.svg")
+  |     ^^^^^^^^^^^^^^^^^^
+  = help: Declare `: Type`. Set type-annotations.allow_inferred = true to also accept `:=`.
+
  6:31 warning [prefer-uid-path] Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.
   |
 6 | var other_icon_texture = load("res://icon.svg")
@@ -164,13 +237,19 @@ scripts/ui/hud.gd
   |                               ^^^^^^^^^^^^^^^^
   = help: Load it once at the top of the script, for example `const Resource = preload("res://icon.svg")`, and reuse the constant.
 
- 11:6 error [loop-variable-name] Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format
+ 11:6 error [naming-convention] Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format
    |
 11 |     for MyIndex in range(3):
    |         ^^^^^^^
    = help: Rename it to 'my_index'.
 
- 16:2 warning [standalone-expression] Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect
+ 11:6 warning [type-annotations] Loop variable 'MyIndex' needs a type annotation.
+   |
+11 |     for MyIndex in range(3):
+   |         ^^^^^^^
+   = help: Declare the element type: `for item: Type in items:`.
+
+ 16:2 warning [redundant-expression] Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect
    |
 16 |     new_score + 1
    |     ^^^^^^^^^^^^^
@@ -182,4 +261,4 @@ scripts/ui/hud.gd
    |                                                                                                     ^^^^^^^^^^^^^^^^^^
    = help: Split the line, for example by wrapping arguments in parentheses or extracting a variable.
 
-Found 28 problems (9 errors, 15 warnings, 4 infos) in 3 files. 9 fixable with --fix.
+Found 41 problems (9 errors, 28 warnings, 4 infos) in 4 files. 9 fixable with --fix.

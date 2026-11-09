@@ -67,6 +67,7 @@ impl Rule for PreferUniqueNodeNameRule {
                 format!("%\"{}\"", name)
             };
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: RULE_ID.to_string(),
                 severity: Severity::Info,
                 message: format!(

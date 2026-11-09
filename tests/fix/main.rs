@@ -35,13 +35,29 @@ impl TempProject {
             timestamp
         ));
         fs::create_dir_all(&root).unwrap();
+        // These fixtures verify fix edits on deliberately untyped source.
+        // Typing defaults and the no-fix contract have their own test suite.
+        fs::write(
+            root.join("gdguard.toml"),
+            "[rules]\ntype-annotations = 'off'\n",
+        )
+        .unwrap();
         TempProject { root }
     }
 
     fn write(&self, relative_path: &str, content: &str) -> PathBuf {
         let path = self.root.join(relative_path);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(&path, content).unwrap();
+        if relative_path == "gdguard.toml" && !content.contains("type-annotations") {
+            let settings = if content.contains("[rules]") {
+                content.replacen("[rules]", "[rules]\ntype-annotations = 'off'", 1)
+            } else {
+                format!("[rules]\ntype-annotations = 'off'\n{content}")
+            };
+            fs::write(&path, settings).unwrap();
+        } else {
+            fs::write(&path, content).unwrap();
+        }
         path
     }
 
@@ -100,7 +116,7 @@ fn fix(project: &TempProject, source: &str, unsafe_fixes: bool) -> api::FixResul
 fn rules_of(result: &api::FixResult) -> Vec<String> {
     let mut rules = Vec::new();
     for diagnostic in &result.remaining {
-        rules.push(diagnostic.rule.clone());
+        rules.push(diagnostic.check_id().to_string());
     }
     rules
 }
@@ -574,7 +590,7 @@ fn cli_fix_writes_files_and_reports_the_rest() {
     assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
     assert_eq!(
         output.stdout,
-        "b.gd:1:6: error [function-name] Function name 'badName' should be in snake_case, _private_snake_case format\nFixed 2 problems in 2 files\n"
+        "b.gd:1:6: error [naming-convention] Function name 'badName' should be in snake_case, _private_snake_case format\nFixed 2 problems in 2 files\n"
     );
     assert_eq!(project.read("a.gd"), "func f():\n\tprint(1)\n");
     assert_eq!(project.read("b.gd"), "func badName():\n\tprint(1)\n");
@@ -649,7 +665,7 @@ fn cli_stdin_fix_writes_the_fixed_source_to_stdout() {
     );
     assert_eq!(
         output.stderr,
-        "scripts/player.gd:1:6: error [function-name] Function name 'badName' should be in snake_case, _private_snake_case format\nFixed 2 problems in 1 file\n"
+        "scripts/player.gd:1:6: error [naming-convention] Function name 'badName' should be in snake_case, _private_snake_case format\nFixed 2 problems in 1 file\n"
     );
     // Nothing is written to disk.
     assert!(!project.root.join("scripts/player.gd").exists());
@@ -673,7 +689,7 @@ fn cli_stdin_filename_without_fix_lints_and_finds_the_config() {
     assert_eq!(output.exit_code, 1);
     assert_eq!(
         output.stdout,
-        "scripts/a.gd:3:2: error [unnecessary-pass] Unnecessary 'pass' statement when other statements are present\n"
+        "scripts/a.gd:3:2: error [unused-code] Unnecessary 'pass' statement when other statements are present\n"
     );
 }
 

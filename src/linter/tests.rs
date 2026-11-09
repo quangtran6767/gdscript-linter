@@ -32,7 +32,7 @@ func good_function_name():
         assert!(!issues.is_empty());
 
         // Check for specific issues
-        let rule_names: Vec<&str> = issues.iter().map(|i| i.rule.as_str()).collect();
+        let rule_names: Vec<&str> = issues.iter().map(Diagnostic::check_id).collect();
         assert!(rule_names.contains(&"class-name"));
         assert!(rule_names.contains(&"signal-name"));
         assert!(rule_names.contains(&"constant-name"));
@@ -53,7 +53,7 @@ signal BadSignal
         let issues = lint_gdscript_with_config(test_code, "test.gd", &config).unwrap();
 
         // Should still have signal-name issue but not class-name
-        let rule_names: Vec<&str> = issues.iter().map(|i| i.rule.as_str()).collect();
+        let rule_names: Vec<&str> = issues.iter().map(Diagnostic::check_id).collect();
         assert!(!rule_names.contains(&"class-name"));
         assert!(rule_names.contains(&"signal-name"));
     }
@@ -61,6 +61,7 @@ signal BadSignal
     #[test]
     fn test_diagnostic_text_line_format() {
         let diagnostic = Diagnostic {
+            check: None,
             rule: "test-rule".to_string(),
             severity: Severity::Error,
             message: "Test message".to_string(),

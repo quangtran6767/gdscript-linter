@@ -14,6 +14,7 @@ pub struct EditorFix {
 #[derive(Debug, Clone, PartialEq)]
 pub struct EditorDiagnostic {
     pub rule: String,
+    pub check: Option<String>,
     pub severity: String,
     pub message: String,
     pub help: Option<String>,
@@ -24,6 +25,12 @@ pub struct EditorDiagnostic {
     pub start_byte: usize,
     pub end_byte: usize,
     pub fixes: Vec<EditorFix>,
+}
+
+impl EditorDiagnostic {
+    pub fn check_id(&self) -> &str {
+        self.check.as_deref().unwrap_or(&self.rule)
+    }
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct EditorFixResult {
@@ -99,6 +106,7 @@ pub fn payloads(diagnostics: &[Diagnostic]) -> Vec<EditorDiagnostic> {
         }
         payloads.push(EditorDiagnostic {
             rule: diagnostic.rule.clone(),
+            check: diagnostic.check.clone(),
             severity: diagnostic.severity.as_str().to_string(),
             message: diagnostic.message.clone(),
             help: diagnostic.help.clone(),

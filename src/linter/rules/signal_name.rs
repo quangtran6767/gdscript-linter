@@ -32,6 +32,7 @@ impl Rule for SignalNameRule {
             help = Some(format!("Rename it to '{}'.", suggestion));
         }
         diagnostics.push(Diagnostic {
+            check: None,
             rule: "signal-name".to_string(),
             severity: Severity::Error,
             message: format!("Signal name '{}' should be in snake_case format", name),

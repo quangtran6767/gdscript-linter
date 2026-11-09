@@ -74,15 +74,14 @@ impl Drop for Project {
 fn clean_file_returns_nothing() {
     let project = Project::new("clean");
     let path = project.root.join("clean.gd");
-    fs::write(&path, "var value = 1\n").unwrap();
+    fs::write(&path, "var value: int = 1\n").unwrap();
     let output = project.hook(&path, None);
     assert_eq!(output.status.code(), Some(0));
     assert!(output.stdout.is_empty());
     assert!(output.stderr.is_empty());
 }
 
-const DIRTY_SOURCE: &str =
-    "var badName = 1\n# gdguard-ignore-next-line unused-argument -- stale\nfunc f():\n\tpass\n";
+const DIRTY_SOURCE: &str = "var badName: int = 1\n# gdguard-ignore-next-line unused-argument -- stale\nfunc f() -> void:\n\tpass\n";
 
 #[test]
 #[cfg_attr(windows, ignore = "requires POSIX sh")]
@@ -100,11 +99,11 @@ fn dirty_file_returns_short_text_and_applies_safe_fixes() {
         Some("gdguard: safe fixes are applied; these issues remain. Fix them and lint again.")
     );
     assert!(
-        stderr.contains("dirty.gd:1:5: error [variable-name]"),
+        stderr.contains("dirty.gd:1:5: error [naming-convention]"),
         "{}",
         stderr
     );
-    assert!(stderr.contains("  > var badName = 1\n"), "{}", stderr);
+    assert!(stderr.contains("  > var badName: int = 1\n"), "{}", stderr);
     assert!(stderr.contains("1 issue (1 error)"), "{}", stderr);
     assert!(stderr.contains("Fixed 1 problem in 1 file"), "{}", stderr);
     assert!(!stderr.contains('{'), "no JSON by default: {}", stderr);
@@ -122,7 +121,7 @@ fn json_format_returns_remaining_json() {
     let stderr = String::from_utf8(output.stderr).unwrap();
     let (_, json) = stderr.split_once('\n').unwrap();
     let report: serde_json::Value = serde_json::from_str(json).unwrap();
-    assert_eq!(report["issues"][0]["rule"], "variable-name");
+    assert_eq!(report["issues"][0]["rule"], "naming-convention");
     assert!(!fs::read_to_string(path).unwrap().contains("gdguard-ignore"));
 }
 
@@ -131,7 +130,7 @@ fn json_format_returns_remaining_json() {
 fn unknown_hook_format_is_a_tool_error() {
     let project = Project::new("bad-format");
     let path = project.root.join("clean.gd");
-    fs::write(&path, "var value = 1\n").unwrap();
+    fs::write(&path, "var value: int = 1\n").unwrap();
     let output = project.hook_with_env(&path, None, &[("GDGUARD_HOOK_FORMAT", "xml")]);
     assert_eq!(output.status.code(), Some(2));
     assert!(
@@ -149,7 +148,7 @@ fn fix_format_config_formats_the_edited_file() {
     let path = project.root.join("messy.gd");
     fs::write(
         &path,
-        "var value = 1\nfunc f() -> void:\n\tprint(  value )\n",
+        "var value: int = 1\nfunc f() -> void:\n\tprint(  value )\n",
     )
     .unwrap();
     let output = project.hook(&path, None);
@@ -157,7 +156,7 @@ fn fix_format_config_formats_the_edited_file() {
     assert!(output.stderr.is_empty());
     assert_eq!(
         fs::read_to_string(path).unwrap(),
-        "var value = 1\n\n\nfunc f() -> void:\n\tprint(value)\n"
+        "var value: int = 1\n\n\nfunc f() -> void:\n\tprint(value)\n"
     );
 }
 
@@ -168,14 +167,14 @@ fn safe_fixes_can_make_the_file_clean() {
     let path = project.root.join("fixed.gd");
     fs::write(
         &path,
-        "# gdguard-ignore-file unused-argument -- stale\nvar value = 1\n",
+        "# gdguard-ignore-file unused-argument -- stale\nvar value: int = 1\n",
     )
     .unwrap();
     let output = project.hook(&path, None);
     assert_eq!(output.status.code(), Some(0));
     assert!(output.stdout.is_empty());
     assert!(output.stderr.is_empty());
-    assert_eq!(fs::read_to_string(path).unwrap(), "var value = 1\n");
+    assert_eq!(fs::read_to_string(path).unwrap(), "var value: int = 1\n");
 }
 
 #[test]
@@ -215,12 +214,12 @@ fn python_fallback_decodes_escaped_paths_without_jq() {
         std::os::unix::fs::symlink(executable.trim(), tools_dir.join(program)).unwrap();
     }
     let path = project.root.join("space \"quoted\" \\ unicode-đ.gd");
-    fs::write(&path, "var badName = 1\n").unwrap();
+    fs::write(&path, "var badName: int = 1\n").unwrap();
     let output = project.hook(&path, Some(&tools_dir));
     assert_eq!(output.status.code(), Some(2));
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stderr.contains("space \"quoted\" / unicode-đ.gd:1:5: error [variable-name]"),
+        stderr.contains("space \"quoted\" / unicode-đ.gd:1:5: error [naming-convention]"),
         "{}",
         stderr
     );

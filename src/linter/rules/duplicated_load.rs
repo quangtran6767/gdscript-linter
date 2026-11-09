@@ -52,6 +52,7 @@ impl Rule for DuplicatedLoadRule {
             }
             for span in spans {
                 diagnostics.push(Diagnostic {
+                    check: None,
                     rule: "duplicated-load".to_string(),
                     severity: Severity::Warning,
                     message: format!(

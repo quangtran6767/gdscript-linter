@@ -1,1 +1,5 @@
-tests/lint/input/comparison_with_itself.gd:16:comparison-with-itself:warning: Redundant comparison 'x == x' - comparing expression with itself
+tests/lint/input/comparison_with_itself.gd:3:type-annotations:warning: Variable 'x' needs a type annotation.
+tests/lint/input/comparison_with_itself.gd:4:type-annotations:warning: Variable 'y' needs a type annotation.
+tests/lint/input/comparison_with_itself.gd:7:type-annotations:warning: Function 'good' needs a return type.
+tests/lint/input/comparison_with_itself.gd:15:type-annotations:warning: Function 'bad' needs a return type.
+tests/lint/input/comparison_with_itself.gd:16:redundant-expression:warning: Redundant comparison 'x == x' - comparing expression with itself

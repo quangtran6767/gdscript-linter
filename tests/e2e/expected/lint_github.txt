@@ -1,28 +1,41 @@
+::warning file=autoload/game_state.gd,line=5,col=7,endLine=5,endColumn=16,title=type-annotations::Constant 'MAX_LIVES' needs a type annotation.
+::warning file=autoload/game_state.gd,line=7,col=5,endLine=7,endColumn=10,title=type-annotations::Variable 'score' needs a type annotation.
+::warning file=autoload/game_state.gd,line=8,col=5,endLine=8,endColumn=10,title=type-annotations::Variable 'lives' needs a type annotation.
 ::warning file=scripts/enemies/enemy.gd,line=1,col=1,endLine=1,endColumn=15,title=missing-class-name::Script has no class_name.
-::error file=scripts/enemies/enemy.gd,line=3,col=8,endLine=3,endColumn=18,title=signal-name::Signal name 'OnDefeated' should be in snake_case format
-::warning file=scripts/enemies/enemy.gd,line=3,col=8,endLine=3,endColumn=18,title=unused-signal::Signal 'OnDefeated' is never emitted or connected in this project.
-::error file=scripts/enemies/enemy.gd,line=5,col=6,endLine=5,endColumn=11,title=enum-name::Enum name 'state' should be in PascalCase format
-::error file=scripts/enemies/enemy.gd,line=7,col=2,endLine=7,endColumn=14,title=enum-member-name::Enum element name 'chase_player' should be in CONSTANT_CASE format
-::error file=scripts/enemies/enemy.gd,line=11,col=5,endLine=11,endColumn=15,title=variable-name::Variable name 'targetName' should be in snake_case or _private_snake_case format
-::error file=scripts/enemies/enemy.gd,line=14,col=6,endLine=14,endColumn=17,title=function-name::Function name 'moveTowards' should be in snake_case, _private_snake_case format
-::warning file=scripts/enemies/enemy.gd,line=15,col=5,endLine=15,endColumn=21,title=comparison-with-itself::Redundant comparison 'target == target' - comparing expression with itself
+::error file=scripts/enemies/enemy.gd,line=3,col=8,endLine=3,endColumn=18,title=naming-convention::Signal name 'OnDefeated' should be in snake_case format
+::warning file=scripts/enemies/enemy.gd,line=3,col=8,endLine=3,endColumn=18,title=unused-code::Signal 'OnDefeated' is never emitted or connected in this project.
+::error file=scripts/enemies/enemy.gd,line=5,col=6,endLine=5,endColumn=11,title=naming-convention::Enum name 'state' should be in PascalCase format
+::error file=scripts/enemies/enemy.gd,line=7,col=2,endLine=7,endColumn=14,title=naming-convention::Enum element name 'chase_player' should be in CONSTANT_CASE format
+::warning file=scripts/enemies/enemy.gd,line=10,col=5,endLine=10,endColumn=10,title=type-annotations::Variable 'speed' needs a type annotation.
+::error file=scripts/enemies/enemy.gd,line=11,col=5,endLine=11,endColumn=15,title=naming-convention::Variable name 'targetName' should be in snake_case or _private_snake_case format
+::warning file=scripts/enemies/enemy.gd,line=11,col=5,endLine=11,endColumn=15,title=type-annotations::Variable 'targetName' needs a type annotation.
+::error file=scripts/enemies/enemy.gd,line=14,col=6,endLine=14,endColumn=17,title=naming-convention::Function name 'moveTowards' should be in snake_case, _private_snake_case format
+::warning file=scripts/enemies/enemy.gd,line=15,col=5,endLine=15,endColumn=21,title=redundant-expression::Redundant comparison 'target == target' - comparing expression with itself
 ::warning file=scripts/enemies/enemy.gd,line=23,col=2,endLine=23,endColumn=6,title=no-else-return::Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'
 ::error file=scripts/enemies/enemy.gd,line=28,col=16,endLine=28,endColumn=23,title=private-access::Private variable '_health' should not be accessed from outside its class
-::warning file=scripts/enemies/enemy.gd,line=33,col=2,endLine=33,endColumn=6,title=unnecessary-pass::Unnecessary 'pass' statement when other statements are present
+::warning file=scripts/enemies/enemy.gd,line=33,col=2,endLine=33,endColumn=6,title=unused-code::Unnecessary 'pass' statement when other statements are present
 ::error file=scripts/player.gd,line=2,col=1,endLine=2,endColumn=24,title=scene-connection-missing-method::Scene 'res://scenes/player.tscn' connects signal 'body_entered' of node 'Hurtbox' to method '_on_hurtbox_body_entered', which this script doesn't define.
-::notice file=scripts/player.gd,line=12,col=15,endLine=12,endColumn=20,title=unused-argument::Function argument 'delta' is unused. Consider removing it or prefixing with '_'
+::warning file=scripts/player.gd,line=6,col=7,endLine=6,endColumn=12,title=type-annotations::Constant 'SPEED' needs a type annotation.
+::warning file=scripts/player.gd,line=8,col=16,endLine=8,endColumn=21,title=type-annotations::Array needs an element type.
+::warning file=scripts/player.gd,line=9,col=5,endLine=9,endColumn=12,title=type-annotations::Variable '_health' needs a type annotation.
+::notice file=scripts/player.gd,line=12,col=15,endLine=12,endColumn=20,title=unused-code::Function argument 'delta' is unused. Consider removing it or prefixing with '_'
+::warning file=scripts/player.gd,line=14,col=6,endLine=14,endColumn=16,title=type-annotations::Variable 'health_bar' needs a type annotation.
 ::error file=scripts/player.gd,line=14,col=19,endLine=14,endColumn=40,title=no-get-node-in-process::Don't look up nodes in `_process()`; cache the node in an `@onready` variable
 ::notice file=scripts/player.gd,line=16,col=5,endLine=16,endColumn=24,title=prefer-is-empty-call::Use `inventory.is_empty()` to check whether `inventory` is empty.
 ::warning file=scripts/player.gd,line=16,col=5,endLine=16,endColumn=24,title=prefer-is-empty::Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero
-::notice file=scripts/player.gd,line=20,col=31,endLine=20,endColumn=37,title=unused-argument::Function argument 'source' is unused. Consider removing it or prefixing with '_'
+::notice file=scripts/player.gd,line=20,col=31,endLine=20,endColumn=37,title=unused-code::Function argument 'source' is unused. Consider removing it or prefixing with '_'
 ::notice file=scripts/player.gd,line=28,col=9,endLine=28,endColumn=27,title=prefer-is-empty-call::Use `not inventory.is_empty()` to check whether `inventory` is empty.
 ::warning file=scripts/player.gd,line=28,col=9,endLine=28,endColumn=27,title=prefer-not-is-empty::Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero
 ::warning file=scripts/ui/hud.gd,line=1,col=1,endLine=1,endColumn=20,title=missing-class-name::Script has no class_name.
+::warning file=scripts/ui/hud.gd,line=3,col=7,endLine=3,endColumn=19,title=type-annotations::Constant 'PLAYER_SCENE' needs a type annotation.
 ::warning file=scripts/ui/hud.gd,line=3,col=30,endLine=3,endColumn=56,title=prefer-uid-path::Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'.
+::warning file=scripts/ui/hud.gd,line=5,col=5,endLine=5,endColumn=17,title=type-annotations::Variable 'icon_texture' needs a type annotation.
 ::warning file=scripts/ui/hud.gd,line=5,col=25,endLine=5,endColumn=41,title=prefer-uid-path::Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.
 ::warning file=scripts/ui/hud.gd,line=5,col=25,endLine=5,endColumn=41,title=duplicated-load::Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
+::warning file=scripts/ui/hud.gd,line=6,col=5,endLine=6,endColumn=23,title=type-annotations::Variable 'other_icon_texture' needs a type annotation.
 ::warning file=scripts/ui/hud.gd,line=6,col=31,endLine=6,endColumn=47,title=prefer-uid-path::Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.
 ::warning file=scripts/ui/hud.gd,line=6,col=31,endLine=6,endColumn=47,title=duplicated-load::Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
-::error file=scripts/ui/hud.gd,line=11,col=6,endLine=11,endColumn=13,title=loop-variable-name::Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format
-::warning file=scripts/ui/hud.gd,line=16,col=2,endLine=16,endColumn=15,title=standalone-expression::Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect
+::error file=scripts/ui/hud.gd,line=11,col=6,endLine=11,endColumn=13,title=naming-convention::Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format
+::warning file=scripts/ui/hud.gd,line=11,col=6,endLine=11,endColumn=13,title=type-annotations::Loop variable 'MyIndex' needs a type annotation.
+::warning file=scripts/ui/hud.gd,line=16,col=2,endLine=16,endColumn=15,title=redundant-expression::Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect
 ::warning file=scripts/ui/hud.gd,line=17,col=98,endLine=17,endColumn=116,title=max-line-length::Line is too long. Found 118 characters, maximum allowed is 100

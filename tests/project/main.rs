@@ -134,14 +134,14 @@ fn cross_file_rules_count_scene_and_script_usage_and_skip_unknown_engine_members
         .diagnostics;
     let unused: Vec<_> = diagnostics
         .iter()
-        .filter(|diagnostic| diagnostic.rule == "unused-signal")
+        .filter(|diagnostic| diagnostic.check_id() == "unused-signal")
         .collect();
     assert_eq!(unused.len(), 1, "{:?}", diagnostics);
     assert!(unused[0].message.contains("never_used"));
     assert!(
         !diagnostics
             .iter()
-            .any(|diagnostic| diagnostic.rule == "unused-local-signal")
+            .any(|diagnostic| diagnostic.check_id() == "unused-local-signal")
     );
     let caller = root.join("caller.gd");
     let source = std::fs::read_to_string(&caller).unwrap();
@@ -181,7 +181,11 @@ fn live_buffer_signal_uses_override_stale_disk_usage() {
     let issues = gdguard::linter::api::lint_source(&path, source, &Default::default())
         .unwrap()
         .diagnostics;
-    assert!(!issues.iter().any(|issue| issue.rule == "unused-signal"));
+    assert!(
+        !issues
+            .iter()
+            .any(|issue| issue.check_id() == "unused-signal")
+    );
 }
 
 /// A throwaway Godot project for the W9 rules.
@@ -215,7 +219,7 @@ impl TempProject {
         let mut found = Vec::new();
         for diagnostic in diagnostics {
             let text = source[diagnostic.span.start_byte..diagnostic.span.end_byte].to_string();
-            found.push((diagnostic.rule, text));
+            found.push((diagnostic.check_id().to_string(), text));
         }
         found
     }

@@ -44,6 +44,7 @@ fn report(
         });
     }
     diagnostics.push(Diagnostic {
+        check: None,
         rule: "godot3-syntax".to_string(),
         severity: Severity::Error,
         message: message.to_string(),

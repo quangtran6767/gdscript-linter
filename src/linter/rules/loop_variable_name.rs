@@ -45,6 +45,7 @@ impl Rule for LoopVariableNameRule {
             help = Some(format!("Rename it to '{}'.", suggestion));
         }
         diagnostics.push(Diagnostic {
+            check: None,
             rule: "loop-variable-name".to_string(),
             severity: Severity::Error,
             message: format!(

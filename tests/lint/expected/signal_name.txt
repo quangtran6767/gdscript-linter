@@ -1,7 +1,7 @@
-tests/lint/input/signal_name.gd:3:unused-local-signal:warning: Signal 'public_signal' is never used in this file.
-tests/lint/input/signal_name.gd:4:unused-local-signal:warning: Signal '_pseudo_private' is never used in this file.
-tests/lint/input/signal_name.gd:5:unused-local-signal:warning: Signal '__also_valid_pseudo_private' is never used in this file.
-tests/lint/input/signal_name.gd:11:signal-name:error: Signal name 'BadSignal' should be in snake_case format
-tests/lint/input/signal_name.gd:11:unused-local-signal:warning: Signal 'BadSignal' is never used in this file.
-tests/lint/input/signal_name.gd:12:signal-name:error: Signal name 'badSignal' should be in snake_case format
-tests/lint/input/signal_name.gd:12:unused-local-signal:warning: Signal 'badSignal' is never used in this file.
+tests/lint/input/signal_name.gd:3:unused-code:warning: Signal 'public_signal' is never used in this file.
+tests/lint/input/signal_name.gd:4:unused-code:warning: Signal '_pseudo_private' is never used in this file.
+tests/lint/input/signal_name.gd:5:unused-code:warning: Signal '__also_valid_pseudo_private' is never used in this file.
+tests/lint/input/signal_name.gd:11:naming-convention:error: Signal name 'BadSignal' should be in snake_case format
+tests/lint/input/signal_name.gd:11:unused-code:warning: Signal 'BadSignal' is never used in this file.
+tests/lint/input/signal_name.gd:12:naming-convention:error: Signal name 'badSignal' should be in snake_case format
+tests/lint/input/signal_name.gd:12:unused-code:warning: Signal 'badSignal' is never used in this file.

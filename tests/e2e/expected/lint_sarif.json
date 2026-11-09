@@ -10,22 +10,6 @@
           "informationUri": "https://github.com/GDQuest/GDScript-formatter",
           "rules": [
             {
-              "id": "comparison-with-itself",
-              "shortDescription": {
-                "text": "Comparing an expression with itself is always true or always false."
-              },
-              "fullDescription": {
-                "text": "`x == x` or `x != x` has a fixed result, so it is almost always a typo for a comparison with another value."
-              },
-              "defaultConfiguration": {
-                "level": "warning"
-              },
-              "properties": {
-                "fixable": false,
-                "origin": "builtin"
-              }
-            },
-            {
               "id": "duplicated-load",
               "shortDescription": {
                 "text": "The same resource path is loaded more than once in a file."
@@ -35,70 +19,6 @@
               },
               "defaultConfiguration": {
                 "level": "warning"
-              },
-              "properties": {
-                "fixable": false,
-                "origin": "builtin"
-              }
-            },
-            {
-              "id": "enum-member-name",
-              "shortDescription": {
-                "text": "Enum members use CONSTANT_CASE."
-              },
-              "fullDescription": {
-                "text": "Enum members are constants, so the GDScript style guide names them in CONSTANT_CASE."
-              },
-              "defaultConfiguration": {
-                "level": "error"
-              },
-              "properties": {
-                "fixable": false,
-                "origin": "builtin"
-              }
-            },
-            {
-              "id": "enum-name",
-              "shortDescription": {
-                "text": "Enum names use PascalCase."
-              },
-              "fullDescription": {
-                "text": "Enums are types, so the GDScript style guide names them in PascalCase like classes."
-              },
-              "defaultConfiguration": {
-                "level": "error"
-              },
-              "properties": {
-                "fixable": false,
-                "origin": "builtin"
-              }
-            },
-            {
-              "id": "function-name",
-              "shortDescription": {
-                "text": "Functions use snake_case (or _private_snake_case)."
-              },
-              "fullDescription": {
-                "text": "The GDScript style guide names functions in snake_case, like Godot's own API. A leading underscore marks private functions and virtual callbacks."
-              },
-              "defaultConfiguration": {
-                "level": "error"
-              },
-              "properties": {
-                "fixable": false,
-                "origin": "builtin"
-              }
-            },
-            {
-              "id": "loop-variable-name",
-              "shortDescription": {
-                "text": "Loop variables use snake_case."
-              },
-              "fullDescription": {
-                "text": "Loop variables are variables, so the GDScript style guide names them in snake_case."
-              },
-              "defaultConfiguration": {
-                "level": "error"
               },
               "properties": {
                 "fixable": false,
@@ -134,6 +54,22 @@
               },
               "properties": {
                 "fixable": true,
+                "origin": "builtin"
+              }
+            },
+            {
+              "id": "naming-convention",
+              "shortDescription": {
+                "text": "Declarations follow GDScript naming conventions."
+              },
+              "fullDescription": {
+                "text": "Combines class, signal, enum, enum-member, constant, variable, loaded-resource variable, function, argument and loop-variable naming. Classes and enums use PascalCase, constants and enum members CONSTANT_CASE, and other names snake_case with private prefixes where appropriate. Loaded resources also allow PascalCase. Renames require checking references, so no automatic fix is offered. Old check names remain accepted in config and ignores."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "fixable": false,
                 "origin": "builtin"
               }
             },
@@ -250,6 +186,22 @@
               }
             },
             {
+              "id": "redundant-expression",
+              "shortDescription": {
+                "text": "Expressions have an effect and don't compare or assign a value to itself."
+              },
+              "fullDescription": {
+                "text": "Combines comparison-with-itself, self-assignment and standalone-expression. These commonly indicate a typo, but the intended correction cannot be inferred. Member self-assignment is exempt because it may invoke a setter. Old check names remain accepted in config and ignores."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "fixable": false,
+                "origin": "builtin"
+              }
+            },
+            {
               "id": "scene-connection-missing-method",
               "shortDescription": {
                 "text": "Scene connections target methods the script defines."
@@ -266,28 +218,12 @@
               }
             },
             {
-              "id": "signal-name",
+              "id": "type-annotations",
               "shortDescription": {
-                "text": "Signals use snake_case."
+                "text": "Functions, parameters, variables, constants, signals and containers declare types."
               },
               "fullDescription": {
-                "text": "The GDScript style guide names signals in snake_case, usually in the past tense, like Godot's built-in signals."
-              },
-              "defaultConfiguration": {
-                "level": "error"
-              },
-              "properties": {
-                "fixable": false,
-                "origin": "builtin"
-              }
-            },
-            {
-              "id": "standalone-expression",
-              "shortDescription": {
-                "text": "Expressions on their own line have an effect."
-              },
-              "fullDescription": {
-                "text": "A line like `score + 1` computes a value and throws it away. It is usually a mistake for `score += 1` or a leftover."
+                "text": "Explicit types document contracts and let Godot check them. Includes function and lambda return types (including void), parameters, variables, constants, for-loop variables, signal parameters and Array/Dictionary arguments. Property accessors inherit their property's type. Explicit Variant is allowed for intentional dynamic values. With allow_inferred = true, := declarations and parameters are accepted without proving their inferred type. Types are never guessed or inserted automatically."
               },
               "defaultConfiguration": {
                 "level": "warning"
@@ -298,66 +234,18 @@
               }
             },
             {
-              "id": "unnecessary-pass",
+              "id": "unused-code",
               "shortDescription": {
-                "text": "No `pass` in a block that has other statements."
+                "text": "Variables, arguments, private functions and signals are used; redundant pass is removed."
               },
               "fullDescription": {
-                "text": "`pass` only exists to fill an empty block. Next to other statements it does nothing."
+                "text": "Combines unused variables, arguments, assigned-but-never-read values, private functions, local/project signals and unnecessary-pass. Project signal checks include script and scene connections, with a local fallback outside a project. Fix safety is per diagnostic: redundant pass removal is safe, variable removal and argument renaming unsafe, private-function removal suggestion-only; other checks have no fix. Old check names remain accepted in config, ignores, unsafe-fix allowlists and baselines."
               },
               "defaultConfiguration": {
                 "level": "warning"
               },
               "properties": {
                 "fixable": true,
-                "origin": "builtin"
-              }
-            },
-            {
-              "id": "unused-argument",
-              "shortDescription": {
-                "text": "Function arguments are used, or start with `_`."
-              },
-              "fullDescription": {
-                "text": "An unused argument is often a bug or a leftover. When the signature must stay (callbacks, overrides), prefix the name with `_` to say so."
-              },
-              "defaultConfiguration": {
-                "level": "warning"
-              },
-              "properties": {
-                "fixable": true,
-                "origin": "builtin"
-              }
-            },
-            {
-              "id": "unused-signal",
-              "shortDescription": {
-                "text": "Project signals are emitted or connected somewhere in the project."
-              },
-              "fullDescription": {
-                "text": "Unused signals can be removed after reviewing external and dynamic use. Script calls and scene connections count as use."
-              },
-              "defaultConfiguration": {
-                "level": "warning"
-              },
-              "properties": {
-                "fixable": false,
-                "origin": "builtin"
-              }
-            },
-            {
-              "id": "variable-name",
-              "shortDescription": {
-                "text": "Variables use snake_case (or _private_snake_case)."
-              },
-              "fullDescription": {
-                "text": "The GDScript style guide names variables in snake_case. A leading underscore marks private variables."
-              },
-              "defaultConfiguration": {
-                "level": "error"
-              },
-              "properties": {
-                "fixable": false,
                 "origin": "builtin"
               }
             }
@@ -367,8 +255,77 @@
       "columnKind": "utf16CodeUnits",
       "results": [
         {
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Constant 'MAX_LIVES' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "autoload/game_state.gd"
+                },
+                "region": {
+                  "startLine": 5,
+                  "startColumn": 7,
+                  "endLine": 5,
+                  "endColumn": 16
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Variable 'score' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "autoload/game_state.gd"
+                },
+                "region": {
+                  "startLine": 7,
+                  "startColumn": 5,
+                  "endLine": 7,
+                  "endColumn": 10
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Variable 'lives' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "autoload/game_state.gd"
+                },
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 5,
+                  "endLine": 8,
+                  "endColumn": 10
+                }
+              }
+            }
+          ]
+        },
+        {
           "ruleId": "missing-class-name",
-          "ruleIndex": 7,
+          "ruleIndex": 2,
           "level": "warning",
           "message": {
             "text": "Script has no class_name."
@@ -390,8 +347,8 @@
           ]
         },
         {
-          "ruleId": "signal-name",
-          "ruleIndex": 16,
+          "ruleId": "naming-convention",
+          "ruleIndex": 3,
           "level": "error",
           "message": {
             "text": "Signal name 'OnDefeated' should be in snake_case format"
@@ -413,8 +370,8 @@
           ]
         },
         {
-          "ruleId": "unused-signal",
-          "ruleIndex": 20,
+          "ruleId": "unused-code",
+          "ruleIndex": 14,
           "level": "warning",
           "message": {
             "text": "Signal 'OnDefeated' is never emitted or connected in this project."
@@ -436,7 +393,7 @@
           ]
         },
         {
-          "ruleId": "enum-name",
+          "ruleId": "naming-convention",
           "ruleIndex": 3,
           "level": "error",
           "message": {
@@ -459,8 +416,8 @@
           ]
         },
         {
-          "ruleId": "enum-member-name",
-          "ruleIndex": 2,
+          "ruleId": "naming-convention",
+          "ruleIndex": 3,
           "level": "error",
           "message": {
             "text": "Enum element name 'chase_player' should be in CONSTANT_CASE format"
@@ -482,8 +439,31 @@
           ]
         },
         {
-          "ruleId": "variable-name",
-          "ruleIndex": 21,
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Variable 'speed' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/enemies/enemy.gd"
+                },
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 5,
+                  "endLine": 10,
+                  "endColumn": 10
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "naming-convention",
+          "ruleIndex": 3,
           "level": "error",
           "message": {
             "text": "Variable name 'targetName' should be in snake_case or _private_snake_case format"
@@ -505,8 +485,31 @@
           ]
         },
         {
-          "ruleId": "function-name",
-          "ruleIndex": 4,
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Variable 'targetName' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/enemies/enemy.gd"
+                },
+                "region": {
+                  "startLine": 11,
+                  "startColumn": 5,
+                  "endLine": 11,
+                  "endColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "naming-convention",
+          "ruleIndex": 3,
           "level": "error",
           "message": {
             "text": "Function name 'moveTowards' should be in snake_case, _private_snake_case format"
@@ -528,8 +531,8 @@
           ]
         },
         {
-          "ruleId": "comparison-with-itself",
-          "ruleIndex": 0,
+          "ruleId": "redundant-expression",
+          "ruleIndex": 11,
           "level": "warning",
           "message": {
             "text": "Redundant comparison 'target == target' - comparing expression with itself"
@@ -552,7 +555,7 @@
         },
         {
           "ruleId": "no-else-return",
-          "ruleIndex": 8,
+          "ruleIndex": 4,
           "level": "warning",
           "message": {
             "text": "Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'"
@@ -575,7 +578,7 @@
         },
         {
           "ruleId": "private-access",
-          "ruleIndex": 14,
+          "ruleIndex": 10,
           "level": "error",
           "message": {
             "text": "Private variable '_health' should not be accessed from outside its class"
@@ -597,8 +600,8 @@
           ]
         },
         {
-          "ruleId": "unnecessary-pass",
-          "ruleIndex": 18,
+          "ruleId": "unused-code",
+          "ruleIndex": 14,
           "level": "warning",
           "message": {
             "text": "Unnecessary 'pass' statement when other statements are present"
@@ -621,7 +624,7 @@
         },
         {
           "ruleId": "scene-connection-missing-method",
-          "ruleIndex": 15,
+          "ruleIndex": 12,
           "level": "error",
           "message": {
             "text": "Scene 'res://scenes/player.tscn' connects signal 'body_entered' of node 'Hurtbox' to method '_on_hurtbox_body_entered', which this script doesn't define."
@@ -643,8 +646,77 @@
           ]
         },
         {
-          "ruleId": "unused-argument",
-          "ruleIndex": 19,
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Constant 'SPEED' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 6,
+                  "startColumn": 7,
+                  "endLine": 6,
+                  "endColumn": 12
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Array needs an element type."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 16,
+                  "endLine": 8,
+                  "endColumn": 21
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Variable '_health' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 5,
+                  "endLine": 9,
+                  "endColumn": 12
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "unused-code",
+          "ruleIndex": 14,
           "level": "note",
           "message": {
             "text": "Function argument 'delta' is unused. Consider removing it or prefixing with '_'"
@@ -666,8 +738,31 @@
           ]
         },
         {
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Variable 'health_bar' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 14,
+                  "startColumn": 6,
+                  "endLine": 14,
+                  "endColumn": 16
+                }
+              }
+            }
+          ]
+        },
+        {
           "ruleId": "no-get-node-in-process",
-          "ruleIndex": 9,
+          "ruleIndex": 5,
           "level": "error",
           "message": {
             "text": "Don't look up nodes in `_process()`; cache the node in an `@onready` variable"
@@ -690,7 +785,7 @@
         },
         {
           "ruleId": "prefer-is-empty-call",
-          "ruleIndex": 11,
+          "ruleIndex": 7,
           "level": "note",
           "message": {
             "text": "Use `inventory.is_empty()` to check whether `inventory` is empty."
@@ -713,7 +808,7 @@
         },
         {
           "ruleId": "prefer-is-empty",
-          "ruleIndex": 10,
+          "ruleIndex": 6,
           "level": "warning",
           "message": {
             "text": "Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero"
@@ -735,8 +830,8 @@
           ]
         },
         {
-          "ruleId": "unused-argument",
-          "ruleIndex": 19,
+          "ruleId": "unused-code",
+          "ruleIndex": 14,
           "level": "note",
           "message": {
             "text": "Function argument 'source' is unused. Consider removing it or prefixing with '_'"
@@ -759,7 +854,7 @@
         },
         {
           "ruleId": "prefer-is-empty-call",
-          "ruleIndex": 11,
+          "ruleIndex": 7,
           "level": "note",
           "message": {
             "text": "Use `not inventory.is_empty()` to check whether `inventory` is empty."
@@ -782,7 +877,7 @@
         },
         {
           "ruleId": "prefer-not-is-empty",
-          "ruleIndex": 12,
+          "ruleIndex": 8,
           "level": "warning",
           "message": {
             "text": "Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero"
@@ -805,7 +900,7 @@
         },
         {
           "ruleId": "missing-class-name",
-          "ruleIndex": 7,
+          "ruleIndex": 2,
           "level": "warning",
           "message": {
             "text": "Script has no class_name."
@@ -827,8 +922,31 @@
           ]
         },
         {
-          "ruleId": "prefer-uid-path",
+          "ruleId": "type-annotations",
           "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Constant 'PLAYER_SCENE' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/ui/hud.gd"
+                },
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 7,
+                  "endLine": 3,
+                  "endColumn": 19
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "prefer-uid-path",
+          "ruleIndex": 9,
           "level": "warning",
           "message": {
             "text": "Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'."
@@ -850,8 +968,31 @@
           ]
         },
         {
-          "ruleId": "prefer-uid-path",
+          "ruleId": "type-annotations",
           "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Variable 'icon_texture' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/ui/hud.gd"
+                },
+                "region": {
+                  "startLine": 5,
+                  "startColumn": 5,
+                  "endLine": 5,
+                  "endColumn": 17
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "prefer-uid-path",
+          "ruleIndex": 9,
           "level": "warning",
           "message": {
             "text": "Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'."
@@ -874,7 +1015,7 @@
         },
         {
           "ruleId": "duplicated-load",
-          "ruleIndex": 1,
+          "ruleIndex": 0,
           "level": "warning",
           "message": {
             "text": "Duplicated load of '\"res://icon.svg\"'. Consider extracting to a constant."
@@ -896,8 +1037,31 @@
           ]
         },
         {
-          "ruleId": "prefer-uid-path",
+          "ruleId": "type-annotations",
           "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Variable 'other_icon_texture' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/ui/hud.gd"
+                },
+                "region": {
+                  "startLine": 6,
+                  "startColumn": 5,
+                  "endLine": 6,
+                  "endColumn": 23
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "prefer-uid-path",
+          "ruleIndex": 9,
           "level": "warning",
           "message": {
             "text": "Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'."
@@ -920,7 +1084,7 @@
         },
         {
           "ruleId": "duplicated-load",
-          "ruleIndex": 1,
+          "ruleIndex": 0,
           "level": "warning",
           "message": {
             "text": "Duplicated load of '\"res://icon.svg\"'. Consider extracting to a constant."
@@ -942,8 +1106,8 @@
           ]
         },
         {
-          "ruleId": "loop-variable-name",
-          "ruleIndex": 5,
+          "ruleId": "naming-convention",
+          "ruleIndex": 3,
           "level": "error",
           "message": {
             "text": "Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format"
@@ -965,8 +1129,31 @@
           ]
         },
         {
-          "ruleId": "standalone-expression",
-          "ruleIndex": 17,
+          "ruleId": "type-annotations",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Loop variable 'MyIndex' needs a type annotation."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/ui/hud.gd"
+                },
+                "region": {
+                  "startLine": 11,
+                  "startColumn": 6,
+                  "endLine": 11,
+                  "endColumn": 13
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "redundant-expression",
+          "ruleIndex": 11,
           "level": "warning",
           "message": {
             "text": "Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect"
@@ -989,7 +1176,7 @@
         },
         {
           "ruleId": "max-line-length",
-          "ruleIndex": 6,
+          "ruleIndex": 1,
           "level": "warning",
           "message": {
             "text": "Line is too long. Found 118 characters, maximum allowed is 100"

@@ -50,6 +50,7 @@ impl Rule for UnnecessaryPassRule {
                 });
             }
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: "unnecessary-pass".to_string(),
                 severity: Severity::Warning,
                 message: "Unnecessary 'pass' statement when other statements are present"

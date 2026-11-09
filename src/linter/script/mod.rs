@@ -209,6 +209,7 @@ impl JsRuleProvider {
                 }
             }
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: meta.id.clone(),
                 severity: meta.default_severity,
                 message: value["message"]
@@ -245,6 +246,7 @@ impl RuleProvider for JsRuleProvider {
             match self.run_rule(index, context, &options) {
                 Ok(issues) => diagnostics.extend(issues),
                 Err(message) => diagnostics.push(Diagnostic {
+                    check: None,
                     rule: "script-error".to_string(),
                     severity: Severity::Error,
                     message,

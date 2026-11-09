@@ -38,6 +38,7 @@ impl Rule for SelfAssignmentRule {
                             });
                     if is_local {
                         diagnostics.push(Diagnostic {
+                            check: None,
                             rule: "self-assignment".to_string(),
                             severity: Severity::Warning,
                             message: format!("'{}' is assigned to itself.", name),

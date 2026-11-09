@@ -1,1 +1,3 @@
-tests/lint/input/unnecessary_pass.gd:12:unnecessary-pass:warning: Unnecessary 'pass' statement when other statements are present
+tests/lint/input/unnecessary_pass.gd:3:type-annotations:warning: Function 'good' needs a return type.
+tests/lint/input/unnecessary_pass.gd:10:type-annotations:warning: Function 'bad' needs a return type.
+tests/lint/input/unnecessary_pass.gd:12:unused-code:warning: Unnecessary 'pass' statement when other statements are present

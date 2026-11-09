@@ -187,6 +187,7 @@ impl SemanticRule {
                 }
             }
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: self.id.to_string(),
                 severity: Severity::Warning,
                 message,

@@ -10,6 +10,7 @@ fn payload_conversion_preserves_unicode_spans_help_and_fixes() {
     let start = source.find('😀').unwrap();
     let span = Span::from_byte_range(source, start, start + 4);
     let diagnostic = Diagnostic {
+        check: None,
         rule: "test-rule".to_string(),
         severity: Severity::Warning,
         message: "message".to_string(),
@@ -76,14 +77,14 @@ fn editor_config_cache_refreshes_after_same_session_edits() {
     let config = root.join("gdguard.toml");
     std::fs::write(&config, "[rules]\nvariable-name='error'\n").unwrap();
     let path = root.join("main.gd");
-    let source = "var badName = 1\n";
+    let source = "var badName: int = 1\n";
     let mut session = EditorSession::default();
     assert!(
         session
             .lint(&path, source)
             .unwrap()
             .iter()
-            .any(|issue| issue.rule == "variable-name")
+            .any(|issue| issue.check_id() == "variable-name")
     );
     std::fs::write(config, "[rules]\nvariable-name='off'\n").unwrap();
     assert!(session.lint(&path, source).unwrap().is_empty());

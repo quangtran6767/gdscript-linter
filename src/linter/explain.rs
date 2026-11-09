@@ -92,8 +92,20 @@ pub fn explain(rule_id: &str, metas: &[RuleMeta]) -> Result<String, String> {
             return Ok(format_explain(meta));
         }
     }
+    // Granular names stay explainable without cluttering --list-rules.
+    if let Some(meta) = super::rules_meta::builtin_rule_meta(rule_id) {
+        return Ok(format_explain(&meta));
+    }
     let mut message = format!("unknown rule `{}`", rule_id);
-    if let Some(suggestion) = closest_rule_id(rule_id, metas) {
+    let mut suggestions = metas.to_vec();
+    for group in super::rule_groups::RULE_GROUPS {
+        for check in group.checks {
+            if let Some(meta) = super::rules_meta::builtin_rule_meta(check) {
+                suggestions.push(meta);
+            }
+        }
+    }
+    if let Some(suggestion) = closest_rule_id(rule_id, &suggestions) {
         message.push_str(&format!("; did you mean `{}`?", suggestion));
     }
     message.push_str("\nRun `gdguard lint --list-rules` to see every rule.");

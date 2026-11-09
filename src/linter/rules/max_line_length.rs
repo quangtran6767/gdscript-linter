@@ -48,6 +48,7 @@ impl Rule for MaxLineLengthRule {
             }
 
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: "max-line-length".to_string(),
                 severity: Severity::Warning,
                 message: format!(

@@ -1,3 +1,6 @@
+tests/lint/input/single_line_container_type.gd:8:type-annotations:warning: Variable 'text' needs a type annotation.
+tests/lint/input/single_line_container_type.gd:19:type-annotations:warning: Variable 'lambda' needs a type annotation.
+tests/lint/input/single_line_container_type.gd:19:type-annotations:warning: Lambda needs a return type.
 tests/lint/input/single_line_container_type.gd:28:single-line-container-type:error: Keep the Array type on one line; Godot rejects a line break inside its brackets.
 tests/lint/input/single_line_container_type.gd:31:declaration-order:warning: constant `TABLE` should come before variables
 tests/lint/input/single_line_container_type.gd:31:single-line-container-type:error: Keep the Dictionary type on one line; Godot rejects a line break inside its brackets.

@@ -54,6 +54,7 @@ impl Rule for PreferArrayMethodRule {
                 continue;
             };
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: RULE_ID.to_string(),
                 severity: Severity::Info,
                 message: format!("This loop can be `{}`.", found.method),

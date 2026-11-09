@@ -107,6 +107,7 @@ pub fn check_files(
             let source = source.as_deref().unwrap_or("");
             let diagnostics: &mut Vec<Diagnostic> = results.entry(file.clone()).or_default();
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: GODOT_ERROR_RULE_ID.to_string(),
                 severity: Severity::Error,
                 message,

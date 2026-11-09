@@ -73,7 +73,7 @@ struct CommandOutput {
 }
 
 /// Two private-access issues and one constant-name issue.
-const PLAYER: &str = "class_name Player\nconst bad_name = 1\n\n\nfunc f(enemy):\n\tenemy._hidden()\n\tenemy._other()\n";
+const PLAYER: &str = "class_name Player\nconst bad_name: int = 1\n\n\nfunc f(enemy: Variant) -> void:\n\tenemy._hidden()\n\tenemy._other()\n";
 
 #[test]
 fn update_writes_a_sorted_stable_file_and_hides_every_issue() {

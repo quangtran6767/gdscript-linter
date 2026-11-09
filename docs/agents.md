@@ -100,6 +100,7 @@ is stable: readers should accept additional fields.
 | `tool.name`, `tool.version` | Tool identity and build version |
 | `summary` | `files`, `errors`, `warnings`, `infos`, `fixable`, `baseline_hidden` counts |
 | `issues[].file`, `rule`, `origin`, `severity` | File, rule ID, `builtin`/`custom`, `error`/`warning`/`info` |
+| `check` | Optional granular ID for consolidated rules; old IDs still work in ignores and config. |
 | `message`, `help`, `snippet`, `explain` | Explanation, nullable help, first source line, explain command |
 | `range.start`, `range.end` | 1-based `line` and UTF-8 byte `column`, 0-based absolute `byte`; exclusive end |
 | `fixes[]` | `description`, `safety` (`safe`/`unsafe`/`suggestion`), `edits[]` |

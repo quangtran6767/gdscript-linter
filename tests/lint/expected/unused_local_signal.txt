@@ -1,1 +1,2 @@
-tests/lint/input/unused_local_signal.gd:1:unused-local-signal:warning: Signal 'unused' is never used in this file.
+tests/lint/input/unused_local_signal.gd:1:unused-code:warning: Signal 'unused' is never used in this file.
+tests/lint/input/unused_local_signal.gd:5:type-annotations:warning: Function 'f' needs a return type.

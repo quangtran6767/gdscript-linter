@@ -40,6 +40,7 @@ impl Rule for EnumMemberNameRule {
                         help = Some(format!("Rename it to '{}'.", suggestion));
                     }
                     diagnostics.push(Diagnostic {
+                        check: None,
                         rule: "enum-member-name".to_string(),
                         severity: Severity::Error,
                         message: format!(

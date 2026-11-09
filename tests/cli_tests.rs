@@ -145,13 +145,13 @@ fn github_and_sarif_formats_report_issues() {
         "{}",
         stdout
     );
-    assert!(stdout.contains(",title=function-name::"));
+    assert!(stdout.contains(",title=naming-convention::"));
 
     let (exit_code, stdout, stderr) =
         run_and_capture(&directory, &["lint", "--format=sarif", "a.gd"]);
     assert_eq!(exit_code, 1, "{}", stderr);
     let log: serde_json::Value = serde_json::from_str(&stdout).expect("sarif should parse");
-    assert_eq!(log["runs"][0]["results"][0]["ruleId"], "function-name");
+    assert_eq!(log["runs"][0]["results"][0]["ruleId"], "naming-convention");
     assert_eq!(
         log["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"],
         "a.gd"
@@ -176,7 +176,7 @@ fn list_rules_text_output_lists_rules_sorted_by_id() {
         .expect("should list rules");
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).expect("stdout should be valid UTF-8");
-    assert!(stdout.starts_with("Available linting rules:\n  assigned-but-never-read "));
+    assert!(stdout.starts_with("Available linting rules:\n  declaration-order "));
     assert!(stdout.contains("\n  duplicated-load "));
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
 }
@@ -223,13 +223,13 @@ fn directory_with_files(files: &[(&str, &str)]) -> std::path::PathBuf {
     directory
 }
 
-const CLEAN_SCRIPT: &str = "var health = 1\n";
+const CLEAN_SCRIPT: &str = "var health: int = 1\n";
 // One `unused-argument` warning.
-const SCRIPT_WITH_ONE_WARNING: &str = "func f(unused):\n\tpass\n";
+const SCRIPT_WITH_ONE_WARNING: &str = "func f(unused: int) -> void:\n\tpass\n";
 // Two `unused-argument` warnings.
-const SCRIPT_WITH_TWO_WARNINGS: &str = "func f(first, second):\n\tpass\n";
+const SCRIPT_WITH_TWO_WARNINGS: &str = "func f(first: int, second: int) -> void:\n\tpass\n";
 // One `function-name` error.
-const SCRIPT_WITH_ONE_ERROR: &str = "func badName():\n\tpass\n";
+const SCRIPT_WITH_ONE_ERROR: &str = "func badName() -> void:\n\tpass\n";
 
 #[test]
 fn lint_exit_code_is_0_when_clean() {
@@ -358,7 +358,7 @@ fn lint_default_output_is_compact_when_not_a_terminal() {
     assert_eq!(exit_code, 1);
     assert_eq!(
         stdout,
-        "error.gd:1:6: error [function-name] Function name 'badName' should be in snake_case, _private_snake_case format\n"
+        "error.gd:1:6: error [naming-convention] Function name 'badName' should be in snake_case, _private_snake_case format\n"
     );
     // `--pretty` is kept as an alias of `--format pretty`.
     let (_, pretty_stdout, _) = run_and_capture(&directory, &["lint", "--pretty", "error.gd"]);
@@ -366,7 +366,7 @@ fn lint_default_output_is_compact_when_not_a_terminal() {
         run_and_capture(&directory, &["lint", "--format", "pretty", "error.gd"]);
     assert_eq!(pretty_stdout, format_stdout);
     assert!(
-        pretty_stdout.contains("1 | func badName():\n"),
+        pretty_stdout.contains("1 | func badName() -> void:\n"),
         "{}",
         pretty_stdout
     );
@@ -380,7 +380,11 @@ fn lint_json_output_is_valid_json() {
         run_and_capture(&directory, &["lint", "--format", "json", "error.gd"]);
     assert_eq!(exit_code, 1);
     assert!(stdout.starts_with("{\n  \"version\": 1,\n"), "{}", stdout);
-    assert!(stdout.contains("\"rule\": \"function-name\""), "{}", stdout);
+    assert!(
+        stdout.contains("\"rule\": \"naming-convention\""),
+        "{}",
+        stdout
+    );
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
 }
 
@@ -398,7 +402,7 @@ fn lint_reads_the_nearest_gdguard_toml() {
     assert_eq!(exit_code, 0, "{}", stdout);
     let (exit_code, stdout, _) = run_and_capture(&directory, &["lint", "warning.gd"]);
     assert_eq!(exit_code, 1);
-    assert!(stdout.contains(": error [unused-argument]"), "{}", stdout);
+    assert!(stdout.contains(": error [unused-code]"), "{}", stdout);
     fs::remove_dir_all(directory).expect("should remove temporary test directory");
 }
 
@@ -458,8 +462,11 @@ fn lint_skips_excluded_files() {
 fn primary_binary_and_legacy_alias_match_and_support_the_agent_fix_loop() {
     let directory = test_directory();
     let path = directory.join("player.gd");
-    fs::write(&path, "var badName = 1\nfunc f():\n\tprint(1)\n\tpass\n")
-        .expect("write agent fixture");
+    fs::write(
+        &path,
+        "var badName: int = 1\nfunc f() -> void:\n\tprint(1)\n\tpass\n",
+    )
+    .expect("write agent fixture");
     let run = |binary: &str, args: &[&str]| {
         Command::new(binary)
             .current_dir(&directory)
@@ -484,14 +491,14 @@ fn primary_binary_and_legacy_alias_match_and_support_the_agent_fix_loop() {
         serde_json::from_slice(&fixed.stdout).expect("pure JSON stdout");
     let issues = report["issues"].as_array().expect("issues");
     assert_eq!(issues.len(), 1);
-    assert_eq!(issues[0]["rule"], "variable-name");
+    assert_eq!(issues[0]["rule"], "naming-convention");
     assert!(
         !issues[0]["help"]
             .as_str()
             .expect("actionable help")
             .is_empty()
     );
-    assert_eq!(issues[0]["explain"], "gdguard explain variable-name");
+    assert_eq!(issues[0]["explain"], "gdguard explain naming-convention");
     let source = fs::read_to_string(&path).expect("fixed file");
     assert!(!source.contains("pass"));
     fs::write(&path, source.replace("badName", "good_name"))
@@ -581,7 +588,7 @@ fn added_resource_files_invalidate_cached_missing_path_results() {
     fs::write(directory.join("gdguard.toml"), "[rules]\n").expect("config");
     fs::write(
         directory.join("main.gd"),
-        "class_name Main\nvar icon = load(\"res://icon.png\")\n",
+        "class_name Main\nvar icon: Texture2D = load(\"res://icon.png\")\n",
     )
     .expect("script");
     let run = || {

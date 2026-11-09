@@ -1,7 +1,13 @@
-tests/lint/input/function_name.gd:6:unused-private-function:warning: Private function '_private_good_func' is never referenced in this file.
-tests/lint/input/function_name.gd:13:function-name:error: Function name 'BadFunc' should be in snake_case, _private_snake_case format
-tests/lint/input/function_name.gd:16:function-name:error: Function name '_PrivateBadFunc' should be in snake_case, _private_snake_case format
-tests/lint/input/function_name.gd:16:unused-private-function:warning: Private function '_PrivateBadFunc' is never referenced in this file.
+tests/lint/input/function_name.gd:3:type-annotations:warning: Function 'good_func' needs a return type.
+tests/lint/input/function_name.gd:6:type-annotations:warning: Function '_private_good_func' needs a return type.
+tests/lint/input/function_name.gd:6:unused-code:warning: Private function '_private_good_func' is never referenced in this file.
+tests/lint/input/function_name.gd:13:naming-convention:error: Function name 'BadFunc' should be in snake_case, _private_snake_case format
+tests/lint/input/function_name.gd:13:type-annotations:warning: Function 'BadFunc' needs a return type.
+tests/lint/input/function_name.gd:16:naming-convention:error: Function name '_PrivateBadFunc' should be in snake_case, _private_snake_case format
+tests/lint/input/function_name.gd:16:type-annotations:warning: Function '_PrivateBadFunc' needs a return type.
+tests/lint/input/function_name.gd:16:unused-code:warning: Private function '_PrivateBadFunc' is never referenced in this file.
 tests/lint/input/function_name.gd:19:declaration-order:warning: method `Bad_Func` should come before method `_PrivateBadFunc`
-tests/lint/input/function_name.gd:19:function-name:error: Function name 'Bad_Func' should be in snake_case, _private_snake_case format
-tests/lint/input/function_name.gd:22:function-name:error: Function name 'bad_Func' should be in snake_case, _private_snake_case format
+tests/lint/input/function_name.gd:19:naming-convention:error: Function name 'Bad_Func' should be in snake_case, _private_snake_case format
+tests/lint/input/function_name.gd:19:type-annotations:warning: Function 'Bad_Func' needs a return type.
+tests/lint/input/function_name.gd:22:naming-convention:error: Function name 'bad_Func' should be in snake_case, _private_snake_case format
+tests/lint/input/function_name.gd:22:type-annotations:warning: Function 'bad_Func' needs a return type.

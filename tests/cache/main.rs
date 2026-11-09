@@ -267,7 +267,10 @@ fn no_cache_flag_ignores_and_keeps_the_cache() {
 #[test]
 fn no_config_means_no_cache_folder() {
     let project = TempProject::new();
-    project.write("scripts/player.gd", "func f(enemy):\n\tenemy._hidden()\n");
+    project.write(
+        "scripts/player.gd",
+        "func f(enemy: Variant) -> void:\n\tenemy._hidden()\n",
+    );
     let output = project.lint(&["scripts"]);
     assert!(output.contains("private-access"), "{}", output);
     assert!(!project.exists(".gdguard"));
@@ -281,7 +284,7 @@ fn parallel_output_follows_the_input_order() {
         let name = format!("scripts/file_{:02}.gd", index);
         project.write(
             &name,
-            "func f(enemy):\n\tenemy._hidden()\n\tenemy._other()\n",
+            "func f(enemy: Variant) -> void:\n\tenemy._hidden()\n\tenemy._other()\n",
         );
         names.push(name);
     }

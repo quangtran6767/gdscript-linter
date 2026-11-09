@@ -25,7 +25,8 @@ use crate::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span
 // results so cached safe fixes cannot bypass the corrected dependency check.
 // W11 adds five built-in rules: results cached before them would hide their
 // diagnostics, since the package version didn't change.
-pub const CACHE_VERSION: u32 = 7;
+// Consolidated diagnostic identities and new type-annotation checks.
+pub const CACHE_VERSION: u32 = 8;
 
 /// The cache file, relative to the folder of `gdguard.toml`.
 pub const CACHE_PATH: &str = ".gdguard/cache/lint.json";
@@ -63,10 +64,11 @@ pub fn settings_hash(settings: &FileSettings) -> String {
     // ordered. The tool version is part of the cache key, so a change in the
     // Debug format between versions can't produce a false hit.
     let text = format!(
-        "disabled={:?};max_line_length={};indent_size={};levels={:?};options={:?}",
+        "disabled={:?};max_line_length={};indent_size={};allow_inferred_types={};levels={:?};options={:?}",
         disabled_rules,
         settings.linter_config.max_line_length,
         settings.linter_config.indent_size,
+        settings.linter_config.allow_inferred_types,
         settings.levels,
         settings.rule_options
     );
@@ -118,6 +120,7 @@ struct CachedFix {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct CachedDiagnostic {
     rule: String,
+    check: Option<String>,
     severity: String,
     message: String,
     help: Option<String>,
@@ -300,6 +303,7 @@ fn store_diagnostic(diagnostic: &Diagnostic) -> CachedDiagnostic {
     }
     CachedDiagnostic {
         rule: diagnostic.rule.clone(),
+        check: diagnostic.check.clone(),
         severity: diagnostic.severity.as_str().to_string(),
         message: diagnostic.message.clone(),
         help: diagnostic.help.clone(),
@@ -328,6 +332,7 @@ fn restore_diagnostic(cached: &CachedDiagnostic, source: &str) -> Option<Diagnos
         });
     }
     Some(Diagnostic {
+        check: cached.check.clone(),
         rule: cached.rule.clone(),
         severity: Severity::from_name(&cached.severity)?,
         message: cached.message.clone(),
@@ -358,7 +363,8 @@ mod tests {
         let start = source.find("pass").unwrap();
         let span = Span::from_byte_range(source, start, start + 4);
         Diagnostic {
-            rule: "unnecessary-pass".to_string(),
+            check: Some("unnecessary-pass".to_string()),
+            rule: "unused-code".to_string(),
             severity: Severity::Warning,
             message: "Unnecessary 'pass'".to_string(),
             help: Some("Remove it.".to_string()),

@@ -63,8 +63,9 @@ impl Rule for PreferSquaredDistanceRule {
                 "length_squared"
             };
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: RULE_ID.to_string(),
-                severity: Severity::Warning,
+                severity: Severity::Info,
                 message: format!(
                     "Compare `{}()` with the squared threshold instead of `{}()`.",
                     squared_method, method_text

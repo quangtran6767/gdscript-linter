@@ -24,6 +24,7 @@ impl Rule for UnreachableCodeRule {
                     .named_child(node.named_child_count() as u32 - 1)
                     .map_or(child.end_byte(), |last| last.end_byte());
                 diagnostics.push(Diagnostic {
+                    check: None,
                     rule: "unreachable-code".to_string(),
                     severity: Severity::Warning,
                     message: format!("Unreachable code after '{}'.", exit),

@@ -58,7 +58,7 @@ fn fresh_folder_gets_a_valid_config_and_example_rule() {
 fn starter_config_lists_defaults_with_descriptions() {
     let config = starter_config();
     assert!(config.contains(
-        "\nunused-argument                 = \"warning\"                            # Function arguments are used, or start with `_`.\n"
+        "\nunused-code                     = \"warning\"                            # Variables, arguments, private functions and signals are used; redundant pass is removed.\n"
     ), "{}", config);
     assert!(
         config.contains(
@@ -68,7 +68,7 @@ fn starter_config_lists_defaults_with_descriptions() {
         config
     );
     assert!(
-        config.contains("\nclass-name                      = \"error\""),
+        config.contains("\nnaming-convention               = \"error\""),
         "{}",
         config
     );

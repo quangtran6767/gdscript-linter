@@ -6,6 +6,16 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
+- `type-annotations` (warning, no fix) requires explicit types for function/lambda returns, parameters, variables, constants, loop variables, signal parameters and Array/Dictionary arguments. `allow_inferred = true` permits `:=`; explicit `Variant` is allowed.
+- Related checks now share `naming-convention`, `unused-code` and `redundant-expression`, reducing the built-in catalog from 45 to 29 entries including the new typing rule. Existing check IDs remain supported in config, overrides, CLI disables, ignores, unsafe-fix allowlists, explanations and baselines. Grouped JSON issues add an optional `check` field.
+
+### Changed
+
+- `prefer-squared-distance` defaults to info instead of warning; its fix remains unsafe.
+- Cache version 8 invalidates results predating consolidated rules and type annotations.
+
+### Added
+
 - Linter: `[fix] format = true` in `gdguard.toml` makes `lint --fix`/`--fix-unsafe` format every checked file (with the formatter's structure check), so agents never fix formatting by hand. The summary adds `, formatted K files`.
 - Linter: five built-in rules learned from a working game project: `single-line-container-type` (error, safe fix; Godot rejects a line break inside `Array[...]`/`Dictionary[...]` types but the parser accepts it), `prefer-is-empty-call` (info, safe fix), `prefer-squared-distance` (warning, unsafe fix), `prefer-array-method` (info, unsafe fix: loops to `any`/`all`/`filter`/`map`/`assign`) and `prefer-unique-node-name` (info, unsafe fix: `$Path/Node` to `%Node` for the scene's unique nodes).
 - Linter: `[fix] unsafe = true` or `unsafe = ["rule-id", ...]` makes `lint --fix` (and the agent hook) apply those unsafe fixes too.

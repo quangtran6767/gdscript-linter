@@ -39,6 +39,8 @@ struct JsonSummary {
 struct JsonIssue<'a> {
     file: &'a str,
     rule: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    check: Option<&'a str>,
     origin: &'static str,
     severity: &'static str,
     message: &'a str,
@@ -136,6 +138,7 @@ pub fn write_json(report: &LintReport, output: &mut String) -> Result<(), String
             issues.push(JsonIssue {
                 file: &file.path,
                 rule: &diagnostic.rule,
+                check: diagnostic.check.as_deref(),
                 origin,
                 severity: diagnostic.severity.as_str(),
                 message: &diagnostic.message,

@@ -160,7 +160,7 @@ fn unused_local_fixes_are_unsafe_and_do_not_remove_calls() {
         .unwrap()
         .diagnostics
         .into_iter()
-        .find(|diagnostic| diagnostic.rule == "unused-variable")
+        .find(|diagnostic| diagnostic.check_id() == "unused-variable")
         .unwrap();
     assert!(diagnostic.fixes.is_empty());
 }
@@ -174,7 +174,7 @@ fn semantic_rule_exemptions_cover_virtuals_underscores_and_string_signals() {
         .unwrap()
         .diagnostics;
     assert!(!diagnostics.iter().any(|diagnostic| matches!(
-        diagnostic.rule.as_str(),
+        diagnostic.check_id(),
         "unused-variable" | "unused-private-function" | "unused-local-signal"
     )));
 }

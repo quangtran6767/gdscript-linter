@@ -1,8 +1,17 @@
+tests/lint/input/max_line_length.gd:3:type-annotations:warning: Variable 'short_and_sweet' needs a type annotation.
+tests/lint/input/max_line_length.gd:9:type-annotations:warning: Variable 'really_long_variable_name' needs a type annotation.
 tests/lint/input/max_line_length.gd:9:max-line-length:warning: Line is too long. Found 128 characters, maximum allowed is 100
+tests/lint/input/max_line_length.gd:12:type-annotations:warning: Function 'bad' needs a return type.
+tests/lint/input/max_line_length.gd:13:type-annotations:warning: Variable 'array' needs a type annotation.
 tests/lint/input/max_line_length.gd:13:max-line-length:warning: Line is too long. Found 103 characters, maximum allowed is 100
-tests/lint/input/max_line_length.gd:15:unused-variable:warning: Variable 'i' is never used.
-tests/lint/input/max_line_length.gd:16:unused-variable:warning: Variable 'j' is never used.
-tests/lint/input/max_line_length.gd:17:unused-variable:warning: Variable 'k' is never used.
-tests/lint/input/max_line_length.gd:18:unused-variable:warning: Variable 'l' is never used.
-tests/lint/input/max_line_length.gd:19:unused-variable:warning: Variable 'm' is never used.
+tests/lint/input/max_line_length.gd:15:type-annotations:warning: Loop variable 'i' needs a type annotation.
+tests/lint/input/max_line_length.gd:15:unused-code:warning: Variable 'i' is never used.
+tests/lint/input/max_line_length.gd:16:type-annotations:warning: Loop variable 'j' needs a type annotation.
+tests/lint/input/max_line_length.gd:16:unused-code:warning: Variable 'j' is never used.
+tests/lint/input/max_line_length.gd:17:type-annotations:warning: Loop variable 'k' needs a type annotation.
+tests/lint/input/max_line_length.gd:17:unused-code:warning: Variable 'k' is never used.
+tests/lint/input/max_line_length.gd:18:type-annotations:warning: Loop variable 'l' needs a type annotation.
+tests/lint/input/max_line_length.gd:18:unused-code:warning: Variable 'l' is never used.
+tests/lint/input/max_line_length.gd:19:type-annotations:warning: Loop variable 'm' needs a type annotation.
+tests/lint/input/max_line_length.gd:19:unused-code:warning: Variable 'm' is never used.
 tests/lint/input/max_line_length.gd:20:max-line-length:warning: Line is too long. Found 110 characters, maximum allowed is 100

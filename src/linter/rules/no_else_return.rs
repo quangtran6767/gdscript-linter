@@ -216,6 +216,7 @@ impl Rule for NoElseReturnRule {
                         fixes.push(fix);
                     }
                     diagnostics.push(Diagnostic {
+                        check: None,
                         rule: "no-else-return".to_string(),
                         severity: Severity::Warning,
                         message: "Unnecessary 'elif' after 'if' block that ends with 'return'. Use 'if' instead".to_string(),
@@ -239,6 +240,7 @@ impl Rule for NoElseReturnRule {
                     fixes.push(fix);
                 }
                 diagnostics.push(Diagnostic {
+                    check: None,
                     rule: "no-else-return".to_string(),
                     severity: Severity::Warning,
                     message: "Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'"

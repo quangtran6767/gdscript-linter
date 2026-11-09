@@ -1,8 +1,34 @@
+tests/lint/input/prefer_array_method.gd:7:type-annotations:warning: Loop variable 'index' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:14:type-annotations:warning: Loop variable 'node' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:22:type-annotations:warning: Loop variable 'node' needs a type annotation.
 tests/lint/input/prefer_array_method.gd:25:no-else-return:warning: Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'
-tests/lint/input/prefer_array_method.gd:68:unused-variable:warning: Variable 'node' is never used.
+tests/lint/input/prefer_array_method.gd:31:type-annotations:warning: Loop variable 'node' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:38:type-annotations:warning: Loop variable 'node' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:44:type-annotations:warning: Parameter 'items' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:44:type-annotations:warning: Array needs an element type.
+tests/lint/input/prefer_array_method.gd:45:type-annotations:warning: Variable 'result' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:46:type-annotations:warning: Loop variable 'item' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:51:type-annotations:warning: Array needs an element type.
+tests/lint/input/prefer_array_method.gd:52:type-annotations:warning: Variable 'result' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:53:type-annotations:warning: Loop variable 'node' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:59:type-annotations:warning: Array needs an element type.
+tests/lint/input/prefer_array_method.gd:60:type-annotations:warning: Variable 'result' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:61:type-annotations:warning: Loop variable 'node' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:66:type-annotations:warning: Array needs an element type.
+tests/lint/input/prefer_array_method.gd:67:type-annotations:warning: Variable 'result' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:68:type-annotations:warning: Loop variable 'node' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:68:unused-code:warning: Variable 'node' is never used.
 tests/lint/input/prefer_array_method.gd:77:prefer-array-method:info: This loop can be `any`.
+tests/lint/input/prefer_array_method.gd:77:type-annotations:warning: Loop variable 'node' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:83:type-annotations:warning: Array needs an element type.
 tests/lint/input/prefer_array_method.gd:84:prefer-array-method:info: This loop can be `all`.
+tests/lint/input/prefer_array_method.gd:84:type-annotations:warning: Loop variable 'item' needs a type annotation.
 tests/lint/input/prefer_array_method.gd:91:prefer-array-method:info: This loop can be `all`.
 tests/lint/input/prefer_array_method.gd:99:prefer-array-method:info: This loop can be `filter`.
+tests/lint/input/prefer_array_method.gd:99:type-annotations:warning: Loop variable 'node' needs a type annotation.
+tests/lint/input/prefer_array_method.gd:105:type-annotations:warning: Array needs an element type.
+tests/lint/input/prefer_array_method.gd:106:type-annotations:warning: Variable 'names' needs a type annotation.
 tests/lint/input/prefer_array_method.gd:107:prefer-array-method:info: This loop can be `map`.
+tests/lint/input/prefer_array_method.gd:107:type-annotations:warning: Loop variable 'node' needs a type annotation.
 tests/lint/input/prefer_array_method.gd:114:prefer-array-method:info: This loop can be `assign`.
+tests/lint/input/prefer_array_method.gd:114:type-annotations:warning: Loop variable 'node' needs a type annotation.

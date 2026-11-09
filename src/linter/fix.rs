@@ -182,11 +182,11 @@ pub fn fix_source_with_settings(
     if !failed_keys.is_empty() {
         let mut failed_diagnostics = Vec::new();
         for diagnostic in &diagnostics {
-            let allows_unsafe = allow_unsafe || settings.allows_unsafe_fix(&diagnostic.rule);
+            let allows_unsafe = allow_unsafe || settings.allows_unsafe_fix(diagnostic.check_id());
             let Some(edits) = first_allowed_fix_edits(diagnostic, allows_unsafe) else {
                 continue;
             };
-            let key = fix_key(&diagnostic.rule, edits, &current);
+            let key = fix_key(diagnostic.check_id(), edits, &current);
             if failed_keys.contains(&key) {
                 failed_diagnostics.push(fix_failed_diagnostic(diagnostic));
             }
@@ -261,11 +261,11 @@ fn collect_candidates(
     candidates: &mut Vec<FixCandidate>,
 ) {
     for diagnostic in diagnostics {
-        let allows_unsafe = allow_unsafe || settings.allows_unsafe_fix(&diagnostic.rule);
+        let allows_unsafe = allow_unsafe || settings.allows_unsafe_fix(diagnostic.check_id());
         let Some(edits) = first_allowed_fix_edits(diagnostic, allows_unsafe) else {
             continue;
         };
-        let key = fix_key(&diagnostic.rule, edits, source);
+        let key = fix_key(diagnostic.check_id(), edits, source);
         if failed_keys.contains(&key) {
             continue;
         }
@@ -355,6 +355,7 @@ fn apply_checked(
 
 fn fix_failed_diagnostic(diagnostic: &Diagnostic) -> Diagnostic {
     Diagnostic {
+        check: None,
         rule: FIX_FAILED_RULE_ID.to_string(),
         severity: Severity::Warning,
         message: format!(

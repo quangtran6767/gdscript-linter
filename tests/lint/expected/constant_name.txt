@@ -1,5 +1,14 @@
+tests/lint/input/constant_name.gd:3:type-annotations:warning: Constant 'GOOD_NAME' needs a type annotation.
+tests/lint/input/constant_name.gd:4:type-annotations:warning: Constant '_PRIVATE_GOOD_NAME' needs a type annotation.
 tests/lint/input/constant_name.gd:7:declaration-order:warning: constant `GOOD_LOAD` should come before constant `_PRIVATE_GOOD_NAME`
-tests/lint/input/constant_name.gd:14:constant-name:error: Constant name 'bad_name' should be in CONSTANT_CASE format
-tests/lint/input/constant_name.gd:15:constant-name:error: Constant name '_private_bad_name' should be in CONSTANT_CASE format
-tests/lint/input/constant_name.gd:16:constant-name:error: Constant name 'AnotherBadName' should be in CONSTANT_CASE format
-tests/lint/input/constant_name.gd:18:constant-name:error: Preload constant name 'bad_preload' should be in PascalCase or CONSTANT_CASE format
+tests/lint/input/constant_name.gd:7:type-annotations:warning: Constant 'GOOD_LOAD' needs a type annotation.
+tests/lint/input/constant_name.gd:8:type-annotations:warning: Constant 'ClassNameLoad' needs a type annotation.
+tests/lint/input/constant_name.gd:14:naming-convention:error: Constant name 'bad_name' should be in CONSTANT_CASE format
+tests/lint/input/constant_name.gd:14:type-annotations:warning: Constant 'bad_name' needs a type annotation.
+tests/lint/input/constant_name.gd:15:naming-convention:error: Constant name '_private_bad_name' should be in CONSTANT_CASE format
+tests/lint/input/constant_name.gd:15:type-annotations:warning: Constant '_private_bad_name' needs a type annotation.
+tests/lint/input/constant_name.gd:16:naming-convention:error: Constant name 'AnotherBadName' should be in CONSTANT_CASE format
+tests/lint/input/constant_name.gd:16:type-annotations:warning: Constant 'AnotherBadName' needs a type annotation.
+tests/lint/input/constant_name.gd:18:naming-convention:error: Preload constant name 'bad_preload' should be in PascalCase or CONSTANT_CASE format
+tests/lint/input/constant_name.gd:18:type-annotations:warning: Constant 'bad_preload' needs a type annotation.
+tests/lint/input/constant_name.gd:21:type-annotations:warning: Constant 'BAD_LOAD' needs a type annotation.

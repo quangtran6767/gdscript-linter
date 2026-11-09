@@ -1,2 +1,6 @@
+tests/lint/input/shadowed_variable.gd:1:type-annotations:warning: Variable 'value' needs a type annotation.
+tests/lint/input/shadowed_variable.gd:2:type-annotations:warning: Function 'f' needs a return type.
+tests/lint/input/shadowed_variable.gd:2:type-annotations:warning: Parameter 'value' needs a type annotation.
 tests/lint/input/shadowed_variable.gd:2:shadowed-variable:warning: Variable 'value' shadows an outer declaration.
+tests/lint/input/shadowed_variable.gd:4:type-annotations:warning: Variable 'value' needs a type annotation.
 tests/lint/input/shadowed_variable.gd:4:shadowed-variable:warning: Variable 'value' shadows an outer declaration.

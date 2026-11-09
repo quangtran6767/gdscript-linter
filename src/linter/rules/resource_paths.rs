@@ -159,6 +159,7 @@ impl Rule for MissingResourcePathRule {
                 "Check the path for a typo, or create the resource. Paths are case-sensitive in exported games."
             };
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: "missing-resource-path".to_string(),
                 severity: Severity::Error,
                 message: format!("Resource '{}' does not exist in this project.", load.path),
@@ -199,6 +200,7 @@ impl Rule for PreferUidPathRule {
             };
             let span = Span::from_node(&load.node);
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: "prefer-uid-path".to_string(),
                 severity: Severity::Warning,
                 message: format!("Load '{}' by its UID '{}'.", load.path, uid),

@@ -41,6 +41,7 @@ impl Rule for DuplicateDictionaryKeyRule {
             };
             if let Some((_, line)) = seen.iter().find(|(previous, _)| *previous == normalized) {
                 diagnostics.push(Diagnostic {
+                    check: None,
                     rule: "duplicate-dictionary-key".to_string(),
                     severity: Severity::Error,
                     message: format!(

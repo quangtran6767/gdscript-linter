@@ -24,6 +24,7 @@ impl Rule for StandaloneExpressionRule {
         }
         let expr_text = get_node_text(&expr_child, source_code);
         diagnostics.push(Diagnostic {
+            check: None,
             rule: "standalone-expression".to_string(),
             severity: Severity::Warning,
             message: format!(

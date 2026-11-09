@@ -36,6 +36,7 @@ impl Rule for PrivateAccessRule {
                     return;
                 }
                 diagnostics.push(Diagnostic {
+                    check: None,
                     rule: "private-access".to_string(),
                     severity: Severity::Error,
                     message: format!(
@@ -56,6 +57,7 @@ impl Rule for PrivateAccessRule {
                     return;
                 }
                 diagnostics.push(Diagnostic {
+                    check: None,
                     rule: "private-access".to_string(),
                     severity: Severity::Error,
                     message: format!(

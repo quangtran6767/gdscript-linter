@@ -1,6 +1,6 @@
 # Built-in rules
 
-gdguard has 45 built-in rules. This page lists them all, grouped by what they catch. The same text is available offline:
+gdguard has 29 built-in rules. This page lists them all, grouped by what they catch. The same text is available offline:
 
 ```sh
 gdguard lint --list-rules     # one line per rule
@@ -18,55 +18,78 @@ max-line-length = { level = "warning", max = 120 }
 
 Levels: **error** and **warning** fail the run (warnings up to `--max-warnings N` are allowed); **info** never does. `lint --fix` applies **safe** fixes, `--fix-unsafe` also applies **unsafe** ones, and **suggestions** are never applied automatically. To have `lint --fix` (and the agent hook) apply some unsafe fixes too, list their rules: `[fix] unsafe = ["prefer-squared-distance"]`, or `unsafe = true` for all. Silence one line with `# gdguard-ignore-next-line <rule> -- reason`.
 
+## Consolidated rules and compatibility
+
+Related checks share one rule name in reports and the catalog. `naming-convention` combines ten naming checks, `unused-code` combines seven unused-code checks, and `redundant-expression` combines three expression checks. `type-annotations` covers the typing policy in one rule. Other checks remain separate where their purpose or severity differs.
+
+Old check IDs still work in config, overrides, `--disable`, ignore comments, `explain`, unsafe-fix allowlists and existing baselines. JSON diagnostics for consolidated rules include an optional `check` field with the granular ID. Within one config table, a granular setting wins over its group; a later folder override wins over earlier settings. A group ignore suppresses the whole group on that line, while an old check ignore remains specific.
+
 ## All rules
 
 | Rule | Level | Fix | Group |
 | --- | --- | --- | --- |
+| [`type-annotations`](#type-annotations) | warning |  | Typing |
+| [`redundant-expression`](#redundant-expression) | warning |  | Likely bugs |
+| [`unused-code`](#unused-code) | warning | safe/unsafe/suggestion | Unused code |
+| [`naming-convention`](#naming-convention) | error |  | Naming and style |
 | [`parse-error`](#parse-error) | error |  | Syntax and Godot 4 compatibility |
 | [`godot3-syntax`](#godot3-syntax) | error | safe/unsafe | Syntax and Godot 4 compatibility |
 | [`single-line-container-type`](#single-line-container-type) | error | safe | Syntax and Godot 4 compatibility |
-| [`comparison-with-itself`](#comparison-with-itself) | warning |  | Likely bugs |
-| [`self-assignment`](#self-assignment) | warning |  | Likely bugs |
-| [`standalone-expression`](#standalone-expression) | warning |  | Likely bugs |
 | [`unreachable-code`](#unreachable-code) | warning |  | Likely bugs |
 | [`duplicate-dictionary-key`](#duplicate-dictionary-key) | error |  | Likely bugs |
 | [`shadowed-variable`](#shadowed-variable) | warning |  | Likely bugs |
 | [`private-access`](#private-access) | error |  | Likely bugs |
-| [`unused-variable`](#unused-variable) | warning | unsafe | Unused code |
-| [`unused-argument`](#unused-argument) | warning | unsafe | Unused code |
-| [`assigned-but-never-read`](#assigned-but-never-read) | warning |  | Unused code |
-| [`unused-private-function`](#unused-private-function) | warning | suggestion | Unused code |
-| [`unused-local-signal`](#unused-local-signal) | warning |  | Unused code |
-| [`unnecessary-pass`](#unnecessary-pass) | warning | safe | Unused code |
 | [`unused-ignore`](#unused-ignore) | warning | safe | Unused code |
 | [`duplicate-class-name`](#duplicate-class-name) | error |  | Project rules |
 | [`missing-class-name`](#missing-class-name) | warning | unsafe | Project rules |
 | [`scene-connection-missing-method`](#scene-connection-missing-method) | error |  | Project rules |
 | [`missing-resource-path`](#missing-resource-path) | error |  | Project rules |
 | [`prefer-uid-path`](#prefer-uid-path) | warning | safe | Project rules |
-| [`unused-signal`](#unused-signal) | warning |  | Project rules |
 | [`unknown-member-on-project-class`](#unknown-member-on-project-class) | warning |  | Project rules |
 | [`prefer-unique-node-name`](#prefer-unique-node-name) | info | unsafe | Project rules |
 | [`declaration-order`](#declaration-order) | warning | safe/unsafe | Naming and style |
-| [`class-name`](#class-name) | error |  | Naming and style |
-| [`signal-name`](#signal-name) | error |  | Naming and style |
-| [`enum-name`](#enum-name) | error |  | Naming and style |
-| [`enum-member-name`](#enum-member-name) | error |  | Naming and style |
-| [`constant-name`](#constant-name) | error |  | Naming and style |
-| [`variable-name`](#variable-name) | error |  | Naming and style |
-| [`load-variable-name`](#load-variable-name) | error |  | Naming and style |
-| [`function-name`](#function-name) | error |  | Naming and style |
-| [`function-argument-name`](#function-argument-name) | error |  | Naming and style |
-| [`loop-variable-name`](#loop-variable-name) | error |  | Naming and style |
 | [`max-line-length`](#max-line-length) | warning |  | Naming and style |
 | [`no-else-return`](#no-else-return) | warning | safe/unsafe | Naming and style |
 | [`duplicated-load`](#duplicated-load) | warning |  | Naming and style |
 | [`prefer-is-empty-call`](#prefer-is-empty-call) | info | safe | Naming and style |
-| [`prefer-squared-distance`](#prefer-squared-distance) | warning | unsafe | Naming and style |
+| [`prefer-squared-distance`](#prefer-squared-distance) | info | unsafe | Naming and style |
 | [`prefer-array-method`](#prefer-array-method) | info | unsafe | Naming and style |
 | [`fix-failed`](#fix-failed) | warning |  | Tool messages |
 | [`script-error`](#script-error) | error |  | Tool messages |
 | [`godot-error`](#godot-error) | error |  | Tool messages |
+
+## Typing
+
+### `type-annotations`
+
+**warning**
+
+Functions, parameters, variables, constants, signals and containers declare types.
+
+Explicit types document contracts and let Godot check them. Includes function and lambda return types (including void), parameters, variables, constants, for-loop variables, signal parameters and Array/Dictionary arguments. Property accessors inherit their property's type. Explicit Variant is allowed for intentional dynamic values. With allow_inferred = true, := declarations and parameters are accepted without proving their inferred type. Types are never guessed or inserted automatically.
+
+Bad:
+
+```gdscript
+func f():
+	pass
+```
+
+Good:
+
+```gdscript
+func f() -> void:
+	pass
+```
+
+The default requires explicit annotations. To allow `:=` for declarations and default parameters:
+
+```toml
+[rules]
+type-annotations = { level = "warning", allow_inferred = true }
+```
+
+This option permits inference syntax; it does not verify that Godot can infer a useful type. Untyped `var x = 1` still reports. Functions and lambdas still need return types and loops need element annotations. Empty signals need no parameter annotations. Getter/setter types come from their property. `Variant` is an intentional escape hatch, and packed arrays already specify their element type. No fixes are offered.
 
 ## Syntax and Godot 4 compatibility
 
@@ -143,7 +166,33 @@ func living() -> Array[Node]:
 
 Code that runs but probably doesn't do what was meant.
 
-### `comparison-with-itself`
+### `redundant-expression`
+
+**warning**
+
+Expressions have an effect and don't compare or assign a value to itself.
+
+Combines comparison-with-itself, self-assignment and standalone-expression. These commonly indicate a typo, but the intended correction cannot be inferred. Member self-assignment is exempt because it may invoke a setter. Old check names remain accepted in config and ignores.
+
+Bad:
+
+```gdscript
+func add_point(score: int) -> int:
+	score + 1
+	return score
+```
+
+Good:
+
+```gdscript
+func add_point(score: int) -> int:
+	score += 1
+	return score
+```
+
+The following compatibility checks describe the individual cases.
+
+#### `comparison-with-itself`
 
 **warning**
 
@@ -165,7 +214,7 @@ func is_target(target, other):
 	return target == other
 ```
 
-### `self-assignment`
+#### `self-assignment`
 
 **warning**
 
@@ -188,7 +237,7 @@ func set_speed(value):
 	speed = value
 ```
 
-### `standalone-expression`
+#### `standalone-expression`
 
 **warning**
 
@@ -308,7 +357,32 @@ func damage(enemy):
 
 Dead code and leftovers.
 
-### `unused-variable`
+### `unused-code`
+
+**warning** · fix: safe/unsafe/suggestion (depends on the check)
+
+Variables, arguments, private functions and signals are used; redundant pass is removed.
+
+Combines unused variables, arguments, assigned-but-never-read values, private functions, local/project signals and unnecessary-pass. Project signal checks include script and scene connections, with a local fallback outside a project. Fix safety is per diagnostic: redundant pass removal is safe, variable removal and argument renaming unsafe, private-function removal suggestion-only; other checks have no fix. Old check names remain accepted in config, ignores, unsafe-fix allowlists and baselines.
+
+Bad:
+
+```gdscript
+func f() -> void:
+	var value: int = 1
+```
+
+Good:
+
+```gdscript
+func f() -> void:
+	var value: int = 1
+	print(value)
+```
+
+The following compatibility checks retain their individual fix safety.
+
+#### `unused-variable`
 
 **warning** · fix: unsafe (removes the declaration)
 
@@ -331,7 +405,7 @@ func f():
 	print(value)
 ```
 
-### `unused-argument`
+#### `unused-argument`
 
 **warning** · fix: unsafe (prefixes the name with `_`)
 
@@ -353,7 +427,7 @@ func _process(_delta):
 	print("tick")
 ```
 
-### `assigned-but-never-read`
+#### `assigned-but-never-read`
 
 **warning**
 
@@ -378,7 +452,7 @@ func f():
 	print(value)
 ```
 
-### `unused-private-function`
+#### `unused-private-function`
 
 **warning** · fix: suggestion only (never applied automatically)
 
@@ -402,7 +476,7 @@ func f():
 	_helper()
 ```
 
-### `unused-local-signal`
+#### `unused-local-signal`
 
 **warning**
 
@@ -424,7 +498,7 @@ func f():
 	changed.emit()
 ```
 
-### `unnecessary-pass`
+#### `unnecessary-pass`
 
 **warning** · fix: safe
 
@@ -580,7 +654,7 @@ Good:
 const Data = preload("uid://cexampledata")
 ```
 
-### `unused-signal`
+#### `unused-signal`
 
 **warning**
 
@@ -688,7 +762,29 @@ signal died
 var health = 100
 ```
 
-### `class-name`
+### `naming-convention`
+
+**error**
+
+Declarations follow GDScript naming conventions.
+
+Combines class, signal, enum, enum-member, constant, variable, loaded-resource variable, function, argument and loop-variable naming. Classes and enums use PascalCase, constants and enum members CONSTANT_CASE, and other names snake_case with private prefixes where appropriate. Loaded resources also allow PascalCase. Renames require checking references, so no automatic fix is offered. Old check names remain accepted in config and ignores.
+
+Bad:
+
+```gdscript
+var targetName: String = ""
+```
+
+Good:
+
+```gdscript
+var target_name: String = ""
+```
+
+The following compatibility checks describe each naming convention.
+
+#### `class-name`
 
 **error**
 
@@ -710,7 +806,7 @@ class_name PlayerController
 extends Node
 ```
 
-### `signal-name`
+#### `signal-name`
 
 **error**
 
@@ -730,7 +826,7 @@ Good:
 signal defeated
 ```
 
-### `enum-name`
+#### `enum-name`
 
 **error**
 
@@ -750,7 +846,7 @@ Good:
 enum State { IDLE, RUN }
 ```
 
-### `enum-member-name`
+#### `enum-member-name`
 
 **error**
 
@@ -770,7 +866,7 @@ Good:
 enum State { IDLE, CHASE_PLAYER }
 ```
 
-### `constant-name`
+#### `constant-name`
 
 **error**
 
@@ -791,7 +887,7 @@ const MAX_SPEED = 10
 const Bullet = preload("res://bullet.tscn")
 ```
 
-### `variable-name`
+#### `variable-name`
 
 **error**
 
@@ -811,7 +907,7 @@ Good:
 var target_name = ""
 ```
 
-### `load-variable-name`
+#### `load-variable-name`
 
 **error**
 
@@ -831,7 +927,7 @@ Good:
 var PlayerScene = load("res://player.tscn")
 ```
 
-### `function-name`
+#### `function-name`
 
 **error**
 
@@ -853,7 +949,7 @@ func move_towards(target):
 	print(target)
 ```
 
-### `function-argument-name`
+#### `function-argument-name`
 
 **error**
 
@@ -875,7 +971,7 @@ func move(target_position):
 	print(target_position)
 ```
 
-### `loop-variable-name`
+#### `loop-variable-name`
 
 **error**
 
@@ -996,7 +1092,7 @@ func has_items(items: Array) -> bool:
 
 ### `prefer-squared-distance`
 
-**warning** · fix: unsafe
+**info** · fix: unsafe
 
 Distance and length comparisons on vectors use the squared forms.
 

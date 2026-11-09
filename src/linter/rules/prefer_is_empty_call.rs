@@ -69,6 +69,7 @@ impl Rule for PreferIsEmptyCallRule {
                 replacement = format!("({})", replacement);
             }
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: RULE_ID.to_string(),
                 severity: Severity::Info,
                 message: format!(

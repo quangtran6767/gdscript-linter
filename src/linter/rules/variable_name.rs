@@ -81,6 +81,7 @@ impl Rule for VariableNameRule {
             help = Some(format!("Rename it to '{}'.", suggestion));
         }
         diagnostics.push(Diagnostic {
+            check: None,
             rule: rule.to_string(),
             severity: Severity::Error,
             message,

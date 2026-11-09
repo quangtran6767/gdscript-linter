@@ -20,7 +20,7 @@ struct BuiltinInfo {
     good_example: &'static str,
 }
 
-const BUILTIN_RULES: [BuiltinInfo; 45] = [
+const BUILTIN_RULES: [BuiltinInfo; 46] = [
     BuiltinInfo {
         id: "assigned-but-never-read",
         severity: Severity::Warning,
@@ -239,7 +239,7 @@ const BUILTIN_RULES: [BuiltinInfo; 45] = [
     },
     BuiltinInfo {
         id: "prefer-squared-distance",
-        severity: Severity::Warning,
+        severity: Severity::Info,
         fixable: true,
         description: "Distance and length comparisons on vectors use the squared forms.",
         rationale: "`distance_squared_to()` and `length_squared()` skip a square root, which matters in per-frame range checks. Receivers must be known float vectors (declared Vector2/3/4, `position`, `global_position`, or their sums and differences) and the threshold free of calls. The fix is unsafe: a negative threshold or rounding exactly on the boundary can change the result.",
@@ -337,6 +337,15 @@ const BUILTIN_RULES: [BuiltinInfo; 45] = [
         good_example: "func add_point(score):\n\tscore += 1\n\treturn score\n",
     },
     BuiltinInfo {
+        id: "type-annotations",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "Functions, parameters, variables, constants, signals and containers declare types.",
+        rationale: "Explicit types document contracts and let Godot check them. Includes function and lambda return types (including void), parameters, variables, constants, for-loop variables, signal parameters and Array/Dictionary arguments. Property accessors inherit their property's type. Explicit Variant is allowed for intentional dynamic values. With allow_inferred = true, := declarations and parameters are accepted without proving their inferred type. Types are never guessed or inserted automatically.",
+        bad_example: "func f():\n\tpass\n",
+        good_example: "func f() -> void:\n\tpass\n",
+    },
+    BuiltinInfo {
         id: "unknown-member-on-project-class",
         severity: Severity::Warning,
         fixable: false,
@@ -428,6 +437,36 @@ const BUILTIN_RULES: [BuiltinInfo; 45] = [
     },
 ];
 
+const GROUP_RULES: &[BuiltinInfo] = &[
+    BuiltinInfo {
+        id: "naming-convention",
+        severity: Severity::Error,
+        fixable: false,
+        description: "Declarations follow GDScript naming conventions.",
+        rationale: "Combines class, signal, enum, enum-member, constant, variable, loaded-resource variable, function, argument and loop-variable naming. Classes and enums use PascalCase, constants and enum members CONSTANT_CASE, and other names snake_case with private prefixes where appropriate. Loaded resources also allow PascalCase. Renames require checking references, so no automatic fix is offered. Old check names remain accepted in config and ignores.",
+        bad_example: "var targetName: String = \"\"\n",
+        good_example: "var target_name: String = \"\"\n",
+    },
+    BuiltinInfo {
+        id: "redundant-expression",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "Expressions have an effect and don't compare or assign a value to itself.",
+        rationale: "Combines comparison-with-itself, self-assignment and standalone-expression. These commonly indicate a typo, but the intended correction cannot be inferred. Member self-assignment is exempt because it may invoke a setter. Old check names remain accepted in config and ignores.",
+        bad_example: "func add_point(score: int) -> int:\n\tscore + 1\n\treturn score\n",
+        good_example: "func add_point(score: int) -> int:\n\tscore += 1\n\treturn score\n",
+    },
+    BuiltinInfo {
+        id: "unused-code",
+        severity: Severity::Warning,
+        fixable: true,
+        description: "Variables, arguments, private functions and signals are used; redundant pass is removed.",
+        rationale: "Combines unused variables, arguments, assigned-but-never-read values, private functions, local/project signals and unnecessary-pass. Project signal checks include script and scene connections, with a local fallback outside a project. Fix safety is per diagnostic: redundant pass removal is safe, variable removal and argument renaming unsafe, private-function removal suggestion-only; other checks have no fix. Old check names remain accepted in config, ignores, unsafe-fix allowlists and baselines.",
+        bad_example: "func f() -> void:\n\tvar value: int = 1\n",
+        good_example: "func f() -> void:\n\tvar value: int = 1\n\tprint(value)\n",
+    },
+];
+
 fn to_meta(info: &BuiltinInfo) -> RuleMeta {
     RuleMeta {
         id: info.id.to_string(),
@@ -445,13 +484,24 @@ fn to_meta(info: &BuiltinInfo) -> RuleMeta {
 pub fn builtin_rule_metas() -> Vec<RuleMeta> {
     let mut metas = Vec::with_capacity(BUILTIN_RULES.len());
     for info in &BUILTIN_RULES {
+        if super::rule_groups::rule_id(info.id) == info.id {
+            metas.push(to_meta(info));
+        }
+    }
+    for info in GROUP_RULES {
         metas.push(to_meta(info));
     }
+    metas.sort_by(|left, right| left.id.cmp(&right.id));
     metas
 }
 
 /// The metadata of one built-in rule id.
 pub fn builtin_rule_meta(id: &str) -> Option<RuleMeta> {
+    for info in GROUP_RULES {
+        if info.id == id {
+            return Some(to_meta(info));
+        }
+    }
     for info in &BUILTIN_RULES {
         if info.id == id {
             return Some(to_meta(info));
@@ -559,7 +609,11 @@ mod tests {
         assert!(builtin_rule_meta("fix-failed").is_some());
         assert!(builtin_rule_meta("unused-ignore").is_some());
         assert!(builtin_rule_meta("godot-error").is_some());
-        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 6);
+        assert_eq!(
+            BUILTIN_RULES.len(),
+            super::super::rules::ALL_RULES.len() + 6
+        );
+        assert_eq!(builtin_rule_metas().len(), get_all_rule_names().len() + 5);
     }
 
     #[test]
@@ -579,7 +633,7 @@ mod tests {
         for info in &BUILTIN_RULES {
             let diagnostics = lint_example(info, info.bad_example);
             for diagnostic in &diagnostics {
-                if diagnostic.rule == info.id {
+                if diagnostic.check_id() == info.id {
                     assert_eq!(diagnostic.severity, info.severity, "rule `{}`", info.id);
                 }
             }
@@ -600,7 +654,7 @@ mod tests {
             let bad = lint_example(info, info.bad_example);
             let mut reported = false;
             for diagnostic in &bad {
-                if diagnostic.rule == info.id {
+                if diagnostic.check_id() == info.id {
                     reported = true;
                 }
             }
@@ -609,9 +663,11 @@ mod tests {
             let good = lint_example(info, info.good_example);
             for diagnostic in &good {
                 assert_ne!(
-                    diagnostic.rule, info.id,
+                    diagnostic.check_id(),
+                    info.id,
                     "good example of `{}` is reported: {}",
-                    info.id, diagnostic.message
+                    info.id,
+                    diagnostic.message
                 );
             }
         }

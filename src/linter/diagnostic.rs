@@ -159,6 +159,9 @@ pub struct Fix {
 pub struct Diagnostic {
     /// Rule id, for example "prefer-is-empty". Built-in or custom.
     pub rule: String,
+    /// Granular check within a consolidated rule, or None for standalone rules.
+    /// Old config names, ignores and baseline fingerprints use this identity.
+    pub check: Option<String>,
     pub severity: Severity,
     /// What is wrong, in one sentence.
     pub message: String,
@@ -167,6 +170,16 @@ pub struct Diagnostic {
     pub span: Span,
     /// Usually zero or one.
     pub fixes: Vec<Fix>,
+}
+
+impl Diagnostic {
+    pub fn check_id(&self) -> &str {
+        self.check.as_deref().unwrap_or(&self.rule)
+    }
+
+    pub fn matches_rule(&self, id: &str) -> bool {
+        self.rule == id || self.check_id() == id
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

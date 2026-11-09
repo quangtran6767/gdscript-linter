@@ -105,7 +105,8 @@ pub struct Fix {
 }
 
 pub struct Diagnostic {
-    pub rule: String,          // "prefer-is-empty", built-in or custom id
+    pub rule: String,          // public consolidated rule or custom id
+    pub check: Option<String>, // granular built-in check, when consolidated
     pub severity: Severity,
     pub message: String,       // what is wrong, one sentence
     pub help: Option<String>,  // how to fix it, one or two sentences
@@ -593,6 +594,35 @@ Godot prints warnings only when the project sets them to error
 `godot-error` is `off` aren't loaded; rule levels apply. Ignore comments,
 the lint cache and `unused-ignore` don't apply to `godot-error`; the
 baseline does. One Godot process may run for 300 s.
+
+## Consolidated rules and annotation policy
+
+The public catalog contains 29 entries. `naming-convention` combines class,
+signal, enum, enum-member, constant, variable, loaded-resource variable,
+function, argument and loop-variable naming. `unused-code` combines unused
+variables, arguments, private functions, local/project signals,
+assigned-but-never-read values and unnecessary-pass. `redundant-expression`
+combines comparison-with-itself, self-assignment and standalone-expression.
+Each diagnostic uses the consolidated `rule` and an optional granular
+`check`. Fix safety remains per diagnostic; consolidation never upgrades it.
+
+Granular names remain valid in config, overrides, CLI disables, ignore
+comments, unsafe-fix allowlists and explain. A specific check wins over its
+group within one rules table; later overrides win over earlier tables.
+Baselines keep granular identities and fingerprints for compatibility.
+Custom-rule IDs cannot collide with either public or legacy built-in IDs.
+Cache version 8 invalidates older diagnostics.
+
+`type-annotations` is a default warning with no fixes. It requires explicit
+annotations on function/lambda returns, function/lambda parameters, variables,
+constants, for-loop variables, signal parameters and Array/Dictionary type
+arguments. Property getter/setter signatures inherit the property's type.
+`Variant` is accepted explicitly for dynamic values. Packed array types
+already specify their element type. `allow_inferred` is the only option,
+a boolean defaulting to false; true accepts `:=` declarations/default
+parameters without promising inference correctness. Syntax errors suppress
+annotation checks; valid empty enums remain supported. Godot validates types.
+`prefer-squared-distance` now defaults to info and retains its unsafe fix.
 
 ## JSON output (schema version 1)
 

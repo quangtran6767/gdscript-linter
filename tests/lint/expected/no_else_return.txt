@@ -1,2 +1,6 @@
+tests/lint/input/no_else_return.gd:3:type-annotations:warning: Function 'good' needs a return type.
+tests/lint/input/no_else_return.gd:3:type-annotations:warning: Parameter 'value' needs a type annotation.
+tests/lint/input/no_else_return.gd:18:type-annotations:warning: Function 'bad' needs a return type.
+tests/lint/input/no_else_return.gd:18:type-annotations:warning: Parameter 'value' needs a type annotation.
 tests/lint/input/no_else_return.gd:22:no-else-return:warning: Unnecessary 'elif' after 'if' block that ends with 'return'. Use 'if' instead
 tests/lint/input/no_else_return.gd:25:no-else-return:warning: Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'

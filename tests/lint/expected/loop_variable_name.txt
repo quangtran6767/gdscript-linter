@@ -1,3 +1,13 @@
-tests/lint/input/loop_variable_name.gd:23:loop-variable-name:error: Loop variable 'A' should be in snake_case_or _private_snake_case format
-tests/lint/input/loop_variable_name.gd:26:loop-variable-name:error: Loop variable 'Something' should be in snake_case_or _private_snake_case format
-tests/lint/input/loop_variable_name.gd:29:loop-variable-name:error: Loop variable 'someValue' should be in snake_case_or _private_snake_case format
+tests/lint/input/loop_variable_name.gd:1:type-annotations:warning: Variable 'array' needs a type annotation.
+tests/lint/input/loop_variable_name.gd:5:type-annotations:warning: Function 'good' needs a return type.
+tests/lint/input/loop_variable_name.gd:6:type-annotations:warning: Loop variable 'i' needs a type annotation.
+tests/lint/input/loop_variable_name.gd:9:type-annotations:warning: Loop variable 'some_value' needs a type annotation.
+tests/lint/input/loop_variable_name.gd:12:type-annotations:warning: Loop variable '_i' needs a type annotation.
+tests/lint/input/loop_variable_name.gd:15:type-annotations:warning: Loop variable '_some_value' needs a type annotation.
+tests/lint/input/loop_variable_name.gd:22:type-annotations:warning: Function 'bad' needs a return type.
+tests/lint/input/loop_variable_name.gd:23:naming-convention:error: Loop variable 'A' should be in snake_case_or _private_snake_case format
+tests/lint/input/loop_variable_name.gd:23:type-annotations:warning: Loop variable 'A' needs a type annotation.
+tests/lint/input/loop_variable_name.gd:26:naming-convention:error: Loop variable 'Something' should be in snake_case_or _private_snake_case format
+tests/lint/input/loop_variable_name.gd:26:type-annotations:warning: Loop variable 'Something' needs a type annotation.
+tests/lint/input/loop_variable_name.gd:29:naming-convention:error: Loop variable 'someValue' should be in snake_case_or _private_snake_case format
+tests/lint/input/loop_variable_name.gd:29:type-annotations:warning: Loop variable 'someValue' needs a type annotation.

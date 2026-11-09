@@ -1,1 +1,3 @@
+tests/lint/input/declaration_order_exported.gd:4:type-annotations:warning: Variable 'health' needs a type annotation.
 tests/lint/input/declaration_order_exported.gd:5:declaration-order:warning: exported variable `max_health` should come before variables
+tests/lint/input/declaration_order_exported.gd:5:type-annotations:warning: Variable 'max_health' needs a type annotation.

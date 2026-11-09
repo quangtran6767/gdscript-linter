@@ -14,6 +14,7 @@ pub mod ignore_patterns;
 pub mod lib;
 pub mod regex_patterns;
 pub mod rule_config;
+pub mod rule_groups;
 pub mod rules;
 
 // Track A modules.
@@ -62,6 +63,8 @@ pub struct LinterConfig {
     pub disabled_rules: HashSet<String>,
     pub max_line_length: usize,
     pub indent_size: usize,
+    /// Whether `type-annotations` accepts `:=` in place of explicit types.
+    pub allow_inferred_types: bool,
 }
 
 impl Default for LinterConfig {
@@ -70,6 +73,7 @@ impl Default for LinterConfig {
             disabled_rules: HashSet::new(),
             max_line_length: 100,
             indent_size: 4,
+            allow_inferred_types: false,
         }
     }
 }
@@ -221,9 +225,17 @@ pub fn apply_rule_levels(levels: &BTreeMap<String, RuleLevel>, diagnostics: &mut
     if levels.is_empty() {
         return;
     }
-    diagnostics.retain(|diagnostic| levels.get(&diagnostic.rule) != Some(&RuleLevel::Off));
+    diagnostics.retain(|diagnostic| {
+        levels
+            .get(diagnostic.check_id())
+            .or_else(|| levels.get(&diagnostic.rule))
+            != Some(&RuleLevel::Off)
+    });
     for diagnostic in diagnostics.iter_mut() {
-        match levels.get(&diagnostic.rule) {
+        match levels
+            .get(diagnostic.check_id())
+            .or_else(|| levels.get(&diagnostic.rule))
+        {
             Some(RuleLevel::Error) => diagnostic.severity = Severity::Error,
             Some(RuleLevel::Warning) => diagnostic.severity = Severity::Warning,
             Some(RuleLevel::Info) => diagnostic.severity = Severity::Info,
@@ -1063,6 +1075,7 @@ fn run_builtin_rules_in_context(
     if !config.disabled_rules.contains("parse-error") {
         if let Some(node) = first_parse_error(tree, source_code) {
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: "parse-error".to_string(),
                 severity: diagnostic::Severity::Error,
                 message: if node.is_missing() {
@@ -1084,7 +1097,11 @@ fn run_builtin_rules_in_context(
         {
             continue;
         }
-        if !config.disabled_rules.contains(current_rule.name) {
+        if !config.disabled_rules.contains(current_rule.name)
+            && !config
+                .disabled_rules
+                .contains(rule_groups::rule_id(current_rule.name))
+        {
             checkers.push((current_rule.create)(config));
         }
     }
@@ -1119,6 +1136,7 @@ fn run_builtin_rules_in_context(
             checker.check_project_context(context, analysis, diagnostics);
         }
     }
+    rule_groups::consolidate(diagnostics);
 }
 
 /// The grammar requires at least one enum item, while Godot 4.7 accepts

@@ -79,6 +79,11 @@ fn test_lint_file(file_path: &Path) {
         actual_output.pop();
     }
 
+    if std::env::var_os("UPDATE_SNAPSHOTS").is_some() {
+        fs::write(&expected_path, &actual_output).unwrap();
+        return;
+    }
+
     assert_eq!(
         actual_output.trim(),
         expected_content.trim(),

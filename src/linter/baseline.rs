@@ -218,7 +218,7 @@ pub fn entries_for_report(
         for (index, diagnostic) in file.diagnostics.iter().enumerate() {
             entries.push(BaselineEntry {
                 file: file_key.clone(),
-                rule: diagnostic.rule.clone(),
+                rule: diagnostic.check_id().to_string(),
                 fingerprint: fingerprints[index].clone(),
                 message: diagnostic.message.clone(),
             });
@@ -249,7 +249,7 @@ pub fn apply_baseline(
         for (index, diagnostic) in file.diagnostics.drain(..).enumerate() {
             let key = (
                 file_key.clone(),
-                diagnostic.rule.clone(),
+                diagnostic.check_id().to_string(),
                 fingerprints[index].clone(),
             );
             match remaining_counts.get_mut(&key) {
@@ -279,10 +279,10 @@ fn fingerprints_for_file(file_key: &str, file: &FileDiagnostics) -> Vec<String> 
         let line_text = line_text_at(&file.source, diagnostic.span.start_byte)
             .trim()
             .to_string();
-        let occurrence_key = (diagnostic.rule.clone(), line_text.clone());
+        let occurrence_key = (diagnostic.check_id().to_string(), line_text.clone());
         let occurrence = occurrences.entry(occurrence_key).or_insert(0);
         fingerprints.push(fingerprint(
-            &diagnostic.rule,
+            diagnostic.check_id(),
             file_key,
             &line_text,
             *occurrence,

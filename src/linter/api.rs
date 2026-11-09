@@ -273,19 +273,19 @@ mod tests {
 
     #[test]
     fn fix_source_applies_safe_fixes_and_reports_the_rest() {
-        let source = "func f(unused):\n\tprint(1)\n\tpass\n";
+        let source = "func f(unused: int) -> void:\n\tprint(1)\n\tpass\n";
         let result = fix_source(Path::new("a.gd"), source, &Config::default(), false).unwrap();
-        assert_eq!(result.output, "func f(unused):\n\tprint(1)\n");
+        assert_eq!(result.output, "func f(unused: int) -> void:\n\tprint(1)\n");
         assert_eq!(result.applied, 1);
         assert_eq!(result.remaining.len(), 1);
-        assert_eq!(result.remaining[0].rule, "unused-argument");
+        assert_eq!(result.remaining[0].check_id(), "unused-argument");
     }
 
     #[test]
     fn fix_source_applies_unsafe_fixes_only_when_asked() {
-        let source = "func f(unused):\n\tprint(1)\n";
+        let source = "func f(unused: int) -> void:\n\tprint(1)\n";
         let result = fix_source(Path::new("a.gd"), source, &Config::default(), true).unwrap();
-        assert_eq!(result.output, "func f(_unused):\n\tprint(1)\n");
+        assert_eq!(result.output, "func f(_unused: int) -> void:\n\tprint(1)\n");
         assert_eq!(result.applied, 1);
         assert!(result.remaining.is_empty());
     }
@@ -307,12 +307,12 @@ mod tests {
 
     #[test]
     fn lint_source_reports_builtin_rules_with_spans() {
-        let source = "func badName(unused):\n\tpass\n";
+        let source = "func badName(unused: int) -> void:\n\tpass\n";
         let result = lint_source(Path::new("a.gd"), source, &Config::default()).unwrap();
         assert_eq!(result.diagnostics.len(), 2);
 
         let function_name = &result.diagnostics[0];
-        assert_eq!(function_name.rule, "function-name");
+        assert_eq!(function_name.check_id(), "function-name");
         assert_eq!(function_name.severity, Severity::Error);
         assert_eq!(
             &source[function_name.span.start_byte..function_name.span.end_byte],
@@ -324,7 +324,7 @@ mod tests {
         );
 
         let unused_argument = &result.diagnostics[1];
-        assert_eq!(unused_argument.rule, "unused-argument");
+        assert_eq!(unused_argument.check_id(), "unused-argument");
         assert_eq!(unused_argument.severity, Severity::Warning);
         assert_eq!(unused_argument.span.start.line, 1);
         assert_eq!(unused_argument.span.start.column, 14);
@@ -332,13 +332,13 @@ mod tests {
 
     #[test]
     fn lint_source_applies_rule_levels() {
-        let source = "func badName(unused):\n\tpass\n";
+        let source = "func badName(unused: int) -> void:\n\tpass\n";
         let path = Path::new("a.gd");
 
         let disabled =
             lint_source(path, source, &rule_level("function-name", RuleLevel::Off)).unwrap();
         assert_eq!(disabled.diagnostics.len(), 1);
-        assert_eq!(disabled.diagnostics[0].rule, "unused-argument");
+        assert_eq!(disabled.diagnostics[0].check_id(), "unused-argument");
 
         let as_error = lint_source(
             path,
@@ -346,7 +346,7 @@ mod tests {
             &rule_level("unused-argument", RuleLevel::Error),
         )
         .unwrap();
-        assert_eq!(as_error.diagnostics[1].rule, "unused-argument");
+        assert_eq!(as_error.diagnostics[1].check_id(), "unused-argument");
         assert_eq!(as_error.diagnostics[1].severity, Severity::Error);
 
         let as_info =
@@ -356,7 +356,7 @@ mod tests {
 
     #[test]
     fn lint_source_uses_max_line_length() {
-        let source = "var text = \"0123456789\"\n";
+        let source = "var text: String = \"0123456789\"\n";
         let path = Path::new("a.gd");
         let default_result = lint_source(path, source, &Config::default()).unwrap();
         assert!(default_result.diagnostics.is_empty());
@@ -373,7 +373,7 @@ mod tests {
 
     #[test]
     fn lint_source_respects_ignore_comments() {
-        let source = "# gdlint-ignore-next-line function-name\nfunc badName():\n\tpass\n";
+        let source = "# gdlint-ignore-next-line function-name\nfunc badName() -> void:\n\tpass\n";
         let result = lint_source(Path::new("a.gd"), source, &Config::default()).unwrap();
         assert!(result.diagnostics.is_empty());
     }

@@ -41,6 +41,7 @@ impl Rule for DeclarationOrderRule {
             category_name(before.declaration_kind).to_string()
         };
         let mut diagnostic = Diagnostic {
+            check: None,
             rule: "declaration-order".to_string(),
             severity: Severity::Warning,
             message: format!(

@@ -1,1 +1,7 @@
-tests/lint/input/unused_argument.gd:15:unused-argument:warning: Function argument 'unused_arg' is unused. Consider removing it or prefixing with '_'
+tests/lint/input/unused_argument.gd:3:type-annotations:warning: Function 'good' needs a return type.
+tests/lint/input/unused_argument.gd:3:type-annotations:warning: Parameter 'used_arg' needs a type annotation.
+tests/lint/input/unused_argument.gd:3:type-annotations:warning: Parameter '_unused_arg' needs a type annotation.
+tests/lint/input/unused_argument.gd:15:type-annotations:warning: Function 'bad' needs a return type.
+tests/lint/input/unused_argument.gd:15:type-annotations:warning: Parameter 'used_arg' needs a type annotation.
+tests/lint/input/unused_argument.gd:15:unused-code:warning: Function argument 'unused_arg' is unused. Consider removing it or prefixing with '_'
+tests/lint/input/unused_argument.gd:15:type-annotations:warning: Parameter 'unused_arg' needs a type annotation.

@@ -89,6 +89,7 @@ impl Rule for UnusedArgumentRule {
                 continue;
             }
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: "unused-argument".to_string(),
                 severity: Severity::Warning,
                 message: format!(

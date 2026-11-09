@@ -286,8 +286,8 @@ fn handle_request(
             "\n"
         };
         let position = byte_to_position(&document.source, line_start);
-        let edit = json!({"range":{"start":position,"end":position},"newText":format!("{}# gdguard-ignore-next-line {} -- TODO: explain this exception{}",indentation,diagnostic.rule,newline)});
-        actions.push(json!({"title":format!("Ignore {} on this line (add reason)",diagnostic.rule),"kind":"quickfix","edit":versioned_edit(uri,document.version,&[edit])}));
+        let edit = json!({"range":{"start":position,"end":position},"newText":format!("{}# gdguard-ignore-next-line {} -- TODO: explain this exception{}",indentation,diagnostic.check_id(),newline)});
+        actions.push(json!({"title":format!("Ignore {} on this line (add reason)",diagnostic.check_id()),"kind":"quickfix","edit":versioned_edit(uri,document.version,&[edit])}));
     }
     let fixed = api::fix_source(&document.path, &document.source, &config, false)
         .map_err(|error| (-32603, error))?;

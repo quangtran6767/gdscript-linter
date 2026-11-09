@@ -33,6 +33,7 @@ impl Rule for UnusedSignalRule {
                 && !local.used_signals.contains(&symbol.name)
             {
                 diagnostics.push(Diagnostic {
+                    check: None,
                     rule: "unused-signal".to_string(),
                     severity: Severity::Warning,
                     message: format!("Signal '{}' is never emitted or connected in this project.", symbol.name),
@@ -95,6 +96,7 @@ impl Rule for UnknownMemberRule {
                                     let name = &context.source[member.byte_range()];
                                     if project.has_member(class, name) == MemberLookup::No {
                                         diagnostics.push(Diagnostic {
+                                            check: None,
                                             rule: "unknown-member-on-project-class".to_string(),
                                             severity: Severity::Warning,
                                             message: format!("Project class '{}' has no declared member '{}'.", class, name),
@@ -202,6 +204,7 @@ impl Rule for DuplicateClassNameRule {
             return;
         }
         diagnostics.push(Diagnostic {
+            check: None,
             rule: "duplicate-class-name".to_string(),
             severity: Severity::Error,
             message: format!(
@@ -331,6 +334,7 @@ impl Rule for MissingClassNameRule {
             }
         };
         diagnostics.push(Diagnostic {
+            check: None,
             rule: "missing-class-name".to_string(),
             severity: Severity::Warning,
             message: "Script has no class_name.".to_string(),
@@ -446,6 +450,7 @@ impl Rule for SceneConnectionMissingMethodRule {
                 continue;
             }
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: "scene-connection-missing-method".to_string(),
                 severity: Severity::Error,
                 message: format!(

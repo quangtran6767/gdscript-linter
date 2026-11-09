@@ -48,6 +48,7 @@ impl Rule for SingleLineContainerTypeRule {
                 });
             }
             diagnostics.push(Diagnostic {
+                check: None,
                 rule: RULE_ID.to_string(),
                 severity: Severity::Error,
                 message: format!(

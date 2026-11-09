@@ -1,4 +1,13 @@
+tests/lint/input/duplicate_dictionary_key.gd:3:type-annotations:warning: Constant 'KEY' needs a type annotation.
+tests/lint/input/duplicate_dictionary_key.gd:5:type-annotations:warning: Variable 'distinct' needs a type annotation.
+tests/lint/input/duplicate_dictionary_key.gd:6:type-annotations:warning: Variable 'styles' needs a type annotation.
+tests/lint/input/duplicate_dictionary_key.gd:7:type-annotations:warning: Variable 'calls' needs a type annotation.
+tests/lint/input/duplicate_dictionary_key.gd:8:type-annotations:warning: Variable 'nested' needs a type annotation.
+tests/lint/input/duplicate_dictionary_key.gd:14:type-annotations:warning: Variable 'strings' needs a type annotation.
 tests/lint/input/duplicate_dictionary_key.gd:14:duplicate-dictionary-key:error: Key 'hp' is already used in this dictionary (line 14).
+tests/lint/input/duplicate_dictionary_key.gd:15:type-annotations:warning: Variable 'lua' needs a type annotation.
 tests/lint/input/duplicate_dictionary_key.gd:15:duplicate-dictionary-key:error: Key hp is already used in this dictionary (line 15).
+tests/lint/input/duplicate_dictionary_key.gd:16:type-annotations:warning: Variable 'constants' needs a type annotation.
 tests/lint/input/duplicate_dictionary_key.gd:16:duplicate-dictionary-key:error: Key KEY is already used in this dictionary (line 16).
+tests/lint/input/duplicate_dictionary_key.gd:17:type-annotations:warning: Variable 'numbers' needs a type annotation.
 tests/lint/input/duplicate_dictionary_key.gd:20:duplicate-dictionary-key:error: Key 1 is already used in this dictionary (line 18).
