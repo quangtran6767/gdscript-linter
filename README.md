@@ -38,32 +38,16 @@ hook.
 
 ## Rules
 
-**[All built-in rules, with examples →](docs/rules.md)**
+**[All built-in rules, with examples →](docs/rules.md)** ·
+`gdguard lint --list-rules` · `gdguard explain <rule>`
 
-```sh
-gdguard lint --list-rules
-gdguard explain <rule>
-gdguard test-rules .gdguard/rules
-```
+Built-in rules cover naming, declaration order, likely bugs, unused code and
+Godot 3 syntax, plus project checks (`class_name`, `load`/`preload` paths,
+scene connections, unused signals). For type errors, add Godot's own check:
+`gdguard lint --godot /path/to/godot .` (or set `GDGUARD_GODOT`).
 
-Built-in rules check naming, control flow, unreachable code, unused
-declarations, shadowing, duplicate dictionary keys and Godot 3 syntax. In a
-Godot project they also check `class_name` (every non-autoload script has a
-unique one), `load()`/`preload()` paths (they exist, and use `uid://` when
-the resource has a UID), scene connections to missing methods, unused
-signals across scripts and `.tscn` scenes, and missing members on
-explicitly typed project classes. The linter never infers types.
-
-For type errors, add Godot's own check to the same run:
-
-```sh
-gdguard lint --godot /path/to/godot --format json .   # or set GDGUARD_GODOT
-```
-
-You can add project rules without rebuilding, as
-[YAML patterns](docs/custom_rules.md) or
-[sandboxed JavaScript](docs/js_rules.md). See the tested
-[examples](examples/rules/).
+Add project rules without rebuilding, as [YAML](docs/custom_rules.md) or
+[JavaScript](docs/js_rules.md) ([examples](examples/rules/)).
 
 ## Formatting
 

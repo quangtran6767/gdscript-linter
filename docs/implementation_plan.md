@@ -328,6 +328,16 @@ Requested by the maintainer after testing W8 against Godot 4.7.2.
 
 See docs/handoff/w9.md.
 
+## W10: solo, default declaration order and shorter rules docs (2026-11-09)
+
+- [x] Default warning `declaration-order`, using the formatter's reorder plan.
+- [x] Safe/unsafe reorder fixes, region/comment/annotation preservation,
+      disabled-formatting guard and fix/re-lint regression coverage.
+- [x] Rule metadata/reference/spec, shorter README Rules section, snapshots,
+      CLI fix test, formatter regression checks and handoff.
+
+See docs/handoff/w10.md. No push, tag or release.
+
 ---
 
 ## Dependency map (why the waves are in this order)

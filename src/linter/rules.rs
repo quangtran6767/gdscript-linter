@@ -1,6 +1,7 @@
 pub mod class_name;
 pub mod comparison_with_itself;
 pub mod constant_name;
+pub mod declaration_order;
 pub mod duplicate_dictionary_key;
 pub mod duplicated_load;
 pub mod enum_member_name;
@@ -102,6 +103,10 @@ pub struct RuleDefinition {
 /// List of all the rules available in the linter. The linter will only run
 /// these plus the ones that have not been disabled in the config.
 pub const ALL_RULES: &[RuleDefinition] = &[
+    RuleDefinition {
+        name: "declaration-order",
+        create: |_config| Box::new(declaration_order::DeclarationOrderRule),
+    },
     RuleDefinition {
         name: "unused-signal",
         create: |_config| Box::new(project_rules::UnusedSignalRule),

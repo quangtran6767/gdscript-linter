@@ -114,6 +114,63 @@ fn second_run_reads_the_cache() {
 }
 
 #[test]
+fn w9_cache_does_not_hide_the_new_default_declaration_order_rule() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "");
+    project.write("a.gd", "var a = 1\nsignal changed\n");
+    assert!(project.lint(&["a.gd"]).contains("[declaration-order]"));
+    // A W9 cache has no declaration-order diagnostics, despite the same
+    // source, configuration and package version.
+    let mut cached: serde_json::Value = serde_json::from_str(&project.read(CACHE)).unwrap();
+    cached["version"] = 4.into();
+    for entry in cached["files"].as_object_mut().unwrap().values_mut() {
+        entry["diagnostics"].as_array_mut().unwrap().clear();
+    }
+    project.write(CACHE, &serde_json::to_string(&cached).unwrap());
+    assert!(project.lint(&["a.gd"]).contains("[declaration-order]"));
+}
+
+#[test]
+fn reorder_fix_cache_tracks_formatter_only_editorconfig_settings() {
+    let project = TempProject::new();
+    project.write("gdguard.toml", "");
+    project.write(
+        "a.gd",
+        "var a = 1\nsignal changed\n\n\nfunc f():\n\tprint(\"body\")\n",
+    );
+    let fix_count = || {
+        project.lint(&["a.gd"]);
+        let cached: serde_json::Value = serde_json::from_str(&project.read(CACHE)).unwrap();
+        let entry = cached["files"]
+            .as_object()
+            .unwrap()
+            .values()
+            .next()
+            .unwrap();
+        let order = entry["diagnostics"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|diagnostic| diagnostic["rule"] == "declaration-order")
+            .unwrap();
+        order["fixes"].as_array().unwrap().len()
+    };
+    assert_eq!(fix_count(), 1);
+    project.write(
+        ".editorconfig",
+        "root = true\n[*.gd]\nindent_style = space\n",
+    );
+    assert_eq!(fix_count(), 0);
+    project.write(
+        ".editorconfig",
+        "root = true\n[*.gd]\nindent_style = tab\ngdscript_formatter_quote_style = single\n",
+    );
+    assert_eq!(fix_count(), 0);
+    project.write(".editorconfig", "root = true\n[*.gd]\nindent_style = tab\n");
+    assert_eq!(fix_count(), 1);
+}
+
+#[test]
 fn editing_the_file_misses_the_cache() {
     let project = project_with_config();
     project.lint(&["scripts"]);

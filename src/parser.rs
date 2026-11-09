@@ -43,7 +43,7 @@ pub struct RegionWithDisabledFormatting {
 /// Scans the source code character by character to find pairs of "# fmt: off"
 /// and "# fmt: on" comments. Returns the byte ranges where formatting
 /// should be disabled.
-fn find_disabled_regions(source: &str) -> Vec<RegionWithDisabledFormatting> {
+pub(crate) fn find_disabled_regions(source: &str) -> Vec<RegionWithDisabledFormatting> {
     // Nathan: I tried first to iterate over the tree sitter node tree. I don't
     // know if I was doing something wrong, but it made the entire formatter
     // ~20% slower. There is also the option of querying nodes with tree sitter,

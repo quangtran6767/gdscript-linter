@@ -16,6 +16,8 @@ use gdguard::linter::api::{self, Config};
 use gdguard::linter::diagnostic::Severity;
 use gdguard::linter::{LintRunOptions, fix_files};
 
+mod declaration_order;
+
 /// A new empty folder under the system temp folder. Removed on drop.
 struct TempProject {
     root: PathBuf,

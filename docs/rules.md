@@ -1,6 +1,6 @@
 # Built-in rules
 
-gdguard has 39 built-in rules. This page lists them all, grouped by what they catch. The same text is available offline:
+gdguard has 40 built-in rules. This page lists them all, grouped by what they catch. The same text is available offline:
 
 ```sh
 gdguard lint --list-rules     # one line per rule
@@ -45,6 +45,7 @@ Levels: **error** and **warning** fail the run (warnings up to `--max-warnings N
 | [`prefer-uid-path`](#prefer-uid-path) | warning | safe | Project rules |
 | [`unused-signal`](#unused-signal) | warning |  | Project rules |
 | [`unknown-member-on-project-class`](#unknown-member-on-project-class) | warning |  | Project rules |
+| [`declaration-order`](#declaration-order) | warning | safe/unsafe | Naming and style |
 | [`class-name`](#class-name) | error |  | Naming and style |
 | [`signal-name`](#signal-name) | error |  | Naming and style |
 | [`enum-name`](#enum-name) | error |  | Naming and style |
@@ -597,6 +598,35 @@ func f(data: ProjectData):
 ## Naming and style
 
 The [GDScript style guide](https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_styleguide.html) and readability.
+
+### `declaration-order`
+
+**warning** · fix: safe (unsafe when a moved initializer references a later member)
+
+Top-level declarations follow the formatter's style-guide order, within each
+`#region` group. Inner classes are not checked. One diagnostic names the first
+declaration that should move earlier.
+
+The fix keeps attached comments and annotations together and splits inline
+`class_name X extends Y`, just like `gdguard --reorder-code`. It is offered only
+for already-formatted files, so declaration bodies keep their formatting.
+Files with `# fmt: off` regions are reported without a fix; files with parse
+errors are skipped. Moving a variable ahead of a member its computed initializer reads
+requires `--fix-unsafe`. Per W10, a bare alias (`var b = a`) is safe. Disable with `[rules] declaration-order = "off"`.
+
+Bad:
+
+```gdscript
+var health = 100
+signal died
+```
+
+Good:
+
+```gdscript
+signal died
+var health = 100
+```
 
 ### `class-name`
 

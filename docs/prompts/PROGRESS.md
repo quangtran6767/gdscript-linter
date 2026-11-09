@@ -1,7 +1,7 @@
 # Progress
 
 Solo mode since 2026-11-09: one session completes both tracks and
-integration on the current branch (`w4-a`). No partner waits.
+integration on the current branch (`main`). No partner waits.
 
 The solo integration step updates this file after validation.
 
@@ -20,10 +20,12 @@ current_wave: done
 | w7  | solo (A + B + integration) | done |
 | w8  | solo (A + B + integration) | done |
 | w9  | solo (maintainer-requested rules) | done |
+| w10 | solo (default declaration order and shorter README rules) | done |
 
 ## Resume notes
 
-- Current branch: `w4-a`; do not wait for or require `w4-b`.
+- Current branch: `main`; W10 was implemented directly on main as requested.
+  Do not wait for or require another track's branch.
 - W4-A was already committed. W4-B and integration are complete; see
   `docs/handoff/w4-b.md` and `docs/handoff/w4-merge.md`.
 - SM0 contracts and validation are complete; see `docs/handoff/sm0.md`
@@ -50,6 +52,11 @@ current_wave: done
   scene-aware unused-private-function, non-fatal duplicate class_name,
   fix-engine repair exception and the optional Godot check. 608 workspace
   / 592 feature-off tests. See docs/handoff/w9.md.
+- W10 complete: default declaration-order warning and safe/unsafe reorder
+  fixes, shorter README Rules section, 40-rule reference and cache
+  invalidation. 625 workspace / 609 feature-off tests; fmt, clippy, builds,
+  120 formatter comparisons and temp-project fix/re-lint pass. See
+  docs/handoff/w10.md. Do not push, tag or release.
 - Next: the maintainer tests the tool first. Do not start any task, tag or
   release until they say so. Never send anything upstream to GDQuest.
 - User explicitly authorized commits and pushes to origin/w4-a on 2026-11-09.

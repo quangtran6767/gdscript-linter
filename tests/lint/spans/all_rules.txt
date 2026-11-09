@@ -23,6 +23,7 @@
 24:8-24:22 private-access '_hidden_method'
 30:2-30:6 no-else-return 'elif'
 32:2-32:6 no-else-return 'else'
+37:1-37:199 declaration-order 'var long_line = "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"'
 37:184-37:199 max-line-length 'ééééééé"'
 40:6-40:20 unused-private-function '_unused_helper'
 41:6-41:16 unused-variable 'never_used'

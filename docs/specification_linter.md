@@ -456,6 +456,15 @@ quote), `missing-class-name` (Unsafe: insert `class_name <Name>`) and
 `idle_frame` → `process_frame`, `.instance()` → `.instantiate()`,
 `connect("sig", target, "method")` → `connect("sig", target.method)`).
 
+`declaration-order` (W10) reuses the formatter's reorder plan. Its full-file
+fix is offered only when the file is already formatted using its editorconfig
+settings and has no disabled formatting region. It preserves declaration body
+formatting and matches `gdguard --reorder-code`. The fix is Safe unless a moved
+variable initializer references another member placed after it (Unsafe).
+W10 explicitly treats a bare alias (`var b = a`) as Safe; computed reads
+like `a + 1` require unsafe opt-in.
+Re-linting the fixed output must report no declaration-order issue.
+
 ## CLI
 
 ```
@@ -867,6 +876,21 @@ unsaved buffer) relative to the root.
   top-level `tool` line, `onready var`, `export var`, `export(...)`,
   `setget` on a `var` line, and `remote`/`master`/`puppet`/`*sync` before
   `func` or `var`. Fixes are listed in "Fix engine".
+
+### W10 rule
+
+- `declaration-order` (Warning, enabled by default, syntax-only): compare the
+  source order of top-level declarations with `reorder::build_reorder_plan`.
+  Follow the formatter's exact ordering within each region group, including
+  method priorities and public/private ordering. Report once per file, spanning
+  the first declaration that belongs earlier and naming what it precedes.
+  Inner class bodies are not checked; files with parse errors are skipped.
+  Disabled formatting regions do not suppress the diagnostic, but prevent
+  its fix. `[rules] declaration-order = "off"` disables it. See "Fix engine"
+  for availability and safety; default formatter behavior is unchanged.
+- Invalidate pre-W10 lint caches even when the package version is unchanged.
+  Cache keys include formatter EditorConfig settings while declaration-order
+  is enabled, so cached fix availability follows the current formatting policy.
 
 ## Scripted rules in JS (`src/linter/script/`)
 

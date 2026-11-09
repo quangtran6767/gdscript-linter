@@ -20,7 +20,7 @@ struct BuiltinInfo {
     good_example: &'static str,
 }
 
-const BUILTIN_RULES: [BuiltinInfo; 39] = [
+const BUILTIN_RULES: [BuiltinInfo; 40] = [
     BuiltinInfo {
         id: "assigned-but-never-read",
         severity: Severity::Warning,
@@ -56,6 +56,15 @@ const BUILTIN_RULES: [BuiltinInfo; 39] = [
         rationale: "The GDScript style guide names constants in CONSTANT_CASE so they stand out from variables. Constants holding a preloaded resource may also use PascalCase, like the class they stand for.",
         bad_example: "const maxSpeed = 10\n",
         good_example: "const MAX_SPEED = 10\nconst Bullet = preload(\"res://bullet.tscn\")\n",
+    },
+    BuiltinInfo {
+        id: "declaration-order",
+        severity: Severity::Warning,
+        fixable: true,
+        description: "Top-level declarations follow the formatter's style-guide order.",
+        rationale: "A consistent declaration order makes scripts easier to scan. The formatter's reorder plan keeps region groups, comments and annotations together. Fixes require an already-formatted file without fmt: off regions; moving a computed variable initializer ahead of a referenced member requires an unsafe fix (W10 treats a bare alias as safe).",
+        bad_example: "var health = 100\nsignal died\n",
+        good_example: "signal died\nvar health = 100\n",
     },
     BuiltinInfo {
         id: "duplicate-class-name",

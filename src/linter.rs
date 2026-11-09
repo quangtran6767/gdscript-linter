@@ -632,11 +632,37 @@ fn prepare_jobs(
             {
                 rules_hash = cache::stable_hash(&[rules_hash.as_bytes(), project_hash.as_bytes()]);
             }
-            Some((
-                cache::file_key(file_path),
-                cache::settings_hash(&settings),
-                rules_hash,
-            ))
+            let mut settings_hash = cache::settings_hash(&settings);
+            if !settings
+                .linter_config
+                .disabled_rules
+                .contains("declaration-order")
+            {
+                // Reorder fix availability depends on whether this file is
+                // formatted, including settings the other lint rules ignore.
+                let mut formatter = crate::FormatterConfiguration::default();
+                crate::editorconfig::apply_editorconfig_to_formatter_config(
+                    &mut formatter,
+                    file_path,
+                );
+                let formatting = format!(
+                    "{:?}",
+                    (
+                        formatter.printer.max_line_length,
+                        formatter.printer.use_spaces,
+                        formatter.printer.indent_size,
+                        formatter.printer.continuation_indent_level,
+                        formatter.printer.insert_final_newline,
+                        formatter.printer.trim_trailing_whitespace,
+                        formatter.printer.indent_blank_lines,
+                        formatter.blank_lines_around_definitions,
+                        formatter.quote_style,
+                    )
+                );
+                settings_hash =
+                    cache::stable_hash(&[settings_hash.as_bytes(), formatting.as_bytes()]);
+            }
+            Some((cache::file_key(file_path), settings_hash, rules_hash))
         } else {
             None
         };

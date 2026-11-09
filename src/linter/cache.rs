@@ -21,7 +21,9 @@ use crate::linter::config::FileSettings;
 use crate::linter::custom::loader::find_rule_files;
 use crate::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span};
 
-pub const CACHE_VERSION: u32 = 4;
+// W10 adds a default rule without changing the package version. Drop W9
+// results so existing projects see declaration-order immediately.
+pub const CACHE_VERSION: u32 = 5;
 
 /// The cache file, relative to the folder of `gdguard.toml`.
 pub const CACHE_PATH: &str = ".gdguard/cache/lint.json";

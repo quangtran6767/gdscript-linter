@@ -119,7 +119,7 @@ fn baseline_survives_lines_inserted_above_the_issue() {
 
     project.write(
         "scripts/player.gd",
-        &format!("# A new comment\nvar added_before := 1\n\n{}", PLAYER),
+        &format!("# A new comment\n# Another inserted line\n\n{}", PLAYER),
     );
     let lint = project.run(&[
         "lint",
