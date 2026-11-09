@@ -128,6 +128,8 @@ pub struct FileContext<'a> {
     pub path: &'a Path,
     pub source: &'a str,
     pub tree: &'a tree_sitter::Tree,
+    pub semantic: Option<&'a SemanticModel>,
+    pub project: Option<&'a ProjectIndex>,
 }
 
 /// Implemented by the custom rule engine (and later the JS engine). The
@@ -586,6 +588,14 @@ the LSP. Its API is frozen at the start of wave 5 (SM0 in the plan).
 pub struct ScopeId(pub u32);
 pub struct SymbolId(pub u32);
 
+pub struct Scope {
+    pub id: ScopeId,
+    pub kind: ScopeKind,
+    pub parent: Option<ScopeId>,
+    pub span: Span,
+    pub symbols: Vec<SymbolId>, // declaration order
+}
+
 pub enum ScopeKind { Class, InnerClass, Function, Lambda, Block, ForLoop, MatchBranch }
 
 pub enum SymbolKind {
@@ -619,11 +629,24 @@ impl SemanticModel {
     pub fn build(tree: &tree_sitter::Tree, source: &str) -> SemanticModel;
     pub fn scope_at(&self, byte: usize) -> ScopeId;
     pub fn lookup(&self, scope: ScopeId, name: &str) -> Option<SymbolId>;
-    pub fn symbol(&self, id: SymbolId) -> &Symbol;
+    pub fn symbol(&self, id: SymbolId) -> Option<&Symbol>;
+    pub fn symbols(&self) -> &[Symbol];
+    pub fn scopes(&self) -> &[Scope];
     pub fn references_to(&self, id: SymbolId) -> &[Reference];
     pub fn unresolved_references(&self) -> &[Reference];
+    pub fn debug_dump(&self) -> String;
 }
 ```
+
+SM0 freezes the definitions above. IDs are zero-based; scope 0 is always the
+file's root Class scope, including empty/error files. `symbol` returns None
+for unknown IDs; references to unknown IDs are empty. `scope_at` outside the
+source returns root 0. `debug_dump` uses ID-ordered scopes and symbols, then
+references ordered by (start byte, end byte, kind), with LF endings and
+Rust Debug string escaping. Its exact entry format is documented in
+`src/semantic/mod.rs`. W5 implements the builder; the SM0 model is empty
+except for its valid root. FileContext carries None until the pipeline is
+wired in W5/W6.
 
 Important limit: an unresolved reference is **not** an error, because it may
 come from the parent class, the engine or an autoload. Rules that report
@@ -640,7 +663,7 @@ Built from the folder containing `project.godot`. Its API is frozen at SM0.
 
 ```rust
 pub struct ScriptSummary {
-    pub path: PathBuf,            // res:// relative
+    pub path: PathBuf,            // project-relative, without res://
     pub class_name: Option<String>,
     pub extends: Option<String>,  // class name or res:// path
     pub functions: Vec<String>,
@@ -655,12 +678,17 @@ pub struct ProjectIndex {
     pub autoloads: HashMap<String, PathBuf>,   // from project.godot [autoload]
 }
 
+pub enum MemberLookup { Yes, No, Unknown }
+
 impl ProjectIndex {
     pub fn build(root: &Path) -> Result<ProjectIndex, String>;
     /// Walks `extends` chains inside the project. Stops at engine classes.
     pub fn has_member(&self, class_name: &str, member: &str) -> MemberLookup; // Yes | No | Unknown
 }
 ```
+
+SM0 returns an empty ProjectIndex and Unknown for member queries; W6 fills
+the implementation without changing signatures.
 
 - The index is cached in `.gdguard/cache/index.json`, keyed by each file's
   hash, and only changed files are re-summarized.
@@ -673,12 +701,14 @@ impl ProjectIndex {
 - `.js` files in the same `custom_rules.paths` folders as YAML rules.
 - They run in an embedded QuickJS (`rquickjs`) with no file system, network or
   imports, a 64 MB memory limit and a time limit per file.
-- Behind the cargo feature `js-rules`, which is on by default for the CLI.
+- Behind cargo feature `js-rules`, enabled by default alongside `gdscript`.
+  SM0 pins `rquickjs = 0.9.0` (optional); `--no-default-features` omits it.
+  W5 supplies execution; SM0 only wires the feature and module boundaries.
 - API modeled on oxlint/ESLint:
 
 ```js
 // .gdguard/rules/max-function-params.js
-/** @type {import("gdguard").Rule} */
+/** @type {import("gdguard").Rule<{max?: number}>} */
 export default {
   meta: {
     id: "max-function-params",
@@ -691,10 +721,10 @@ export default {
     const max = context.options.max ?? 5;          // from gdguard.toml
     return {
       function_definition(node) {                   // tree-sitter node kind
-        const params = node.field("parameters").namedChildren;
+        const params = node.field("parameters")?.namedChildren ?? [];
         if (params.length > max) {
           context.report({
-            node: node.field("name"),
+            node: node.field("name") ?? node,
             message: `Function has ${params.length} parameters (max ${max})`,
             help: "Group related parameters into a Resource or Dictionary.",
           });
@@ -719,13 +749,26 @@ export default {
 - The engine only calls a rule for the node kinds it subscribed to (the same
   visitor map as the built-ins), so the JS cost scales with matches, not file
   size.
-- Types ship as `integrations/types/gdguard.d.ts`. Users write `.js` files
+- Types ship as `integrations/types/gdguard.d.ts` (SM0 frozen contract).
+  `Node.range` and edits use `{start,end}` positions containing `line`,
+  `column` and `byte`, with 1-based UTF-8 columns and exclusive ends.
+  `report` accepts exactly one of `node` or `range`; fixes accept an edit,
+  an edit array or a fixer callback. All four fixer methods accept a node
+  or range. Report-level `fixSafety` overrides `meta.fixSafety` (default
+  suggestion). Metadata requires id/description; severity defaults warning.
+  Semantic lookup returns numeric symbol IDs or null. Semantic symbols use
+  camelCase property names; reference kinds are read/write/call and symbol
+  kinds are the snake_case names in the declaration file. Project autoloads
+  map names to project-relative script paths; classNames is sorted.
+  `semantic` is null only when the caller supplies no model; `project` is
+  null outside a project. Users write `.js` files
   with JSDoc types; `.ts` files are not supported.
 - `gdguard test-rules` runs JS rule `tests` the same way it runs YAML tests.
 
 ## LSP server (`gdguard lsp`, `src/lsp/`)
 
-- Synchronous `lsp-server` + `lsp-types` crates (no async runtime), so it
+- Synchronous pinned `lsp-server = 0.7.9` + `lsp-types = 0.97.0` crates
+  (SM0; no async runtime), so it
   stays in line with the coding guidelines.
 - Publishes diagnostics on open and change (debounced at 150 ms) and on save.
 - Code actions:

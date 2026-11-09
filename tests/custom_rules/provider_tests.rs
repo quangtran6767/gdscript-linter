@@ -43,6 +43,8 @@ fn check(source: &str) -> Vec<Diagnostic> {
         path: Path::new("sample.gd"),
         source,
         tree: &tree,
+        semantic: None,
+        project: None,
     };
     providers[0].check_file(&context)
 }
@@ -221,6 +223,8 @@ fn check_rule_runs_one_rule_only() {
         path: Path::new("sample.gd"),
         source: &source,
         tree: &tree,
+        semantic: None,
+        project: None,
     };
     let diagnostics = provider.check_rule("print-args", &context);
     assert_eq!(diagnostics.len(), 1);
@@ -248,6 +252,8 @@ fn multi_line_fix_is_reindented_and_described_by_rule_id() {
         path: Path::new("a.gd"),
         source,
         tree: &tree,
+        semantic: None,
+        project: None,
     };
     let diagnostics = providers[0].check_file(&context);
     std::fs::remove_dir_all(&folder).unwrap();
@@ -282,6 +288,8 @@ fn multi_line_fix_keeps_space_indentation() {
         path: Path::new("a.gd"),
         source,
         tree: &tree,
+        semantic: None,
+        project: None,
     };
     let diagnostics = providers[0].check_file(&context);
     std::fs::remove_dir_all(&folder).unwrap();
@@ -309,6 +317,8 @@ fn message_uses_metavariable_captured_in_a_relational_rule() {
         path: Path::new("a.gd"),
         source,
         tree: &tree,
+        semantic: None,
+        project: None,
     };
     let diagnostics = providers[0].check_file(&context);
     assert_eq!(diagnostics.len(), 1);

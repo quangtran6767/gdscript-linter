@@ -70,13 +70,18 @@ ast-grep-core = "=0.51.1"
 ast-grep-config = "=0.51.1"
 # Linter: unified diffs for `lint --diff`.
 similar = "=2.7.0"
+# SM0: embedded JS rules (per worker, optional) and synchronous LSP transport.
+rquickjs = { version = "=0.9.0", optional = true }
+lsp-server = "=0.7.9"
+lsp-types = "=0.97.0"
 
 [dev-dependencies]
 test_each_file = "=0.3.7"
 
 [features]
-default = ["gdscript"]
+default = ["gdscript", "js-rules"]
 gdscript = []
+js-rules = ["dep:rquickjs"]
 
 [[bin]]
 name = "gdscript-formatter"

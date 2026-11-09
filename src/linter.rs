@@ -28,6 +28,8 @@ pub mod explain;
 pub mod init;
 pub mod rule_tester;
 pub mod rules_meta;
+#[cfg(feature = "js-rules")]
+pub mod script;
 
 #[cfg(test)]
 mod tests;
@@ -127,6 +129,8 @@ impl GDScriptLinter {
                 path: Path::new(file_path),
                 source: source_code,
                 tree: &tree,
+                semantic: None,
+                project: None,
             };
             for provider in providers.iter_mut() {
                 diagnostics.extend(provider.check_file(&context));

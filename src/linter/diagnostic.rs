@@ -3,7 +3,7 @@
 //! engine, reporters, LSP and the Godot editor integration).
 //!
 //! FROZEN after W0: changes must be additive (new optional fields or new
-//! helper functions) and approved by both tracks. See
+//! helper functions). SM0 adds optional semantic/project context. See
 //! `docs/specification_linter.md`, section "Shared contracts".
 
 use std::path::{Path, PathBuf};
@@ -197,6 +197,10 @@ pub struct FileContext<'a> {
     pub path: &'a Path,
     pub source: &'a str,
     pub tree: &'a tree_sitter::Tree,
+    /// Built once per parsed file when a rule needs semantic information.
+    pub semantic: Option<&'a crate::semantic::SemanticModel>,
+    /// Shared read-only project index, absent outside a Godot project.
+    pub project: Option<&'a crate::project::ProjectIndex>,
 }
 
 /// Implemented by the custom rule engine (and later the JS engine). The

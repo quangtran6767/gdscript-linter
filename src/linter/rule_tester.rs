@@ -230,6 +230,8 @@ fn check_fix(
         path: Path::new("test.gd"),
         source: &fixed,
         tree: &tree,
+        semantic: None,
+        project: None,
     };
     let again = provider.check_rule(id, &context);
     if !again.is_empty() {
@@ -261,6 +263,8 @@ fn check(provider: &YamlRuleProvider, id: &str, code: &str) -> Result<Vec<Diagno
         path: Path::new("test.gd"),
         source: code,
         tree: &tree,
+        semantic: None,
+        project: None,
     };
     Ok(provider.check_rule(id, &context))
 }

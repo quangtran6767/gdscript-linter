@@ -211,16 +211,16 @@ Real-game dogfooding is recommended before a v0.30 release; no tag created.
 
 ## SM0: second contracts session (together, about 1.5 hours, one PR)
 
-- [ ] `src/semantic/mod.rs`: types and method signatures from the spec,
-      bodies `todo!()`.
-- [ ] `src/project/mod.rs`: `ScriptSummary`, `ProjectIndex`, `MemberLookup`,
+- [x] `src/semantic/mod.rs`: types and method signatures from the spec,
+      non-panicking empty-model bodies.
+- [x] `src/project/mod.rs`: `ScriptSummary`, `ProjectIndex`, `MemberLookup`,
       with signatures only.
-- [ ] Add `semantic: Option<&SemanticModel>` and
+- [x] Add `semantic: Option<&SemanticModel>` and
       `project: Option<&ProjectIndex>` to `FileContext` (additive). The
       pipeline fills them in once W5 and W6 land.
-- [ ] Write the final JS API surface into `integrations/types/gdguard.d.ts`.
+- [x] Write the final JS API surface into `integrations/types/gdguard.d.ts`.
       This is the contract B implements and A's data must fit.
-- [ ] Add the `rquickjs` dependency behind the `js-rules` feature, and
+- [x] Add the `rquickjs` dependency behind the `js-rules` feature, and
       `lsp-server`/`lsp-types` for W7.
 
 ## W5: A and B at the same time

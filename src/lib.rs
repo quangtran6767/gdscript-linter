@@ -17,10 +17,13 @@
 pub mod editorconfig;
 pub mod formatter;
 pub mod linter;
+pub mod lsp;
 pub mod node_kind;
 pub mod parser;
+pub mod project;
 pub mod renderer;
 pub mod reorder;
+pub mod semantic;
 pub mod shared_utils;
 pub mod verify_structure;
 
