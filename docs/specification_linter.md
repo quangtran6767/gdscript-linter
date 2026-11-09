@@ -458,7 +458,10 @@ quote), `missing-class-name` (Unsafe: insert `class_name <Name>`) and
 
 `declaration-order` (W10, corrected after review) reuses the formatter's
 reorder plan and offers a full-file fix unless formatting is disabled by a
-`# fmt: off` region. For a file already formatted with its EditorConfig
+`# fmt: off` region or the file has a top-level `@warning_ignore_start` or
+`@warning_ignore_restore` annotation (these cover every line between them,
+so moving declarations would change which warnings they hide; the
+formatter's `--reorder-code` still moves them). For a file already formatted with its EditorConfig
 settings, use `format_gdscript` with `reorder_code` so the result matches
 `gdguard --reorder-code`. Otherwise move original source slices for each
 plan item, including its attached comments/annotations and split inline

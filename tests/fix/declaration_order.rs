@@ -149,6 +149,23 @@ fn declaration_order_fmt_off_reports_without_fix_including_nested_marker() {
 }
 
 #[test]
+fn declaration_order_warning_ignore_regions_report_without_fix() {
+    let project = TempProject::new();
+    for source in [
+        "extends Node\n\nvar x = 1\n@warning_ignore_start(\"unused_variable\")\nconst K = 2\n@warning_ignore_restore(\"unused_variable\")\nsignal s\n",
+        "var x = 1\n@warning_ignore_start(\"unused_variable\")\nconst K = 2\n",
+    ] {
+        let diagnostics = order_diagnostics(&project, source);
+        assert_eq!(diagnostics.len(), 1);
+        assert!(diagnostics[0].fixes.is_empty());
+        assert_eq!(fix(&project, source, true).output, source);
+    }
+    // A plain `@warning_ignore` belongs to the next declaration and moves with it.
+    let source = "var x = 1\n@warning_ignore(\"unused_variable\")\nconst K = 2\n";
+    assert!(!order_diagnostics(&project, source)[0].fixes.is_empty());
+}
+
+#[test]
 fn declaration_order_unformatted_bodies_are_fixed_without_reformatting() {
     let project = TempProject::new();
     let source = "func f():\n    print(  1 )\nsignal died\n";

@@ -57,8 +57,12 @@ impl Rule for DeclarationOrderRule {
         };
 
         // Share the formatter's marker scanner so strings containing
-        // `# fmt: off` don't suppress a valid fix.
-        if crate::parser::find_disabled_regions(context.source).is_empty() {
+        // `# fmt: off` don't suppress a valid fix. Warning-ignore regions are
+        // positional too: moving declarations could put a restore above its
+        // start, so those files get no fix either.
+        if crate::parser::find_disabled_regions(context.source).is_empty()
+            && !has_warning_ignore_region(root, context.source)
+        {
             let mut config = FormatterConfiguration::default();
             crate::editorconfig::apply_editorconfig_to_formatter_config(&mut config, context.path);
             let reordered = if crate::linter::fix::is_formatted(context.source, &config) {
@@ -80,6 +84,24 @@ impl Rule for DeclarationOrderRule {
         }
         diagnostics.push(diagnostic);
     }
+}
+
+/// Returns true when a top-level `@warning_ignore_start` or
+/// `@warning_ignore_restore` annotation exists. These apply to every line
+/// between them, so reordering can't keep their meaning.
+fn has_warning_ignore_region(root: Node, source: &str) -> bool {
+    let mut cursor = root.walk();
+    for child in root.children(&mut cursor) {
+        if child.kind() != "annotation" {
+            continue;
+        }
+        let text = &source[child.byte_range()];
+        if text.starts_with("@warning_ignore_start") || text.starts_with("@warning_ignore_restore")
+        {
+            return true;
+        }
+    }
+    false
 }
 
 /// Move complete declaration blocks without changing any text inside them.

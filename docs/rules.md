@@ -613,7 +613,8 @@ The fix keeps attached comments and annotations together and splits inline
 `gdguard --reorder-code`; for unformatted files it moves original source
 slices, preserving declaration bodies, file prefix and suffix, and trailing
 comments. Moved items get one blank line between them, two before and after
-functions and inner classes. Files with `# fmt: off` regions are reported
+functions and inner classes. Files with `# fmt: off` regions or top-level
+`@warning_ignore_start`/`@warning_ignore_restore` annotations are reported
 without a fix; files with parse errors are skipped.
 
 The fix requires `--fix-unsafe` when an initializer references a member variable

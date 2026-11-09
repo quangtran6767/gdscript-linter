@@ -6,7 +6,7 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
-- Linter: default warning `declaration-order` shares the formatter's top-level reorder plan; fixes formatted and unformatted files without reformatting declaration bodies, preserves comments, annotations and regions, and requires unsafe fixes for reversed initializer dependencies. Files with disabled formatting regions are reported without a fix.
+- Linter: default warning `declaration-order` shares the formatter's top-level reorder plan; fixes formatted and unformatted files without reformatting declaration bodies, preserves comments, annotations and regions, and requires unsafe fixes for reversed initializer dependencies. Files with disabled formatting regions or top-level `@warning_ignore_start`/`@warning_ignore_restore` annotations are reported without a fix.
 
 - Linter: new built-in rules `duplicate-class-name`, `missing-class-name` (autoloads exempt; unsafe fix adds a free PascalCase name), `scene-connection-missing-method`, `missing-resource-path`, `prefer-uid-path` (safe fix to the resource's `uid://`), `self-assignment`, `unreachable-code`, `duplicate-dictionary-key` and `godot3-syntax` (safe/unsafe fixes for `tool`, `onready`, `export`, `yield`, `instance()` and string-method `connect`).
 - Docs: `docs/rules.md` documents every built-in rule (level, fix, why, bad and good examples), linked from the README; a test keeps it in sync with the rule metadata.
