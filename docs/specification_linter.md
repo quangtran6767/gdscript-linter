@@ -807,8 +807,8 @@ export default {
 ## LSP server (`gdguard lsp`, `src/lsp/`)
 
 - Synchronous pinned `lsp-server = 0.7.9` + `lsp-types = 0.97.0` crates
-  (SM0; no async runtime), so it
-  stays in line with the coding guidelines.
+  (no async runtime). The stdio implementation uses full-text document
+  synchronization, open/save publication, and 150 ms change debouncing.
 - Publishes diagnostics on open and change (debounced at 150 ms) and on save.
 - Code actions:
   - each fix, as a quick fix;
@@ -819,15 +819,25 @@ export default {
 - Converts positions to UTF-16 at the edge.
 - It runs alongside Godot's own GDScript language server. It doesn't replace
   it.
-- Editor setup docs for VS Code, Neovim and Zed.
+- Protocol errors are logged to stderr; malformed requests return structured
+  errors and configuration failures publish a config-error diagnostic.
+  Code actions carry the document version and include fix safety in titles.
+  Ignore insertions include a reason placeholder for review.
+- Editor setup docs for VS Code, Neovim and Zed are in docs/editors.md;
+  a small optional Zed adapter registers the second GDScript server.
+- CLI/AI-agent workflows are the primary product. IDE features are optional
+  compatibility integrations, not CLI release prerequisites.
 
 ## Godot editor integration (`gdextension/`, `addons/`)
 
 - The gdextension exposes `lint(path, source)` and `fix(path, source,
   unsafe)` on top of the library API and returns Dictionaries (rule,
   severity, message, help, range, fixes). It reads `gdguard.toml` from the
-  project root.
-- The addon adds a bottom panel listing the current script's issues.
+  project root. The legacy lint_gdscript method remains deprecated but
+  available. Native apply_edits validates reviewed individual edits and
+  rejects malformed ranges or GDScript; editor config caches use content
+  hashes and reload changed config files.
+- The optional addons/gdguard_lint addon adds a bottom panel listing the current script's issues.
   - Clicking an issue jumps to its line.
   - An "Apply fix" button applies one fix; "Fix all safe" applies every safe
     fix.

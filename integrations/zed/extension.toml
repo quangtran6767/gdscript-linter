@@ -1,0 +1,12 @@
+id = "gdguard"
+name = "gdguard"
+version = "0.1.0"
+schema_version = 1
+authors = ["gdguard contributors"]
+description = "GDScript lint diagnostics and fixes alongside Godot's language server."
+repository = "https://github.com/quangtran6767/gdscript-linter"
+
+[language_servers.gdguard]
+name = "gdguard"
+languages = ["GDScript"]
+opt_in_languages = ["GDScript"]

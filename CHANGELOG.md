@@ -6,6 +6,8 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
+- Optional stdio LSP diagnostics, UTF-16 positions, versioned quick fixes/fix-all and config reload, sharing the CLI pipeline.
+- Optional path-aware Godot lint/fix APIs, guarded individual edits, config caching and lint panel; legacy lint_gdscript remains available. Native/LSP parity is covered on every sample script.
 - Linter: unused-variable, unused-private-function, shadowed-variable, unused-local-signal and assigned-but-never-read semantic rules, with conservative exemptions and reviewed unsafe/suggestion fixes.
 - Linter: cached project index, autoloads, inheritance-aware member lookup and JS project bindings; project changes invalidate dependent lint-cache entries.
 - Linter: three additional JS example rules, a complete JS guide and checked type examples. Optional Project.root supports exact autoload owner comparisons.
@@ -44,7 +46,7 @@ This file documents the changes made to the formatter with each release.
 
 ### Reserved
 
-- Linter: `lsp` remains reserved and reports "not implemented yet" (exit code 2) until W7.
+- No reserved linter subcommands remain.
 
 ## Release 0.28.0 (2026-10-31)
 

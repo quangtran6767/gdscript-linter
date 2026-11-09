@@ -87,7 +87,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(rule_tester::run(test_rules_args))
         }
         Command::Init(init_args) => std::process::exit(init::run(init_args)),
-        Command::Lsp => exit_not_implemented("lsp"),
+        Command::Lsp => {
+            if let Err(error) = gdscript_formatter::lsp::run_stdio() {
+                eprintln!("LSP error: {}", error);
+                std::process::exit(1);
+            }
+            return Ok(());
+        }
         Command::Format { .. } | Command::Lint { .. } => {}
     }
 
@@ -460,13 +466,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-}
-
-/// Prints that a command or flag from the linter spec isn't implemented yet and
-/// exits with the usage error code.
-fn exit_not_implemented(name: &str) -> ! {
-    eprintln!("`{}` is not implemented yet", name);
-    std::process::exit(2);
 }
 
 /// What the `lint` command needs to lint files or stdin.

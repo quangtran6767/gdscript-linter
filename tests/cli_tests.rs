@@ -160,15 +160,12 @@ fn github_and_sarif_formats_report_issues() {
 }
 
 #[test]
-fn unimplemented_subcommands_exit_with_code_2_and_name_the_command() {
+fn lsp_reports_a_protocol_error_when_stdin_closes_before_initialize() {
     let directory = test_directory();
-    let cases: [(&[&str], &str); 1] = [(&["lsp"], "lsp")];
-    for (args, command) in cases {
-        let (exit_code, stderr) = run_and_capture_stderr(&directory, args);
-        assert_eq!(exit_code, 2, "{:?} should exit with code 2", args);
-        assert_eq!(stderr, format!("`{}` is not implemented yet\n", command));
-    }
-    fs::remove_dir_all(directory).expect("should remove temporary test directory");
+    let (exit_code, stderr) = run_and_capture_stderr(&directory, &["lsp"]);
+    assert_eq!(exit_code, 1);
+    assert!(stderr.contains("initialize"), "{}", stderr);
+    fs::remove_dir_all(directory).expect("remove test folder");
 }
 
 #[test]

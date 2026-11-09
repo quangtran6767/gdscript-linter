@@ -25,6 +25,7 @@ pub mod output;
 
 // Track B modules.
 pub mod custom;
+pub mod editor;
 pub mod explain;
 pub mod init;
 pub mod rule_tester;

@@ -2,16 +2,20 @@
 // clippy versions flag. The lint fires on macro output we don't control.
 #![allow(clippy::redundant_field_names)]
 
-use gdscript_formatter::linter::diagnostic::Diagnostic;
+use gdscript_formatter::linter::diagnostic::{Diagnostic, Severity, Span};
+use gdscript_formatter::linter::editor::{EditorDiagnostic, EditorSession, payloads};
 use gdscript_formatter::linter::{LinterConfig, lint_gdscript_with_config};
 use gdscript_formatter::{
     FormatterConfiguration, PrinterConfiguration, QuoteStyle, format_gdscript,
 };
 use godot::builtin::{Array, PackedStringArray};
+use godot::obj::Singleton;
 use godot::prelude::{
     Base, Dictionary, ExtensionLibrary, GString, GodotClass, Object, Variant, gdextension,
     godot_api, godot_error,
 };
+use std::cell::RefCell;
+use std::path::Path;
 
 struct FormatterExtension;
 
@@ -22,6 +26,7 @@ unsafe impl ExtensionLibrary for FormatterExtension {}
 #[class(init, singleton, base=Object)]
 struct GDScriptFormatter {
     base: Base<Object>,
+    session: RefCell<EditorSession>,
 }
 
 #[godot_api]
@@ -42,6 +47,109 @@ impl GDScriptFormatter {
         }
     }
 
+    #[func]
+    pub fn lint(&self, path: GString, source: GString) -> Array<Dictionary<Variant, Variant>> {
+        let absolute = godot::classes::ProjectSettings::singleton()
+            .globalize_path(&path)
+            .to_string();
+        let source = source.to_string();
+        match self
+            .session
+            .borrow_mut()
+            .lint(Path::new(&absolute), &source)
+        {
+            Ok(issues) => payloads_to_array(&issues),
+            Err(error) => {
+                godot_error!("Linter error: {}", error);
+                issues_to_array(&[editor_error(&source, error)])
+            }
+        }
+    }
+
+    #[func]
+    pub fn fix(
+        &self,
+        path: GString,
+        source: GString,
+        unsafe_fixes: bool,
+    ) -> Dictionary<Variant, Variant> {
+        let absolute = godot::classes::ProjectSettings::singleton()
+            .globalize_path(&path)
+            .to_string();
+        let source = source.to_string();
+        let mut result = Dictionary::new();
+        match self
+            .session
+            .borrow_mut()
+            .fix(Path::new(&absolute), &source, unsafe_fixes)
+        {
+            Ok(fixed) => {
+                result.set("output", &GString::from(&fixed.output));
+                result.set("applied", fixed.applied as i64);
+                result.set("remaining", &payloads_to_array(&fixed.remaining));
+            }
+            Err(error) => {
+                godot_error!("Linter error: {}", error);
+                result.set("output", &GString::from(&source));
+                result.set("applied", 0_i64);
+                result.set("error", &GString::from(&error));
+                result.set(
+                    "remaining",
+                    &issues_to_array(&[editor_error(&source, error)]),
+                );
+            }
+        }
+        result
+    }
+
+    /// Applies one reviewed fix atomically, rejecting malformed ranges or code.
+    #[func]
+    pub fn apply_edits(
+        &self,
+        source: GString,
+        edits: Array<Dictionary<Variant, Variant>>,
+    ) -> Dictionary<Variant, Variant> {
+        let source = source.to_string();
+        let mut result = Dictionary::new();
+        let output = (|| -> Result<String, String> {
+            let mut changes = Vec::with_capacity(edits.len());
+            for edit in edits.iter_shared() {
+                let start = edit
+                    .get("start_byte")
+                    .and_then(|value| value.try_to::<i64>().ok())
+                    .and_then(|value| usize::try_from(value).ok())
+                    .ok_or("invalid edit start_byte")?;
+                let end = edit
+                    .get("end_byte")
+                    .and_then(|value| value.try_to::<i64>().ok())
+                    .and_then(|value| usize::try_from(value).ok())
+                    .ok_or("invalid edit end_byte")?;
+                if start > end || end > source.len() {
+                    return Err("edit is outside source".to_string());
+                }
+                let replacement = edit
+                    .get("replacement")
+                    .and_then(|value| value.try_to::<GString>().ok())
+                    .ok_or("invalid replacement")?
+                    .to_string();
+                changes.push(gdscript_formatter::linter::diagnostic::Edit {
+                    span: Span::from_byte_range(&source, start, end),
+                    replacement,
+                });
+            }
+            gdscript_formatter::linter::editor::apply_edits_checked(&source, &changes)
+        })();
+        match output {
+            Ok(output) => result.set("output", &GString::from(&output)),
+            Err(error) => {
+                result.set("output", &GString::from(&source));
+                result.set("error", &GString::from(&error));
+            }
+        }
+        result
+    }
+
+    /// Deprecated: use lint(path, source) for project configuration and fixes.
     #[func]
     pub fn lint_gdscript(
         &self,
@@ -144,16 +252,53 @@ fn dict_to_linter_config(dict: &Dictionary<Variant, Variant>) -> LinterConfig {
     result
 }
 
-fn issues_to_array(diagnostics: &[Diagnostic]) -> Array<Dictionary<Variant, Variant>> {
-    let mut gd_issues = Array::<Dictionary<Variant, Variant>>::new();
-    for diagnostic in diagnostics {
-        let mut gd_issue = Dictionary::<Variant, Variant>::new();
-        gd_issue.set("line", diagnostic.span.start.line as i64);
-        gd_issue.set("column", diagnostic.span.start.column as i64);
-        gd_issue.set("rule", &GString::from(&diagnostic.rule));
-        gd_issue.set("severity", diagnostic.severity.as_str());
-        gd_issue.set("message", &GString::from(&diagnostic.message));
-        gd_issues.push(&gd_issue);
+fn editor_error(source: &str, message: String) -> Diagnostic {
+    Diagnostic {
+        rule: "config-error".to_string(),
+        severity: Severity::Error,
+        message,
+        help: Some("Fix the project configuration or custom rule and lint again.".to_string()),
+        span: Span::from_byte_range(source, 0, 0),
+        fixes: Vec::new(),
     }
-    gd_issues
+}
+
+fn issues_to_array(diagnostics: &[Diagnostic]) -> Array<Dictionary<Variant, Variant>> {
+    payloads_to_array(&payloads(diagnostics))
+}
+
+fn payloads_to_array(issues: &[EditorDiagnostic]) -> Array<Dictionary<Variant, Variant>> {
+    let mut result = Array::new();
+    for issue in issues {
+        let mut item = Dictionary::<Variant, Variant>::new();
+        item.set("rule", &GString::from(&issue.rule));
+        item.set("severity", &GString::from(&issue.severity));
+        item.set("message", &GString::from(&issue.message));
+        item.set("help", &GString::from(issue.help.as_deref().unwrap_or("")));
+        item.set("line", issue.line as i64);
+        item.set("column", issue.column as i64);
+        item.set("end_line", issue.end_line as i64);
+        item.set("end_column", issue.end_column as i64);
+        item.set("start_byte", issue.start_byte as i64);
+        item.set("end_byte", issue.end_byte as i64);
+        let mut fixes = Array::<Dictionary<Variant, Variant>>::new();
+        for fix in &issue.fixes {
+            let mut payload = Dictionary::<Variant, Variant>::new();
+            payload.set("description", &GString::from(&fix.description));
+            payload.set("safety", &GString::from(&fix.safety));
+            let mut edits = Array::<Dictionary<Variant, Variant>>::new();
+            for edit in &fix.edits {
+                let mut change = Dictionary::<Variant, Variant>::new();
+                change.set("start_byte", edit.span.start_byte as i64);
+                change.set("end_byte", edit.span.end_byte as i64);
+                change.set("replacement", &GString::from(&edit.replacement));
+                edits.push(&change);
+            }
+            payload.set("edits", &edits);
+            fixes.push(&payload);
+        }
+        item.set("fixes", &fixes);
+        result.push(&item);
+    }
+    result
 }

@@ -5,7 +5,7 @@ integration on the current branch (`w4-a`). No partner waits.
 
 The solo integration step updates this file after validation.
 
-current_wave: w7
+current_wave: w8
 
 | Wave | Who works | Status |
 |------|-----------|--------|
@@ -17,7 +17,7 @@ current_wave: w7
 | sm0 | solo | done |
 | w5  | solo (A + B + integration) | done |
 | w6  | solo (A + B + integration) | done |
-| w7  | solo (A + B + integration) | todo |
+| w7  | solo (A + B + integration) | done |
 | w8  | solo (A + B + integration) | todo |
 
 ## Resume notes
@@ -35,6 +35,12 @@ current_wave: w7
   bindings/examples/docs and C5. See `docs/handoff/w6-{a,b,merge}.md`.
 - W6 checks: 579 workspace tests; 563 feature-off tests; clippy, strict TS,
   release build and 12 release smoke checks pass. 13 example rules pass.
-- Next: W7 LSP server, Godot integration and C6 parity, then W8.
+- W7 practical compatibility complete: LSP, native API/panel and C6 parity.
+  585 workspace / 569 feature-off tests; fmt/clippy/release; real Godot 4.7.2
+  cold-start/import and native smoke pass (0 failures, 5 parity fixtures).
+- User priority: CLI + AI-agent fix/re-lint/JSON. Optional IDE polish must not
+  delay completion. Native hot-loading requires a restart; GUI QA optional.
+- Next: W8 cross-file CLI rules, 1000-file benchmark, rename, release dry
+  run and final CLI/agent documentation/validation. Continue to completion.
 - User explicitly authorized commits and pushes to origin/w4-a on 2026-11-09.
 - No real-game project path was provided; sample dogfooding passed.

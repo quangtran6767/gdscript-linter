@@ -274,20 +274,20 @@ project data. Tag **v0.31**.
 ## W7: A and B at the same time
 
 **A: `a/lsp`**
-- [ ] L1. `gdguard lsp`:
+- [x] L1. `gdguard lsp`:
   - diagnostics on open, change and save, debounced;
   - code actions: quick fix, fix all safe, ignore line;
   - reload config and rules when they change;
   - UTF-16 positions.
-- [ ] `tests/lsp/`, using a scripted client session.
-- [ ] Write the LSP part of `docs/editors.md` (VS Code, Neovim, Zed).
+- [x] `tests/lsp/`, using a scripted client session.
+- [x] Write the LSP part of `docs/editors.md` (VS Code, Neovim, Zed).
 
 **B: `b/godot-editor`**
-- [ ] G1. gdextension `lint(path, source)` and `fix(path, source, unsafe)`
+- [x] G1. gdextension `lint(path, source)` and `fix(path, source, unsafe)`
       on top of `api.rs`, returning Dictionaries.
-- [ ] Addon: a bottom panel with the issue list and jump-to-line, plus
+- [x] Addon: a bottom panel with the issue list and jump-to-line, plus
       "Apply fix" and "Fix all safe" buttons, linting on save.
-- [ ] Write the Godot part of `docs/editors.md`.
+- [x] Write the Godot part of `docs/editors.md`.
 
 **Merge session (C6):** run both on the same project with the same config and check that
 the diagnostics are identical. Tag **v0.32**.

@@ -15,6 +15,14 @@ individual wave prompts. Preserve frozen contracts and formatter behavior.
    and integration requests. Do not redo completed tasks.
 4. Tell the user the wave and next unfinished work, then proceed.
 
+## Product priority (maintainer clarification)
+
+This project is primarily a CLI for AI agents. Finish the CLI, fix/re-lint
+loop, useful JSON/help/fixes and predictable errors first. Treat W7 IDE and
+Godot integrations as optional compatibility work: keep basic tests/builds,
+record limitations, and do not spend time on full IDE polish before W8's
+CLI completion/performance/distribution tasks.
+
 ## Work through each wave
 
 Read the following task files for the current wave:

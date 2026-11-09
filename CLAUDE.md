@@ -14,6 +14,15 @@ editor integration.
   Every session follows `docs/prompts/_session_rules.md`.
 - Notes between sessions: `docs/handoff/`.
 
+## Product priority
+
+The maintainer clarified on 2026-11-09 that this is primarily a CLI for AI
+agents: after edits, run lint, apply safe fixes, and use actionable diagnostics
+and JSON to finish remaining work. Prioritize correctness, stable output,
+clear errors and the agent fix/re-lint loop. IDE/LSP/Godot integrations are
+optional compatibility features; extensive IDE polish must not delay CLI
+completion or release validation.
+
 ## Rules for agents
 
 - This is now a solo workflow (user instruction, 2026-11-09). Continue the
