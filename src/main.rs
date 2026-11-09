@@ -32,7 +32,10 @@ use gdguard::linter::config::CliRuleOverrides;
 use gdguard::linter::fix::unified_diff;
 use gdguard::linter::output::{LintReport, OutputFormat, display_path, write_report};
 use gdguard::linter::rule_config::parse_disabled_rules;
-use gdguard::linter::{FixRunReport, LintRunOptions, fix_files, fix_stdin, lint_files, lint_stdin};
+use gdguard::linter::{
+    FixRunReport, LintRunOptions, add_godot_diagnostics, fix_files, fix_stdin, lint_files,
+    lint_stdin,
+};
 use gdguard::linter::{explain, init, rule_tester};
 use gdguard::{
     FormatErrors, FormatterConfiguration, QuoteStyle, RenderElement, format_gdscript,
@@ -112,6 +115,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         no_cache,
         max_warnings,
         stdin_filename,
+        godot_path,
     } = parsed_cli_args.command
     {
         if do_list_rules {
@@ -160,6 +164,12 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             config_path,
             stdin_filename,
             no_cache,
+            // An empty GDGUARD_GODOT turns the Godot check off.
+            godot_path: godot_path.or_else(|| {
+                env::var_os("GDGUARD_GODOT")
+                    .filter(|value| !value.is_empty())
+                    .map(PathBuf::from)
+            }),
         };
         if do_update_baseline {
             std::process::exit(run_update_baseline(
@@ -482,6 +492,8 @@ struct LintCommand {
     stdin_filename: Option<PathBuf>,
     /// `--no-cache`: lint every file.
     no_cache: bool,
+    /// `--godot` or `GDGUARD_GODOT`: run the Godot check with this executable.
+    godot_path: Option<PathBuf>,
 }
 
 /// Where `lint` reads its source from.
@@ -517,6 +529,7 @@ fn prepare_lint_input(command: LintCommand) -> Result<(LintInput, LintRunOptions
         config_path: command.config_path,
         cli,
         cache_path: None,
+        godot_path: command.godot_path,
     };
 
     let is_dash_only =
@@ -664,21 +677,13 @@ fn run_update_baseline(
 ///
 /// The exit code of a fix run follows the issues left after fixing.
 fn run_fix_command(lint_command: LintCommand, fix_command: &FixCommand) -> i32 {
-    let mut fix_report = match run_fixer(lint_command, fix_command.allow_unsafe) {
-        Ok(fix_report) => fix_report,
+    let (mut fix_report, run_files) = match run_fixer(lint_command, fix_command.allow_unsafe) {
+        Ok(result) => result,
         Err(error) => {
             eprintln!("Error: {}", error);
             return 2;
         }
     };
-    if let Some((baseline, root)) = &fix_command.baseline {
-        fix_report.report.baseline_hidden = apply_baseline(
-            baseline,
-            &mut fix_report.report,
-            &fix_command.current_directory,
-            root,
-        );
-    }
 
     if fix_command.diff_only {
         let mut diff_output = String::new();
@@ -710,6 +715,21 @@ fn run_fix_command(lint_command: LintCommand, fix_command: &FixCommand) -> i32 {
                 return 2;
             }
         }
+    }
+    // Godot loads the files from disk, so it checks them once they are written.
+    if let Some((files, options)) = &run_files
+        && let Err(error) = add_godot_diagnostics(&mut fix_report.report, files, options)
+    {
+        eprintln!("Error: {}", error);
+        return 2;
+    }
+    if let Some((baseline, root)) = &fix_command.baseline {
+        fix_report.report.baseline_hidden = apply_baseline(
+            baseline,
+            &mut fix_report.report,
+            &fix_command.current_directory,
+            root,
+        );
     }
 
     // Stdout carries the fixed source for stdin, so the report goes to
@@ -761,16 +781,29 @@ fn fixed_summary_line(applied: usize, file_count: usize) -> String {
     )
 }
 
+/// The files of a fix run and their options, for the Godot check that runs
+/// once the fixed files are written. `None` for stdin.
+type FixedFiles = Option<(Vec<PathBuf>, LintRunOptions)>;
+
 /// Runs the fix engine on the files (or stdin) without writing anything.
-fn run_fixer(command: LintCommand, allow_unsafe: bool) -> Result<FixRunReport, String> {
+fn run_fixer(
+    command: LintCommand,
+    allow_unsafe: bool,
+) -> Result<(FixRunReport, FixedFiles), String> {
     let (input, options) = prepare_lint_input(command)?;
     match input {
-        LintInput::Files(files) => fix_files(&files, &options, allow_unsafe),
+        LintInput::Files(files) => {
+            let fix_report = fix_files(&files, &options, allow_unsafe)?;
+            Ok((fix_report, Some((files, options))))
+        }
         LintInput::Stdin {
             source,
             lookup_path,
             display_name,
-        } => fix_stdin(source, &lookup_path, &display_name, &options, allow_unsafe),
+        } => Ok((
+            fix_stdin(source, &lookup_path, &display_name, &options, allow_unsafe)?,
+            None,
+        )),
     }
 }
 
@@ -779,7 +812,11 @@ fn run_fixer(command: LintCommand, allow_unsafe: bool) -> Result<FixRunReport, S
 fn run_linter(command: LintCommand) -> Result<LintReport, String> {
     let (input, options) = prepare_lint_input(command)?;
     match input {
-        LintInput::Files(files) => lint_files(&files, &options),
+        LintInput::Files(files) => {
+            let mut report = lint_files(&files, &options)?;
+            add_godot_diagnostics(&mut report, &files, &options)?;
+            Ok(report)
+        }
         LintInput::Stdin {
             source,
             lookup_path,

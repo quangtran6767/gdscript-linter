@@ -10,6 +10,8 @@ rationale: |
   form, `pressed.connect(_on_pressed)`, needs the names without quotes and is
   left to you. The fix is unsafe because extra arguments (binds, flags) are
   not handled, so only the three-argument form is reported.
+  The built-in `godot3-syntax` rule now reports this too; keep this file as
+  a YAML example, and don't enable both.
 rule:
   any:
     - pattern: connect($SIGNAL, $TARGET, $METHOD)

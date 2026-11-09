@@ -19,6 +19,7 @@ current_wave: done
 | w6  | solo (A + B + integration) | done |
 | w7  | solo (A + B + integration) | done |
 | w8  | solo (A + B + integration) | done |
+| w9  | solo (maintainer-requested rules) | done |
 
 ## Resume notes
 
@@ -45,6 +46,10 @@ current_wave: done
   dry run, CLI-first docs and short README. See docs/handoff/w8-*.md.
 - W8 checks: 591 workspace / 575 feature-off tests; fmt/clippy/release;
   Godot 4.7.2 native smoke 0 failures.
+- W9 (maintainer request after testing W8): ten new built-in rule ids,
+  scene-aware unused-private-function, non-fatal duplicate class_name,
+  fix-engine repair exception and the optional Godot check. 608 workspace
+  / 592 feature-off tests. See docs/handoff/w9.md.
 - Next: the maintainer tests the tool first. Do not start any task, tag or
   release until they say so. Never send anything upstream to GDQuest.
 - User explicitly authorized commits and pushes to origin/w4-a on 2026-11-09.

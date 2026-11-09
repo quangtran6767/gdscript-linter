@@ -311,6 +311,23 @@ the diagnostics are identical. Tag **v0.32**.
 No release tag is created automatically. Selecting v1.0 and publishing it
 remain explicit maintainer actions; see docs/releasing.md.
 
+## W9: solo, stronger built-in rules (2026-11-09)
+
+Requested by the maintainer after testing W8 against Godot 4.7.2.
+
+- [x] `duplicate-class-name`; duplicate names no longer fail the index.
+- [x] `unused-private-function` counts scene connections;
+      `scene-connection-missing-method`.
+- [x] `missing-resource-path`, `prefer-uid-path` (maintainer: use `uid://`
+      for `load`/`preload`), `missing-class-name` (maintainer: every
+      script has a `class_name` unless it is an autoload).
+- [x] `self-assignment`, `unreachable-code`, `duplicate-dictionary-key`,
+      `godot3-syntax`, and the fix-engine exception for fixes that repair
+      every syntax error.
+- [x] Optional Godot check (`--godot`, `GDGUARD_GODOT`, `godot-error`).
+
+See docs/handoff/w9.md.
+
 ---
 
 ## Dependency map (why the waves are in this order)

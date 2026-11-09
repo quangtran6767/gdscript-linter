@@ -6,6 +6,17 @@ This file documents the changes made to the formatter with each release.
 
 ### Added
 
+- Linter: new built-in rules `duplicate-class-name`, `missing-class-name` (autoloads exempt; unsafe fix adds a free PascalCase name), `scene-connection-missing-method`, `missing-resource-path`, `prefer-uid-path` (safe fix to the resource's `uid://`), `self-assignment`, `unreachable-code`, `duplicate-dictionary-key` and `godot3-syntax` (safe/unsafe fixes for `tool`, `onready`, `export`, `yield`, `instance()` and string-method `connect`).
+- CLI: optional Godot check. `lint --godot <PATH>` or `GDGUARD_GODOT` loads the linted scripts in headless Godot 4 once per project and reports its errors as `godot-error`, after fixes are written.
+- Project API (additive): `ProjectIndex::has_member_in_script`, `ProjectIndex::scripts_declaring`, and `ProjectAnalysis` scene connections, connected methods, UID maps and scene root scripts.
+
+### Changed
+
+- Linter: two scripts with the same `class_name` no longer stop `lint` with exit 2. Both are linted, `duplicate-class-name` reports them, and the ambiguous name resolves to Unknown.
+- Linter: `unused-private-function` counts methods named by `.tscn` connections as used.
+- Fix engine: a file with syntax errors is fixed when the allowed fixes together remove every syntax error (for example Godot 3 keywords); otherwise it stays unchanged as before.
+- Cache: the project digest covers every project file path and `.tres`, `.uid` and `.import` contents, so new resources and UIDs invalidate cached results.
+
 - CLI: project-wide unused-signal checks include script and scene connections; unknown-member-on-project-class reports only provably missing members of explicit project types.
 - CLI: actionable parse-error diagnostics prevent malformed source from appearing clean; tolerate Godot's valid empty enums.
 - CLI: generated 1000-file cold/warm benchmark, signal-scene cache invalidation and an automated agent safe-fix/manual-repair/re-lint test.

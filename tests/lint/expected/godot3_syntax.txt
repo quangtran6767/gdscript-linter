@@ -1,0 +1,11 @@
+tests/lint/input/godot3_syntax.gd:1:godot3-syntax:error: `tool` is Godot 3 syntax.
+tests/lint/input/godot3_syntax.gd:4:godot3-syntax:error: `onready` is Godot 3 syntax.
+tests/lint/input/godot3_syntax.gd:4:parse-error:error: The GDScript parser could not read this syntax.
+tests/lint/input/godot3_syntax.gd:5:godot3-syntax:error: `export` is Godot 3 syntax.
+tests/lint/input/godot3_syntax.gd:6:godot3-syntax:error: `export(...)` is Godot 3 syntax.
+tests/lint/input/godot3_syntax.gd:7:godot3-syntax:error: `setget` is Godot 3 syntax.
+tests/lint/input/godot3_syntax.gd:9:godot3-syntax:error: `remote` is Godot 3 syntax.
+tests/lint/input/godot3_syntax.gd:18:godot3-syntax:error: `yield` was removed in Godot 4.
+tests/lint/input/godot3_syntax.gd:19:godot3-syntax:error: `PackedScene.instance()` was renamed in Godot 4.
+tests/lint/input/godot3_syntax.gd:20:godot3-syntax:error: `connect(signal, target, "method")` is Godot 3 syntax.
+tests/lint/input/godot3_syntax.gd:21:godot3-syntax:error: `connect(signal, target, "method")` is Godot 3 syntax.

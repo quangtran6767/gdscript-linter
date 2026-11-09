@@ -47,6 +47,24 @@ tool/config errors (exit 2) before interpreting diagnostics. Keep ignore
 comments specific and include ` -- reason`. Do not extend a baseline to
 hide a newly introduced issue. Run `test-rules` after changing custom rules.
 
+### Add Godot's own check
+
+gdguard doesn't check types. Point it at a Godot 4 executable and the same
+run also loads the linted scripts in headless Godot, reporting its errors
+as `godot-error` in the same JSON:
+
+```sh
+export GDGUARD_GODOT=/path/to/Godot_v4.7.2-stable_linux.x86_64
+gdguard lint --fix --format json scripts/   # or pass --godot <PATH>
+```
+
+The first run after a `class_name` changes runs `godot --import` (a few
+seconds); later runs take a fraction of a second per project. Godot's
+warnings only appear when the project sets them to error, for example
+`debug/gdscript/warnings/unreachable_code=2` in `project.godot`. The check
+is skipped for stdin and `--diff`. Godot may write `.godot/` and `.uid`
+files, as the editor does.
+
 `--fix` sends a JSON report of remaining issues to stdout and the fixed
 count to stderr. With `--stdin-filename` and `--fix`, stdout instead holds
 the fixed source and diagnostics go to stderr; use disk files for JSON.

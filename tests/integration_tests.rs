@@ -287,8 +287,16 @@ fn builtin_rule_spans() {
 
     // Cross-file mode supersedes the local fallback; exercise that fallback separately.
     let fallback = gdguard::linter::lint_gdscript(&source, "all_rules.gd").unwrap();
-    // The fixture must exercise every built-in rule.
+    // The fixture must exercise every built-in rule. Two rules need the
+    // linted file to be inside the project (autoload and scene lookups by
+    // path); tests/project covers them.
     for rule_name in get_all_rule_names() {
+        if matches!(
+            rule_name,
+            "missing-class-name" | "scene-connection-missing-method"
+        ) {
+            continue;
+        }
         let mut is_reported = false;
         for diagnostic in diagnostics.iter().chain(&fallback) {
             if diagnostic.rule == rule_name {

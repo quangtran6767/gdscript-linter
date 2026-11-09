@@ -9,6 +9,8 @@ rationale: |
   "signal")`, which waits for the same signal; you may then simplify it to
   `await object.signal`. It is marked unsafe because the caller of the
   function may also need an `await` now.
+  The built-in `godot3-syntax` rule now reports this too; keep this file as
+  a YAML example, and don't enable both.
 rule:
   pattern: yield($OBJECT, $SIGNAL)
 constraints:

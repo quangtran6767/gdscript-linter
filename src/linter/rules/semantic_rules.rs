@@ -10,6 +10,33 @@ pub struct SemanticRule {
 
 impl Rule for SemanticRule {
     fn check_context(&mut self, context: &FileContext, diagnostics: &mut Vec<Diagnostic>) {
+        // In a project, scene connections can use private functions: that
+        // rule waits for the project analysis.
+        if self.id == "unused-private-function" && context.project.is_some() {
+            return;
+        }
+        self.report(context, None, diagnostics);
+    }
+
+    fn check_project_context(
+        &mut self,
+        context: &FileContext,
+        analysis: &crate::project::ProjectAnalysis,
+        diagnostics: &mut Vec<Diagnostic>,
+    ) {
+        if self.id == "unused-private-function" && context.project.is_some() {
+            self.report(context, Some(analysis), diagnostics);
+        }
+    }
+}
+
+impl SemanticRule {
+    fn report(
+        &self,
+        context: &FileContext,
+        analysis: Option<&crate::project::ProjectAnalysis>,
+        diagnostics: &mut Vec<Diagnostic>,
+    ) {
         let Some(model) = context.semantic else {
             return;
         };
@@ -50,6 +77,9 @@ impl Rule for SemanticRule {
                             .is_err()
                         && !context.source.contains(&format!("\"{}\"", symbol.name))
                         && !context.source.contains(&format!("'{}'", symbol.name))
+                        && !analysis.is_some_and(|analysis| {
+                            analysis.connected_methods.contains(&symbol.name)
+                        })
                 }
                 "shadowed-variable" => {
                     local

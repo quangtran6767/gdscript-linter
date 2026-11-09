@@ -21,6 +21,7 @@ pub mod baseline;
 pub mod cache;
 pub mod config;
 pub mod fix;
+pub mod godot_check;
 pub mod output;
 
 // Track B modules.
@@ -281,6 +282,9 @@ pub struct LintRunOptions {
     /// The lint cache file (`.gdguard/cache/lint.json`), or None to lint
     /// every file (`--no-cache`, stdin, no config). Only `lint_files` uses it.
     pub cache_path: Option<PathBuf>,
+    /// `--godot` or `GDGUARD_GODOT`: the Godot 4 executable used by
+    /// `add_godot_diagnostics`. `None` skips the Godot check.
+    pub godot_path: Option<PathBuf>,
 }
 
 /// A loaded config with its custom rule providers.
@@ -442,6 +446,87 @@ pub fn lint_files(files: &[PathBuf], options: &LintRunOptions) -> Result<LintRep
     }
     report.rule_metas = config_cache.custom_rule_metas();
     Ok(report)
+}
+
+/// Runs the optional Godot check (`options.godot_path`) on files from disk and
+/// adds its `godot-error` diagnostics to `report`. Excluded files and files
+/// where `godot-error` is off are skipped; rule levels apply. Does nothing
+/// without a Godot path. Godot failures return an error (exit code 2).
+pub fn add_godot_diagnostics(
+    report: &mut LintReport,
+    files: &[PathBuf],
+    options: &LintRunOptions,
+) -> Result<(), String> {
+    let Some(executable) = &options.godot_path else {
+        return Ok(());
+    };
+    let mut config_cache = ConfigCache {
+        configs: HashMap::new(),
+    };
+    let mut targets = Vec::new();
+    for file_path in files {
+        let loaded = config_cache.config_for(file_path, options)?;
+        if loaded.compiled.is_excluded(file_path) {
+            continue;
+        }
+        let settings = loaded.compiled.settings_for_file(file_path, &options.cli);
+        if settings
+            .linter_config
+            .disabled_rules
+            .contains(godot_check::GODOT_ERROR_RULE_ID)
+        {
+            continue;
+        }
+        targets.push((file_path.clone(), settings));
+    }
+    let mut paths = Vec::with_capacity(targets.len());
+    for (path, _) in &targets {
+        paths.push(path.clone());
+    }
+    let mut found = godot_check::check_files(executable, &paths)?;
+    for (path, settings) in &targets {
+        let Some(mut diagnostics) = found.remove(path) else {
+            continue;
+        };
+        apply_rule_levels(&settings.levels, &mut diagnostics);
+        let shown_path = display_path(path);
+        let mut index = None;
+        for (file_index, file) in report.files.iter().enumerate() {
+            if file.path == shown_path {
+                index = Some(file_index);
+            }
+        }
+        let index = if let Some(index) = index {
+            index
+        } else {
+            let source = fs::read_to_string(path)
+                .map_err(|error| format!("Failed to read file {}: {}", path.display(), error))?;
+            report.files.push(FileDiagnostics {
+                path: shown_path,
+                source,
+                diagnostics: Vec::new(),
+            });
+            report.files.len() - 1
+        };
+        let file = &mut report.files[index];
+        file.diagnostics.extend(diagnostics);
+        file.diagnostics.sort_by(|a, b| {
+            a.span
+                .start
+                .line
+                .cmp(&b.span.start.line)
+                .then(a.span.start.column.cmp(&b.span.start.column))
+        });
+    }
+    // Keep the report in input order, as `lint_files` does.
+    let mut order = HashMap::new();
+    for (position, path) in files.iter().enumerate() {
+        order.entry(display_path(path)).or_insert(position);
+    }
+    report
+        .files
+        .sort_by_key(|file| order.get(&file.path).copied().unwrap_or(usize::MAX));
+    Ok(())
 }
 
 /// The `ConfigCache` key of the config for `file_path`: its path, or an

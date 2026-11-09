@@ -1,4 +1,11 @@
 scripts/enemies/enemy.gd
+ 1:1 warning [missing-class-name] Script has no class_name.
+  |
+1 | extends Node2D
+  | ^^^^^^^^^^^^^^
+  = help: Add `class_name Enemy` (or another unique PascalCase name) above `extends`. Autoload scripts are exempt.
+  = fix (unsafe): Add `class_name Enemy`
+
  3:8 error [signal-name] Signal name 'OnDefeated' should be in snake_case format
   |
 3 | signal OnDefeated
@@ -62,6 +69,12 @@ scripts/enemies/enemy.gd
    = fix (safe): Remove the 'pass' line
 
 scripts/player.gd
+ 2:1 error [scene-connection-missing-method] Scene 'res://scenes/player.tscn' connects signal 'body_entered' of node 'Hurtbox' to method '_on_hurtbox_body_entered', which this script doesn't define.
+  |
+2 | extends CharacterBody2D
+  | ^^^^^^^^^^^^^^^^^^^^^^^
+  = help: Add `func _on_hurtbox_body_entered(...)` to this script or a base script, or fix the method name in the scene's [connection]. Godot only fails when the signal is emitted.
+
  12:15 info [unused-argument] Function argument 'delta' is unused. Consider removing it or prefixing with '_'
    |
 12 | func _process(delta: float) -> void:
@@ -97,11 +110,39 @@ scripts/player.gd
    = fix (safe): Replace with `not inventory.is_empty()`
 
 scripts/ui/hud.gd
+ 1:1 warning [missing-class-name] Script has no class_name.
+  |
+1 | extends CanvasLayer
+  | ^^^^^^^^^^^^^^^^^^^
+  = help: Add `class_name Hud` (or another unique PascalCase name) above `extends`. Autoload scripts are exempt.
+  = fix (unsafe): Add `class_name Hud`
+
+ 3:30 warning [prefer-uid-path] Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'.
+  |
+3 | const PLAYER_SCENE = preload("res://scenes/player.tscn")
+  |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = help: UID paths keep working when files are moved or renamed. Replace the path with the UID.
+  = fix (safe): Replace with "uid://c4sampleplayer"
+
+ 5:25 warning [prefer-uid-path] Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.
+  |
+5 | var icon_texture = load("res://icon.svg")
+  |                         ^^^^^^^^^^^^^^^^
+  = help: UID paths keep working when files are moved or renamed. Replace the path with the UID.
+  = fix (safe): Replace with "uid://b8sampleicon1"
+
  5:25 warning [duplicated-load] Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
   |
 5 | var icon_texture = load("res://icon.svg")
   |                         ^^^^^^^^^^^^^^^^
   = help: Load it once at the top of the script, for example `const Resource = preload("res://icon.svg")`, and reuse the constant.
+
+ 6:31 warning [prefer-uid-path] Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.
+  |
+6 | var other_icon_texture = load("res://icon.svg")
+  |                               ^^^^^^^^^^^^^^^^
+  = help: UID paths keep working when files are moved or renamed. Replace the path with the UID.
+  = fix (safe): Replace with "uid://b8sampleicon1"
 
  6:31 warning [duplicated-load] Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
   |
@@ -127,4 +168,4 @@ scripts/ui/hud.gd
    |                                                                                                     ^^^^^^^^^^^^^^^^^^
    = help: Split the line, for example by wrapping arguments in parentheses or extracting a variable.
 
-Found 20 problems (8 errors, 10 warnings, 2 infos) in 3 files. 4 fixable with --fix.
+Found 26 problems (9 errors, 15 warnings, 2 infos) in 3 files. 7 fixable with --fix.

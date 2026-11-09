@@ -66,6 +66,7 @@ pub(super) fn build(root: &Path, with_cache: bool) -> Result<ProjectIndex, Strin
     };
     let mut scripts = Vec::with_capacity(paths.len());
     let mut class_names = HashMap::new();
+    let mut duplicate_names = HashSet::new();
     let mut parser = tree_sitter::Parser::new();
     parser
         .set_language(&tree_sitter_gdscript::LANGUAGE.into())
@@ -94,20 +95,20 @@ pub(super) fn build(root: &Path, with_cache: bool) -> Result<ProjectIndex, Strin
             }
         };
         if entry.valid {
+            // A name declared twice is ambiguous: keep both scripts but leave
+            // the name unresolved, so lookups through it return Unknown. The
+            // `duplicate-class-name` rule reports it.
             if let Some(name) = &entry.summary.class_name {
                 if class_names.insert(name.clone(), scripts.len()).is_some() {
-                    return Err(format!(
-                        "{}: duplicate class_name `{}`",
-                        path.display(),
-                        name
-                    ));
+                    duplicate_names.insert(name.clone());
                 }
             }
-        }
-        if entry.valid {
             scripts.push(entry.summary.clone());
         }
         cache.files.insert(key, entry);
+    }
+    for name in &duplicate_names {
+        class_names.remove(name);
     }
     // Cache errors cost performance, not correctness. Stable path order and
     // a unique temporary file keep concurrent lint processes independent.
@@ -232,9 +233,29 @@ fn parse_autoloads(source: &str) -> HashMap<String, PathBuf> {
 }
 
 pub(super) fn has_member(index: &ProjectIndex, class_name: &str, member: &str) -> MemberLookup {
-    let Some(mut current) = index.class_names.get(class_name).copied() else {
+    let Some(current) = index.class_names.get(class_name).copied() else {
         return MemberLookup::Unknown;
     };
+    lookup_from(index, current, member)
+}
+
+pub(super) fn has_member_in_script(
+    index: &ProjectIndex,
+    path: &Path,
+    member: &str,
+) -> MemberLookup {
+    let path = path
+        .to_str()
+        .and_then(|text| text.strip_prefix("res://"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|| path.to_path_buf());
+    let Some(current) = index.scripts.iter().position(|script| script.path == path) else {
+        return MemberLookup::Unknown;
+    };
+    lookup_from(index, current, member)
+}
+
+fn lookup_from(index: &ProjectIndex, mut current: usize, member: &str) -> MemberLookup {
     let mut visited = HashSet::new();
     loop {
         if !visited.insert(current) {
@@ -306,9 +327,18 @@ pub fn fingerprint(index: &ProjectIndex) -> Result<String, String> {
             std::fs::read(index.root.join(&script.path)).map_err(|error| error.to_string())?;
         parts.push(bytes);
     }
-    for scene in super::analysis::scene_files(&index.root)? {
-        parts.push(scene.to_string_lossy().as_bytes().to_vec());
-        parts.push(std::fs::read(scene).map_err(|error| error.to_string())?);
+    // Scenes, UID sources and the set of existing files feed scene, UID and
+    // resource-path rules, so any change to them invalidates cached results.
+    for file in super::analysis::project_files(&index.root)? {
+        parts.push(file.to_string_lossy().as_bytes().to_vec());
+        let name = file.to_string_lossy();
+        if name.ends_with(".tscn")
+            || name.ends_with(".tres")
+            || name.ends_with(".uid")
+            || name.ends_with(".import")
+        {
+            parts.push(std::fs::read(&file).map_err(|error| error.to_string())?);
+        }
     }
     let mut slices = Vec::with_capacity(parts.len());
     for part in &parts {

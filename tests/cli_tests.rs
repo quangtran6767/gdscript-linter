@@ -542,7 +542,11 @@ fn scene_connections_invalidate_cached_project_results_and_no_cache_creates_no_c
     let directory = test_directory();
     fs::write(directory.join("project.godot"), "config_version=5\n").expect("project");
     fs::write(directory.join("gdguard.toml"), "[rules]\n").expect("config");
-    fs::write(directory.join("data.gd"), "signal scene_only\n").expect("signal");
+    fs::write(
+        directory.join("data.gd"),
+        "class_name Data\nsignal scene_only\n",
+    )
+    .expect("signal");
     let run = |extra: &[&str]| {
         Command::new(env!("CARGO_BIN_EXE_gdguard"))
             .current_dir(&directory)
@@ -567,5 +571,157 @@ fn scene_connections_invalidate_cached_project_results_and_no_cache_creates_no_c
     );
     fs::remove_file(directory.join("main.tscn")).expect("remove connection");
     assert_eq!(run(&[]).status.code(), Some(1));
+    fs::remove_dir_all(directory).expect("cleanup");
+}
+
+#[test]
+fn added_resource_files_invalidate_cached_missing_path_results() {
+    let directory = test_directory();
+    fs::write(directory.join("project.godot"), "config_version=5\n").expect("project");
+    fs::write(directory.join("gdguard.toml"), "[rules]\n").expect("config");
+    fs::write(
+        directory.join("main.gd"),
+        "class_name Main\nvar icon = load(\"res://icon.png\")\n",
+    )
+    .expect("script");
+    let run = || {
+        let output = Command::new(env!("CARGO_BIN_EXE_gdguard"))
+            .current_dir(&directory)
+            .args(["lint", "--format", "compact", "main.gd"])
+            .output()
+            .expect("lint project");
+        (
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout).into_owned(),
+        )
+    };
+    let (code, stdout) = run();
+    assert_eq!(code, Some(1));
+    assert!(stdout.contains("[missing-resource-path]"), "{}", stdout);
+    fs::write(directory.join("icon.png"), "png").expect("icon");
+    assert_eq!(run(), (Some(0), String::new()));
+    // A new UID for the file is picked up through the cache too.
+    fs::write(
+        directory.join("icon.png.import"),
+        "[remap]\nuid=\"uid://bicon\"\n",
+    )
+    .expect("import");
+    let (code, stdout) = run();
+    assert_eq!(code, Some(1));
+    assert!(stdout.contains("[prefer-uid-path]"), "{}", stdout);
+    fs::remove_dir_all(directory).expect("cleanup");
+}
+
+/// A stand-in for the Godot executable: logs its arguments and prints the
+/// loader markers with one script error, like Godot 4 does on stderr.
+#[cfg(unix)]
+fn fake_godot(directory: &std::path::Path) -> std::path::PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+    let path = directory.join("fake-godot.sh");
+    fs::write(
+        &path,
+        concat!(
+            "#!/bin/sh\n",
+            "echo \"$@\" >> \"$(dirname \"$0\")/godot-calls.log\"\n",
+            "case \"$*\" in\n",
+            "  *--import*) mkdir -p .godot; exit 0 ;;\n",
+            "esac\n",
+            "for argument in \"$@\"; do\n",
+            "  case \"$argument\" in\n",
+            "    res://*)\n",
+            "      echo \"GDGUARD-BEGIN $argument\" >&2\n",
+            "      if [ \"$argument\" = res://scripts/bad.gd ]; then\n",
+            "        printf '\\033[1;31mSCRIPT ERROR:\\033[0m Parse Error: Cannot assign a value of type \"String\" as \"int\".\\n' >&2\n",
+            "        echo '          at: GDScript::reload (res://scripts/bad.gd:3)' >&2\n",
+            "      fi\n",
+            "      echo \"GDGUARD-END $argument\" >&2 ;;\n",
+            "  esac\n",
+            "done\n",
+        ),
+    )
+    .expect("fake godot");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("make executable");
+    path
+}
+
+#[cfg(unix)]
+#[test]
+fn godot_check_adds_godot_errors_to_json_and_respects_disable() {
+    let directory = test_directory();
+    let godot = fake_godot(&directory);
+    let project = directory.join("game");
+    fs::create_dir_all(project.join("scripts")).expect("project folder");
+    fs::write(project.join("project.godot"), "config_version=5\n").expect("project");
+    fs::write(
+        project.join("scripts/bad.gd"),
+        "class_name Bad\nfunc f() -> void:\n\tvar i: int = \"text\"\n\tprint(i)\n",
+    )
+    .expect("bad script");
+    fs::write(
+        project.join("scripts/good.gd"),
+        "class_name Good\nfunc g() -> void:\n\tpass\n",
+    )
+    .expect("good script");
+    let run = |extra: &[&str], environment: Option<&std::path::Path>| {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_gdguard"));
+        command
+            .current_dir(&project)
+            .env_remove("GDGUARD_GODOT")
+            .args(["lint", "--no-cache", "--format", "json"])
+            .args(extra)
+            .arg("scripts");
+        if let Some(path) = environment {
+            command.env("GDGUARD_GODOT", path);
+        }
+        let output = command.output().expect("lint");
+        let report: serde_json::Value =
+            serde_json::from_slice(&output.stdout).unwrap_or(serde_json::Value::Null);
+        (
+            output.status.code(),
+            report,
+            String::from_utf8_lossy(&output.stderr).into_owned(),
+        )
+    };
+
+    let (code, report, stderr) = run(&["--godot", godot.to_str().expect("utf-8 path")], None);
+    assert_eq!(code, Some(1), "{}", stderr);
+    let issues = report["issues"].as_array().expect("issues");
+    assert_eq!(issues.len(), 1, "{}", report);
+    assert_eq!(issues[0]["rule"], "godot-error");
+    assert_eq!(issues[0]["file"], "scripts/bad.gd");
+    assert_eq!(
+        issues[0]["message"],
+        "Cannot assign a value of type \"String\" as \"int\"."
+    );
+    assert_eq!(issues[0]["range"]["start"]["line"], 3);
+    assert_eq!(issues[0]["snippet"], "\tvar i: int = \"text\"");
+    // No class cache yet: Godot imported the project once before loading.
+    let calls = fs::read_to_string(directory.join("godot-calls.log")).expect("calls");
+    assert!(
+        calls
+            .lines()
+            .next()
+            .expect("first call")
+            .contains("--import")
+    );
+    assert!(calls.contains("res://scripts/bad.gd res://scripts/good.gd"));
+
+    // GDGUARD_GODOT works like --godot, and the rule can be disabled.
+    let (code, report, _) = run(&[], Some(&godot));
+    assert_eq!(code, Some(1));
+    assert_eq!(report["issues"][0]["rule"], "godot-error");
+    let (code, report, _) = run(&["--disable", "godot-error"], Some(&godot));
+    assert_eq!(code, Some(0), "{}", report);
+    // Without a Godot path the check is off.
+    let (code, _, _) = run(&[], None);
+    assert_eq!(code, Some(0));
+    // A wrong path is a usage error.
+    let (code, _, stderr) = run(&["--godot", "/nonexistent/godot"], None);
+    assert_eq!(code, Some(2));
+    assert!(
+        stderr.contains("can't run /nonexistent/godot"),
+        "{}",
+        stderr
+    );
     fs::remove_dir_all(directory).expect("cleanup");
 }

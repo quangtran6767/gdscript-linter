@@ -43,10 +43,19 @@ gdguard lint --list-rules
 gdguard test-rules .gdguard/rules
 ```
 
-Built-in rules check naming, control flow, unused declarations, shadowing,
-unused signals across scripts and `.tscn` scenes, and missing members on
-explicitly typed project classes. The linter never infers types, and it
-doesn't replace Godot's own warnings.
+Built-in rules check naming, control flow, unreachable code, unused
+declarations, shadowing, duplicate dictionary keys and Godot 3 syntax. In a
+Godot project they also check `class_name` (every non-autoload script has a
+unique one), `load()`/`preload()` paths (they exist, and use `uid://` when
+the resource has a UID), scene connections to missing methods, unused
+signals across scripts and `.tscn` scenes, and missing members on
+explicitly typed project classes. The linter never infers types.
+
+For type errors, add Godot's own check to the same run:
+
+```sh
+gdguard lint --godot /path/to/godot --format json .   # or set GDGUARD_GODOT
+```
 
 You can add project rules without rebuilding, as
 [YAML patterns](docs/custom_rules.md) or

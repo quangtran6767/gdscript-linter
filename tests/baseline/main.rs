@@ -73,8 +73,7 @@ struct CommandOutput {
 }
 
 /// Two private-access issues and one constant-name issue.
-const PLAYER: &str =
-    "const bad_name = 1\n\n\nfunc f(enemy):\n\tenemy._hidden()\n\tenemy._other()\n";
+const PLAYER: &str = "class_name Player\nconst bad_name = 1\n\n\nfunc f(enemy):\n\tenemy._hidden()\n\tenemy._other()\n";
 
 #[test]
 fn update_writes_a_sorted_stable_file_and_hides_every_issue() {
@@ -159,7 +158,7 @@ fn new_duplicate_of_a_baselined_line_is_reported() {
     let issues = report["issues"].as_array().unwrap();
     assert_eq!(issues.len(), 1);
     assert_eq!(issues[0]["rule"], "private-access");
-    assert_eq!(issues[0]["range"]["start"]["line"], 7);
+    assert_eq!(issues[0]["range"]["start"]["line"], 8);
 }
 
 #[test]
@@ -182,7 +181,7 @@ fn edited_issue_line_is_reported_again() {
     ]);
     assert_eq!(lint.exit_code, 1);
     assert!(
-        lint.stdout.contains("scripts/player.gd:6:"),
+        lint.stdout.contains("scripts/player.gd:7:"),
         "{}",
         lint.stdout
     );

@@ -62,7 +62,9 @@ struct FixCandidate {
 /// re-lints the result. `allow_unsafe` adds `Unsafe` fixes to `Safe` ones.
 ///
 /// A buffer that already has syntax errors is returned unchanged, with its
-/// diagnostics: the engine can't tell whether a fix made it worse.
+/// diagnostics: the engine can't tell whether a fix made it worse. The one
+/// exception is a set of fixes that together remove every syntax error (for
+/// example Godot 3 keywords): that result is accepted, then fixed as usual.
 pub fn fix_source_with_settings(
     linter: &mut GDScriptLinter,
     path: &Path,
@@ -72,16 +74,32 @@ pub fn fix_source_with_settings(
     allow_unsafe: bool,
 ) -> Result<FixedSource, String> {
     let mut diagnostics = lint_with_settings(linter, path, source, settings, providers)?;
-    if linter.has_syntax_errors(source)? {
-        return Ok(FixedSource {
-            output: source.to_string(),
-            applied: 0,
-            remaining: diagnostics,
-        });
-    }
-
     let mut current = source.to_string();
     let mut applied = 0;
+    if linter.has_syntax_errors(source)? {
+        let mut candidates = Vec::new();
+        collect_candidates(&diagnostics, source, allow_unsafe, &[], &mut candidates);
+        let chosen = choose_non_overlapping(candidates);
+        let mut all_edits: Vec<Edit> = Vec::new();
+        for candidate in &chosen {
+            all_edits.extend(candidate.edits.iter().cloned());
+        }
+        let repaired = match apply_edits(source, &all_edits) {
+            Ok(fixed) if !chosen.is_empty() && !linter.has_syntax_errors(&fixed)? => Some(fixed),
+            _ => None,
+        };
+        let Some(repaired) = repaired else {
+            return Ok(FixedSource {
+                output: source.to_string(),
+                applied: 0,
+                remaining: diagnostics,
+            });
+        };
+        applied = chosen.len();
+        current = repaired;
+        diagnostics = lint_with_settings(linter, path, &current, settings, providers)?;
+    }
+
     let mut failed_keys: Vec<FixKey> = Vec::new();
     for _pass in 0..MAX_FIX_PASSES {
         let mut candidates = Vec::new();

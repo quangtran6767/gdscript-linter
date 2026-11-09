@@ -102,15 +102,16 @@ fn lint_exit_codes_on_sample_project() {
     let clean = run_in_sample_project(&["lint", "scripts/clean.gd"]);
     assert_eq!(clean.exit_code, 0, "stdout: {}", clean.stdout);
 
-    // player.gd has one error (the custom `no-get-node-in-process`, raised to
-    // `error` in gdguard.toml), two warnings and two infos. Without the error,
-    // only the warnings count against `--max-warnings`; infos never fail.
+    // player.gd has two errors (the custom `no-get-node-in-process`, raised
+    // to `error` in gdguard.toml, and a scene connection to a missing
+    // method), two warnings and two infos. Without the errors, only the
+    // warnings count against `--max-warnings`; infos never fail.
     let player = run_in_sample_project(&["lint", "scripts/player.gd"]);
     assert_eq!(player.exit_code, 1);
     let player_allowed = run_in_sample_project(&[
         "lint",
         "--disable",
-        "no-get-node-in-process",
+        "no-get-node-in-process,scene-connection-missing-method",
         "--max-warnings",
         "2",
         "scripts/player.gd",
@@ -123,7 +124,7 @@ fn lint_exit_codes_on_sample_project() {
     let player_strict = run_in_sample_project(&[
         "lint",
         "--disable",
-        "no-get-node-in-process",
+        "no-get-node-in-process,scene-connection-missing-method",
         "--max-warnings",
         "1",
         "scripts/player.gd",
@@ -291,7 +292,7 @@ fn fix_on_sample_project_applies_builtin_and_custom_fixes() {
     let output = project.run(&["lint", "--fix", "--format", "compact", "."]);
     assert_eq!(output.exit_code, 1, "stderr: {}", output.stderr);
     assert!(
-        output.stdout.ends_with("Fixed 4 problems in 2 files\n"),
+        output.stdout.ends_with("Fixed 7 problems in 3 files\n"),
         "stdout: {}",
         output.stdout
     );
@@ -304,6 +305,10 @@ fn fix_on_sample_project_applies_builtin_and_custom_fixes() {
     let enemy = project.read("scripts/enemies/enemy.gd");
     assert!(!enemy.contains("else:"));
     assert!(enemy.ends_with("func idle() -> void:\n\tspeed = 0.0\n"));
+    // Built-in project fix (`prefer-uid-path`).
+    let hud = project.read("scripts/ui/hud.gd");
+    assert!(hud.contains("preload(\"uid://c4sampleplayer\")"));
+    assert!(!hud.contains("res://icon.svg"));
     // The fixed issues are gone from the report; others stay.
     assert!(!output.stdout.contains("[prefer-is-empty]"));
     assert!(!output.stdout.contains("[unnecessary-pass]"));
@@ -428,7 +433,7 @@ fn lint_sample_project_sarif_output() {
             .as_array()
             .expect("valid e2e fixture and report")
             .len(),
-        20
+        26
     );
     assert!(
         report["runs"][0]["tool"]["driver"]["rules"]
@@ -464,12 +469,15 @@ fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
     ]);
     assert_eq!(hidden.exit_code, 0, "{}", hidden.stderr);
     assert!(
-        hidden.stdout.contains("20 issues hidden by baseline."),
+        hidden.stdout.contains("26 issues hidden by baseline."),
         "{}",
         hidden.stdout
     );
-    fs::write(project.root.join("scripts/new.gd"), "var badName = 1\n")
-        .expect("valid e2e fixture and report");
+    fs::write(
+        project.root.join("scripts/new.gd"),
+        "class_name NewScript\nvar badName = 1\n",
+    )
+    .expect("valid e2e fixture and report");
     let new_issue = project.run(&[
         "lint",
         "--baseline",
@@ -481,7 +489,7 @@ fn baseline_round_trip_hides_old_issues_and_keeps_new_ones() {
     assert_eq!(new_issue.exit_code, 1, "{}", new_issue.stderr);
     let report: serde_json::Value =
         serde_json::from_str(&new_issue.stdout).expect("valid e2e fixture and report");
-    assert_eq!(report["summary"]["baseline_hidden"], 20);
+    assert_eq!(report["summary"]["baseline_hidden"], 26);
     assert_eq!(
         report["issues"]
             .as_array()

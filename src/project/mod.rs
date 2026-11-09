@@ -1,7 +1,7 @@
 //! Frozen SM0 project contracts. W6 fills the index and inheritance lookup.
 
 mod analysis;
-pub use analysis::ProjectAnalysis;
+pub use analysis::{ProjectAnalysis, SceneConnection};
 mod implicit_base;
 mod index;
 pub use index::{find_root, fingerprint};
@@ -49,5 +49,23 @@ impl ProjectIndex {
     /// Unknown includes missing classes, cycles, and chains reaching engine types.
     pub fn has_member(&self, class_name: &str, member: &str) -> MemberLookup {
         index::has_member(self, class_name, member)
+    }
+
+    /// Like `has_member`, starting from the script at `path` (project-relative
+    /// or `res://`). Unknown when the path isn't a valid indexed script.
+    pub fn has_member_in_script(&self, path: &Path, member: &str) -> MemberLookup {
+        index::has_member_in_script(self, path, member)
+    }
+
+    /// Paths of the valid scripts declaring `class_name`, in path order.
+    /// More than one path means the name is ambiguous and unresolved.
+    pub fn scripts_declaring(&self, class_name: &str) -> Vec<&Path> {
+        let mut paths = Vec::new();
+        for script in &self.scripts {
+            if script.class_name.as_deref() == Some(class_name) {
+                paths.push(script.path.as_path());
+            }
+        }
+        paths
     }
 }

@@ -122,6 +122,22 @@
               }
             },
             {
+              "id": "missing-class-name",
+              "shortDescription": {
+                "text": "Every project script declares a class_name, except autoloads."
+              },
+              "fullDescription": {
+                "text": "A class_name lets other scripts use the script as a type, which enables typed code and the cross-file checks. Autoload scripts are exempt: they are reached through their singleton name. The unsafe fix adds a PascalCase name from the file name when it is free."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "fixable": true,
+                "origin": "builtin"
+              }
+            },
+            {
               "id": "no-else-return",
               "shortDescription": {
                 "text": "No `else`/`elif` after an `if` block that ends with `return`."
@@ -186,12 +202,44 @@
               }
             },
             {
+              "id": "prefer-uid-path",
+              "shortDescription": {
+                "text": "load() and preload() use uid:// paths when the resource has a UID."
+              },
+              "fullDescription": {
+                "text": "UID paths keep working when files are moved or renamed. Only paths with a known UID (from `.uid` files, `.import` files or scene headers) are reported, and the safe fix replaces the path with the UID."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "fixable": true,
+                "origin": "builtin"
+              }
+            },
+            {
               "id": "private-access",
               "shortDescription": {
                 "text": "Members starting with `_` are not used from outside their class."
               },
               "fullDescription": {
                 "text": "A leading underscore marks a member as private. Using it from another object couples the two classes to internals that may change."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "fixable": false,
+                "origin": "builtin"
+              }
+            },
+            {
+              "id": "scene-connection-missing-method",
+              "shortDescription": {
+                "text": "Scene connections target methods the script defines."
+              },
+              "fullDescription": {
+                "text": "A `[connection]` in a `.tscn` file names its method as a string. Godot only reports a missing method when the signal is emitted. Methods inherited from engine classes can't be checked, except that engine methods never start with `_` unless they are virtual callbacks."
               },
               "defaultConfiguration": {
                 "level": "error"
@@ -303,8 +351,31 @@
       "columnKind": "utf16CodeUnits",
       "results": [
         {
+          "ruleId": "missing-class-name",
+          "ruleIndex": 7,
+          "level": "warning",
+          "message": {
+            "text": "Script has no class_name."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/enemies/enemy.gd"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
           "ruleId": "signal-name",
-          "ruleIndex": 12,
+          "ruleIndex": 15,
           "level": "error",
           "message": {
             "text": "Signal name 'OnDefeated' should be in snake_case format"
@@ -327,7 +398,7 @@
         },
         {
           "ruleId": "unused-signal",
-          "ruleIndex": 16,
+          "ruleIndex": 19,
           "level": "warning",
           "message": {
             "text": "Signal 'OnDefeated' is never emitted or connected in this project."
@@ -396,7 +467,7 @@
         },
         {
           "ruleId": "variable-name",
-          "ruleIndex": 17,
+          "ruleIndex": 20,
           "level": "error",
           "message": {
             "text": "Variable name 'targetName' should be in snake_case or _private_snake_case format"
@@ -465,7 +536,7 @@
         },
         {
           "ruleId": "no-else-return",
-          "ruleIndex": 7,
+          "ruleIndex": 8,
           "level": "warning",
           "message": {
             "text": "Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'"
@@ -488,7 +559,7 @@
         },
         {
           "ruleId": "private-access",
-          "ruleIndex": 11,
+          "ruleIndex": 13,
           "level": "error",
           "message": {
             "text": "Private variable '_health' should not be accessed from outside its class"
@@ -511,7 +582,7 @@
         },
         {
           "ruleId": "unnecessary-pass",
-          "ruleIndex": 14,
+          "ruleIndex": 17,
           "level": "warning",
           "message": {
             "text": "Unnecessary 'pass' statement when other statements are present"
@@ -533,8 +604,31 @@
           ]
         },
         {
+          "ruleId": "scene-connection-missing-method",
+          "ruleIndex": 14,
+          "level": "error",
+          "message": {
+            "text": "Scene 'res://scenes/player.tscn' connects signal 'body_entered' of node 'Hurtbox' to method '_on_hurtbox_body_entered', which this script doesn't define."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/player.gd"
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 1,
+                  "endLine": 2,
+                  "endColumn": 24
+                }
+              }
+            }
+          ]
+        },
+        {
           "ruleId": "unused-argument",
-          "ruleIndex": 15,
+          "ruleIndex": 18,
           "level": "note",
           "message": {
             "text": "Function argument 'delta' is unused. Consider removing it or prefixing with '_'"
@@ -557,7 +651,7 @@
         },
         {
           "ruleId": "no-get-node-in-process",
-          "ruleIndex": 8,
+          "ruleIndex": 9,
           "level": "error",
           "message": {
             "text": "Don't look up nodes in `_process()`; cache the node in an `@onready` variable"
@@ -580,7 +674,7 @@
         },
         {
           "ruleId": "prefer-is-empty",
-          "ruleIndex": 9,
+          "ruleIndex": 10,
           "level": "warning",
           "message": {
             "text": "Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero"
@@ -603,7 +697,7 @@
         },
         {
           "ruleId": "unused-argument",
-          "ruleIndex": 15,
+          "ruleIndex": 18,
           "level": "note",
           "message": {
             "text": "Function argument 'source' is unused. Consider removing it or prefixing with '_'"
@@ -626,7 +720,7 @@
         },
         {
           "ruleId": "prefer-not-is-empty",
-          "ruleIndex": 10,
+          "ruleIndex": 11,
           "level": "warning",
           "message": {
             "text": "Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero"
@@ -642,6 +736,75 @@
                   "startColumn": 9,
                   "endLine": 28,
                   "endColumn": 27
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "missing-class-name",
+          "ruleIndex": 7,
+          "level": "warning",
+          "message": {
+            "text": "Script has no class_name."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/ui/hud.gd"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 20
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "prefer-uid-path",
+          "ruleIndex": 12,
+          "level": "warning",
+          "message": {
+            "text": "Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/ui/hud.gd"
+                },
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 30,
+                  "endLine": 3,
+                  "endColumn": 56
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "prefer-uid-path",
+          "ruleIndex": 12,
+          "level": "warning",
+          "message": {
+            "text": "Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/ui/hud.gd"
+                },
+                "region": {
+                  "startLine": 5,
+                  "startColumn": 25,
+                  "endLine": 5,
+                  "endColumn": 41
                 }
               }
             }
@@ -665,6 +828,29 @@
                   "startColumn": 25,
                   "endLine": 5,
                   "endColumn": 41
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "prefer-uid-path",
+          "ruleIndex": 12,
+          "level": "warning",
+          "message": {
+            "text": "Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/ui/hud.gd"
+                },
+                "region": {
+                  "startLine": 6,
+                  "startColumn": 31,
+                  "endLine": 6,
+                  "endColumn": 47
                 }
               }
             }
@@ -718,7 +904,7 @@
         },
         {
           "ruleId": "standalone-expression",
-          "ruleIndex": 13,
+          "ruleIndex": 16,
           "level": "warning",
           "message": {
             "text": "Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect"

@@ -86,8 +86,15 @@ Exit 0 means no errors and at most `--max-warnings N` warnings (default 0).
 Infos do not fail. Exit 1 means issues exceed that limit; exit 2 is a
 usage/config/file error. `--diff` exits 1 when it would change a file.
 
+`--godot <PATH>` (or `GDGUARD_GODOT`) also loads the files in headless
+Godot 4 and reports its errors as `godot-error`; see
+[the agent guide](agents.md#add-godots-own-check). Set the path per
+machine, not in `gdguard.toml`. Turn the rule off like any other:
+`godot-error = "off"`.
+
 Files lint in parallel with deterministic output order. With a config,
 lint results cache in `.gdguard/cache/lint.json`. File content, effective
 settings, custom rule content and tool version invalidate entries. Fix and
-diff runs do not use it. `--no-cache` skips reads and writes. The cache
+diff runs do not use it. Project results also depend on every project
+file's path and on scripts, scenes, resources, `.uid` and `.import` files. `--no-cache` skips reads and writes. The cache
 folder contains a `.gitignore`; do not commit cache files.

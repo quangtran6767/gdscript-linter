@@ -20,16 +20,18 @@ pub const CONFIG_FILE_NAME: &str = "gdguard.toml";
 
 /// Diagnostic ids reported by built-in rules. `load-variable-name` is reported
 /// by the `variable-name` rule for variables holding a loaded resource,
-/// `fix-failed` by the fix engine when a fix would break the code, and
-/// `unused-ignore` for ignore comments that suppress nothing.
+/// `fix-failed` by the fix engine when a fix would break the code,
+/// `godot-error` by the optional Godot check, and `unused-ignore` for ignore
+/// comments that suppress nothing.
 pub fn builtin_rule_ids() -> Vec<&'static str> {
-    let mut ids = Vec::with_capacity(ALL_RULES.len() + 5);
+    let mut ids = Vec::with_capacity(ALL_RULES.len() + 6);
     for rule in ALL_RULES {
         ids.push(rule.name);
     }
     ids.push("load-variable-name");
     ids.push("script-error");
     ids.push("parse-error");
+    ids.push(crate::linter::godot_check::GODOT_ERROR_RULE_ID);
     ids.push(crate::linter::fix::FIX_FAILED_RULE_ID);
     ids.push(crate::linter::ignore_patterns::UNUSED_IGNORE_RULE_ID);
     ids

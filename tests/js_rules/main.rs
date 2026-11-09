@@ -357,7 +357,11 @@ fn project_edits_invalidate_cached_lint_results_in_other_files() {
         "[custom_rules]\npaths=['rules']\n",
     )
     .unwrap();
-    std::fs::write(project.root.join("main.gd"), "func f():\n\treturn old\n").unwrap();
+    std::fs::write(
+        project.root.join("main.gd"),
+        "class_name Main\nfunc f():\n\treturn old\n",
+    )
+    .unwrap();
     std::fs::write(
         project.root.join("data.gd"),
         "class_name Data\nvar value = 1\n",

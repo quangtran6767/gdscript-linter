@@ -134,7 +134,7 @@ impl Drop for Project {
 fn protocol_round_trip_debounce_fixes_config_reload_and_shutdown() {
     let project = Project::new("flow");
     let uri = project.uri();
-    let source = "func f(items):\n\tif len(items) == 0:\n\t\tpass\n";
+    let source = "class_name Main\nfunc f(items):\n\tif len(items) == 0:\n\t\tpass\n";
     std::fs::write(project.root.join("main.gd"), source).unwrap();
     let mut client = Client::new();
     let diagnostics = client.open(&uri, source);

@@ -6,13 +6,54 @@
   },
   "summary": {
     "files": 5,
-    "errors": 8,
-    "warnings": 10,
+    "errors": 9,
+    "warnings": 15,
     "infos": 2,
-    "fixable": 4,
+    "fixable": 7,
     "baseline_hidden": 0
   },
   "issues": [
+    {
+      "file": "scripts/enemies/enemy.gd",
+      "rule": "missing-class-name",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Script has no class_name.",
+      "help": "Add `class_name Enemy` (or another unique PascalCase name) above `extends`. Autoload scripts are exempt.",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 1,
+          "byte": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 15,
+          "byte": 14
+        }
+      },
+      "snippet": "extends Node2D",
+      "explain": "gdguard explain missing-class-name",
+      "fixes": [
+        {
+          "description": "Add `class_name Enemy`",
+          "safety": "unsafe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 0
+                },
+                "end": {
+                  "byte": 0
+                }
+              },
+              "replacement": "class_name Enemy\n"
+            }
+          ]
+        }
+      ]
+    },
     {
       "file": "scripts/enemies/enemy.gd",
       "rule": "signal-name",
@@ -281,6 +322,29 @@
     },
     {
       "file": "scripts/player.gd",
+      "rule": "scene-connection-missing-method",
+      "origin": "builtin",
+      "severity": "error",
+      "message": "Scene 'res://scenes/player.tscn' connects signal 'body_entered' of node 'Hurtbox' to method '_on_hurtbox_body_entered', which this script doesn't define.",
+      "help": "Add `func _on_hurtbox_body_entered(...)` to this script or a base script, or fix the method name in the scene's [connection]. Godot only fails when the signal is emitted.",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 1,
+          "byte": 18
+        },
+        "end": {
+          "line": 2,
+          "column": 24,
+          "byte": 41
+        }
+      },
+      "snippet": "extends CharacterBody2D",
+      "explain": "gdguard explain scene-connection-missing-method",
+      "fixes": []
+    },
+    {
+      "file": "scripts/player.gd",
       "rule": "unused-argument",
       "origin": "builtin",
       "severity": "info",
@@ -468,6 +532,129 @@
     },
     {
       "file": "scripts/ui/hud.gd",
+      "rule": "missing-class-name",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Script has no class_name.",
+      "help": "Add `class_name Hud` (or another unique PascalCase name) above `extends`. Autoload scripts are exempt.",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 1,
+          "byte": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 20,
+          "byte": 19
+        }
+      },
+      "snippet": "extends CanvasLayer",
+      "explain": "gdguard explain missing-class-name",
+      "fixes": [
+        {
+          "description": "Add `class_name Hud`",
+          "safety": "unsafe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 0
+                },
+                "end": {
+                  "byte": 0
+                }
+              },
+              "replacement": "class_name Hud\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "prefer-uid-path",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'.",
+      "help": "UID paths keep working when files are moved or renamed. Replace the path with the UID.",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 30,
+          "byte": 50
+        },
+        "end": {
+          "line": 3,
+          "column": 56,
+          "byte": 76
+        }
+      },
+      "snippet": "const PLAYER_SCENE = preload(\"res://scenes/player.tscn\")",
+      "explain": "gdguard explain prefer-uid-path",
+      "fixes": [
+        {
+          "description": "Replace with \"uid://c4sampleplayer\"",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 50
+                },
+                "end": {
+                  "byte": 76
+                }
+              },
+              "replacement": "\"uid://c4sampleplayer\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "prefer-uid-path",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.",
+      "help": "UID paths keep working when files are moved or renamed. Replace the path with the UID.",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 25,
+          "byte": 103
+        },
+        "end": {
+          "line": 5,
+          "column": 41,
+          "byte": 119
+        }
+      },
+      "snippet": "var icon_texture = load(\"res://icon.svg\")",
+      "explain": "gdguard explain prefer-uid-path",
+      "fixes": [
+        {
+          "description": "Replace with \"uid://b8sampleicon1\"",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 103
+                },
+                "end": {
+                  "byte": 119
+                }
+              },
+              "replacement": "\"uid://b8sampleicon1\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "scripts/ui/hud.gd",
       "rule": "duplicated-load",
       "origin": "builtin",
       "severity": "warning",
@@ -488,6 +675,47 @@
       "snippet": "var icon_texture = load(\"res://icon.svg\")",
       "explain": "gdguard explain duplicated-load",
       "fixes": []
+    },
+    {
+      "file": "scripts/ui/hud.gd",
+      "rule": "prefer-uid-path",
+      "origin": "builtin",
+      "severity": "warning",
+      "message": "Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.",
+      "help": "UID paths keep working when files are moved or renamed. Replace the path with the UID.",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 31,
+          "byte": 151
+        },
+        "end": {
+          "line": 6,
+          "column": 47,
+          "byte": 167
+        }
+      },
+      "snippet": "var other_icon_texture = load(\"res://icon.svg\")",
+      "explain": "gdguard explain prefer-uid-path",
+      "fixes": [
+        {
+          "description": "Replace with \"uid://b8sampleicon1\"",
+          "safety": "safe",
+          "edits": [
+            {
+              "range": {
+                "start": {
+                  "byte": 151
+                },
+                "end": {
+                  "byte": 167
+                }
+              },
+              "replacement": "\"uid://b8sampleicon1\""
+            }
+          ]
+        }
+      ]
     },
     {
       "file": "scripts/ui/hud.gd",

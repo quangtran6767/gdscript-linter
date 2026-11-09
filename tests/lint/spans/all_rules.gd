@@ -47,3 +47,13 @@ func _unused_helper():
 
 func project_member(data: ProjectData):
 	return data.missing
+
+
+func newer_rules(value):
+	value = value
+	var preloaded = preload("res://data.gd")
+	var missing_icon = load("res://missing_icon.png")
+	var stats = {"hp": 1, "hp": 2}
+	yield(get_tree(), "idle_frame")
+	return [preloaded, missing_icon, stats]
+	print("unreachable")

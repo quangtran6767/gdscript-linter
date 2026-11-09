@@ -1,0 +1,3 @@
+tests/lint/input/self_assignment.gd:24:self-assignment:warning: 'speed_value' is assigned to itself.
+tests/lint/input/self_assignment.gd:29:self-assignment:warning: 'item' is assigned to itself.
+tests/lint/input/self_assignment.gd:31:self-assignment:warning: 'total' is assigned to itself.

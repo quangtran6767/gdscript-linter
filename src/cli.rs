@@ -74,6 +74,8 @@ Options:
       --no-cache               Lint every file, don't read or write .gdguard/cache
       --max-warnings <NUM>     Fail when there are more than NUM warnings
       --stdin-filename <PATH>  Read the source from stdin, report it as PATH
+      --godot <PATH>           Also load the files in headless Godot 4 and report
+                               its errors as godot-error (default: $GDGUARD_GODOT)
   -h, --help                   Print help
 
 Exit codes: 0 no problems, 1 lint problems found, 2 usage, config or rule-file error.
@@ -195,6 +197,8 @@ pub enum Command {
         /// `--stdin-filename`: read the source from stdin and use this path
         /// for config lookup and output.
         stdin_filename: Option<PathBuf>,
+        /// `--godot`: the Godot 4 executable for the optional Godot check.
+        godot_path: Option<PathBuf>,
     },
     /// Explain one lint rule. Implemented by `linter::explain::run`.
     Explain(ExplainArgs),
@@ -246,6 +250,7 @@ pub fn parse_args() -> CliArguments {
     let mut lint_no_cache = false;
     let mut lint_max_warnings: Option<usize> = None;
     let mut lint_stdin_filename: Option<PathBuf> = None;
+    let mut lint_godot_path: Option<PathBuf> = None;
 
     // The first positional argument optionally selects a command. If it is
     // "lint", we run the linter program. Defaults to the formatter.
@@ -532,6 +537,15 @@ pub fn parse_args() -> CliArguments {
                         );
                         lint_stdin_filename = Some(PathBuf::from(value));
                     }
+                    "godot" => {
+                        let value = consume_flag_value(
+                            assigned_value,
+                            &argument_list,
+                            &mut current_argument_index,
+                            "--godot",
+                        );
+                        lint_godot_path = Some(PathBuf::from(value));
+                    }
                     _ => print_error_invalid_argument(&format!(
                         "unexpected argument '--{}'",
                         flag_name
@@ -653,6 +667,7 @@ pub fn parse_args() -> CliArguments {
                     no_cache: lint_no_cache,
                     max_warnings: lint_max_warnings,
                     stdin_filename: lint_stdin_filename,
+                    godot_path: lint_godot_path,
                 },
             }
         }

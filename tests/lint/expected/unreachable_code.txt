@@ -1,0 +1,4 @@
+tests/lint/input/unreachable_code.gd:22:unreachable-code:warning: Unreachable code after 'return'.
+tests/lint/input/unreachable_code.gd:29:unreachable-code:warning: Unreachable code after 'break'.
+tests/lint/input/unreachable_code.gd:32:unreachable-code:warning: Unreachable code after 'continue'.
+tests/lint/input/unreachable_code.gd:39:unreachable-code:warning: Unreachable code after 'return'.

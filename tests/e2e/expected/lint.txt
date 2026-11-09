@@ -1,3 +1,4 @@
+scripts/enemies/enemy.gd:1:1: warning [missing-class-name] Script has no class_name.
 scripts/enemies/enemy.gd:3:8: error [signal-name] Signal name 'OnDefeated' should be in snake_case format
 scripts/enemies/enemy.gd:3:8: warning [unused-signal] Signal 'OnDefeated' is never emitted or connected in this project.
 scripts/enemies/enemy.gd:5:6: error [enum-name] Enum name 'state' should be in PascalCase format
@@ -8,12 +9,17 @@ scripts/enemies/enemy.gd:15:5: warning [comparison-with-itself] Redundant compar
 scripts/enemies/enemy.gd:23:2: warning [no-else-return] Unnecessary 'else' after 'if'/'elif' blocks that end with 'return'
 scripts/enemies/enemy.gd:28:16: error [private-access] Private variable '_health' should not be accessed from outside its class
 scripts/enemies/enemy.gd:33:2: warning [unnecessary-pass] Unnecessary 'pass' statement when other statements are present
+scripts/player.gd:2:1: error [scene-connection-missing-method] Scene 'res://scenes/player.tscn' connects signal 'body_entered' of node 'Hurtbox' to method '_on_hurtbox_body_entered', which this script doesn't define.
 scripts/player.gd:12:15: info [unused-argument] Function argument 'delta' is unused. Consider removing it or prefixing with '_'
 scripts/player.gd:14:19: error [no-get-node-in-process] Don't look up nodes in `_process()`; cache the node in an `@onready` variable
 scripts/player.gd:16:5: warning [prefer-is-empty] Use `inventory.is_empty()` instead of comparing `len(inventory)` to zero
 scripts/player.gd:20:31: info [unused-argument] Function argument 'source' is unused. Consider removing it or prefixing with '_'
 scripts/player.gd:28:9: warning [prefer-not-is-empty] Use `not inventory.is_empty()` instead of comparing `len(inventory)` to zero
+scripts/ui/hud.gd:1:1: warning [missing-class-name] Script has no class_name.
+scripts/ui/hud.gd:3:30: warning [prefer-uid-path] Load 'res://scenes/player.tscn' by its UID 'uid://c4sampleplayer'.
+scripts/ui/hud.gd:5:25: warning [prefer-uid-path] Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.
 scripts/ui/hud.gd:5:25: warning [duplicated-load] Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
+scripts/ui/hud.gd:6:31: warning [prefer-uid-path] Load 'res://icon.svg' by its UID 'uid://b8sampleicon1'.
 scripts/ui/hud.gd:6:31: warning [duplicated-load] Duplicated load of '"res://icon.svg"'. Consider extracting to a constant.
 scripts/ui/hud.gd:11:6: error [loop-variable-name] Loop variable 'MyIndex' should be in snake_case_or _private_snake_case format
 scripts/ui/hud.gd:16:2: warning [standalone-expression] Standalone expression 'new_score + 1' is not assigned or used, the line may have no effect

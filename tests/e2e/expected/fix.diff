@@ -32,3 +32,18 @@
  	# The custom `prefer-not-is-empty` rule flags `len(...) > 0`.
 -	return len(inventory) > 0
 +	return not inventory.is_empty()
+--- a/scripts/ui/hud.gd
++++ b/scripts/ui/hud.gd
+@@ -1,9 +1,9 @@
+ extends CanvasLayer
+ 
+-const PLAYER_SCENE = preload("res://scenes/player.tscn")
++const PLAYER_SCENE = preload("uid://c4sampleplayer")
+ 
+-var icon_texture = load("res://icon.svg")
+-var other_icon_texture = load("res://icon.svg")
++var icon_texture = load("uid://b8sampleicon1")
++var other_icon_texture = load("uid://b8sampleicon1")
+ 
+ 
+ func _ready() -> void:

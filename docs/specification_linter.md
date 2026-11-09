@@ -436,7 +436,10 @@ parser may lag newer Godot syntax; Godot remains the authoritative checker.
 5. If at least one fix was applied and the original file was formatted
    (formatting it gives the same text), format the result. That way we
    never reformat files the user doesn't format.
-6. A file that already has syntax errors is not fixed.
+6. A file that already has syntax errors is not fixed, with one exception
+   (W9): when the allowed fixes applied together leave no syntax error at
+   all (for example `godot3-syntax` replacing `onready`/`tool`), that result
+   is accepted and fixing continues from it. Otherwise the file is unchanged.
 7. `--diff` prints a unified diff (`a/<path>`, `b/<path>`) and doesn't
    write anything. Exit code 1 when a file would change, else 0.
 
@@ -445,7 +448,13 @@ parser may lag newer Godot syntax; Godot remains the authoritative checker.
 Built-in fixes: `unnecessary-pass` (Safe, when `pass` is alone on its line),
 `no-else-return` (Safe: `elif` → `if` when every earlier branch returns, and
 removing `else:` and dedenting its body; Unsafe when that body declares a
-`var` or `const`), `unused-argument` (Unsafe: prefix the name with `_`).
+`var` or `const`), `unused-argument` (Unsafe: prefix the name with `_`),
+`prefer-uid-path` (Safe: replace the path literal with the UID, keeping the
+quote), `missing-class-name` (Unsafe: insert `class_name <Name>`) and
+`godot3-syntax` (Safe: `tool` → `@tool`, `onready` → `@onready`; Unsafe:
+`export var` → `@export var`, `yield(obj, "sig")` → `await obj.sig` with
+`idle_frame` → `process_frame`, `.instance()` → `.instantiate()`,
+`connect("sig", target, "method")` → `connect("sig", target.method)`).
 
 ## CLI
 
@@ -458,6 +467,7 @@ gdguard lint [FILES...]                 # default: current directory, recursivel
   --baseline <PATH> | --update-baseline
   --max-warnings <N>
   --stdin-filename <PATH>               # read source from stdin
+  --godot <PATH>                        # optional Godot check (default: $GDGUARD_GODOT)
   --list-rules [--format json]
 gdguard explain <RULE>                   # rationale, examples, fixability
 gdguard test-rules [RULE_DIR]            # run YAML and JS rule tests
@@ -471,6 +481,11 @@ gdguard lsp                              # language server on stdin/stdout
 - `--stdin-filename <PATH>` reads the source from stdin; `PATH` finds the
   config and is shown in output. It can't be combined with file arguments.
   With `--fix`, the fixed source goes to stdout and the report to stderr.
+- `--godot <PATH>` (or the `GDGUARD_GODOT` environment variable; an empty
+  value turns it off) runs the optional Godot check described in "Godot
+  check" after linting, or after `--fix`/`--fix-unsafe` wrote the files.
+  It is skipped for stdin and `--diff`, where the checked text isn't on
+  disk. A Godot executable that can't run or times out exits 2.
 
 `gdguard explain <RULE>` prints the rule's id, origin (built-in or the
 custom rule file), default severity, whether it is fixable, its description,
@@ -507,6 +522,33 @@ Without `--max-warnings`, any warning gives exit code 1. Info diagnostics
 never change the exit code.
 
 The formatter's existing CLI keeps working unchanged.
+
+## Godot check (`src/linter/godot_check.rs`, W9)
+
+gdguard doesn't check types. With `--godot <PATH>`, `lint` loads the linted
+files in headless Godot 4 once per project root and reports each
+`SCRIPT ERROR` as `godot-error` (Error, not fixable):
+
+1. When `.godot/global_script_class_cache.cfg` doesn't list exactly the
+   project's valid `class_name` scripts (or is missing), run
+   `godot --headless --path <root> --import` first, so new classes resolve.
+   This writes `.godot/` and `.uid` files like opening the editor does.
+2. Write a loader script to the system temp folder and run
+   `godot --headless --path <root> --script <loader> -- res://a.gd ...`.
+   It prints `GDGUARD-BEGIN <path>`/`GDGUARD-END <path>` on stderr around
+   `ResourceLoader.load(path, "", CACHE_MODE_IGNORE)` for each file.
+   Scripts are compiled, not instantiated (static initializers may run).
+3. Each `SCRIPT ERROR: [Parse Error: ]<message>` followed by
+   `at: ... (res://file.gd:LINE)` becomes a diagnostic on that line's
+   content of the file being loaded. Errors located in another script are
+   reported on line 1 as `In res://other.gd:LINE: <message>`. Identical
+   errors are reported once. ANSI colors are stripped.
+
+Godot prints warnings only when the project sets them to error
+(`debug/gdscript/warnings/<name>=2`). Excluded files and files where
+`godot-error` is `off` aren't loaded; rule levels apply. Ignore comments,
+the lint cache and `unused-ignore` don't apply to `godot-error`; the
+baseline does. One Godot process may run for 300 s.
 
 ## JSON output (schema version 1)
 
@@ -718,7 +760,10 @@ across workers. `project.godot` autoload values have their `*res://` prefix
 removed; paths stay project-relative. Summaries include top-level functions,
 signals and declared members (variables, constants, enums and inner classes).
 Malformed scripts are cached but excluded from resolvable summaries until
-repaired. Duplicate valid class_name declarations are an error.
+repaired. W9: a `class_name` declared by more than one valid script no
+longer fails the build. Every script stays in `scripts`, the name is left
+out of `class_names` (lookups through it return Unknown), and the
+`duplicate-class-name` rule reports it in each declaring file.
 
 `has_member` follows class names and project-relative/res:// script paths.
 Missing bases, cycles and explicit engine bases return Unknown. A terminal
@@ -749,6 +794,79 @@ member/virtual exemptions come from the installed gdextension-api data.
 - Additive W8 APIs: `ProjectIndex::build_uncached(root)` skips both summary
   cache reads/writes; `ProjectAnalysis::{build,from_tree}` supplies shared
   signal usage and current-buffer overlays without changing frozen index fields.
+- Additive W9 APIs:
+  `ProjectIndex::has_member_in_script(path, member)` (like `has_member`,
+  from a project-relative or `res://` script path) and
+  `ProjectIndex::scripts_declaring(class_name) -> Vec<&Path>`.
+  `ProjectAnalysis` gains `connected_methods` (method names of every scene
+  connection), `scene_connections: Vec<SceneConnection>` (`scene`,
+  `signal`, `from`, `to`, `method`, and `target_script`: the `res://`
+  script of the `to` node when the scene sets one through an external
+  resource), `uid_paths`/`path_uids` (`uid://` ↔ `res://`, from `.uid`
+  files, the `[remap]` `uid` of `.import` files and the header `uid` of
+  `.tscn`/`.tres` files) and `scene_root_scripts` (scene → root script).
+  Text scenes are read line by line: `[ext_resource]` ids, `[node]` paths
+  (`.` for the root, `parent/name` otherwise) with their `script =
+  ExtResource(...)`, and `[connection]` attributes.
+- The project digest (lint cache key) covers the path of every project file
+  plus the contents of scripts, `project.godot`, `.tscn`, `.tres`, `.uid`
+  and `.import` files, so adding a resource or a UID invalidates cached
+  results. Tool folders (`.git`, `.godot`, `.gdguard`, `node_modules`,
+  `target`) are skipped.
+
+### W9 rules
+
+All need `project.godot` except the four single-file rules at the end. A
+file's project path comes from its canonical path (or its folder's, for an
+unsaved buffer) relative to the root.
+
+- `duplicate-class-name` (Error): the file's `class_name` is also declared
+  by another valid script. The message lists the other `res://` paths.
+- `missing-class-name` (Warning, Unsafe fix): a script without a top-level
+  `class_name`, unless it is an autoload script or the root script of an
+  autoload scene. Skipped for files with syntax errors and empty files.
+  Reported on the `extends` statement (else the first code line). The fix
+  inserts `class_name <PascalCase file stem>` on the line above `extends`
+  (after a first-line `@tool` when there is no `extends`); no fix when the
+  name isn't a valid identifier, is an engine class, built-in type or
+  singleton (`godot_classes.rs`, Godot 4.7.2 `--dump-extension-api`), is
+  declared by a project script, or is an autoload name.
+- `scene-connection-missing-method` (Error): a scene connection whose
+  target node's script is this file names a method that neither this
+  buffer's top-level functions nor `has_member_in_script` find. `No` is
+  reported. `Unknown` is reported only when the method starts with `_`, is
+  not a Godot virtual method and the script's chain ends at an engine
+  class: engine methods never start with `_` unless virtual. Reported on
+  the `extends` statement, once per scene, signal, source node and method.
+  Nodes without a script, instanced sub-scenes and built-in scripts are
+  skipped.
+- `unused-private-function` (W9 change): in a project, a private function
+  named by any scene connection counts as used (matched by name).
+- `missing-resource-path` (Error): a plain string literal passed first to
+  `load()`, `preload()`, `ResourceLoader.load()` or
+  `ResourceLoader.load_threaded_request()` names a missing file
+  (`res://` or a path relative to the script's folder) or an unknown UID.
+  Computed paths, `user://` and raw or escaped strings are skipped.
+- `prefer-uid-path` (Warning, Safe fix): the same calls with a `res://` or
+  relative path whose file has a known UID. Paths without a known UID
+  (JSON, text, resources never saved by Godot 4) aren't reported, so every
+  report has a fix.
+- `self-assignment` (Warning): `x = x` where `x` resolves to a local
+  variable, parameter or loop variable. Members are skipped because
+  `property = property` re-runs a setter.
+- `unreachable-code` (Warning): the first non-comment statement after
+  `return`, `break` or `continue` in the same block, spanning to the end of
+  the block.
+- `duplicate-dictionary-key` (Error): a dictionary literal repeats a key.
+  Strings compare by content (either quote), Lua-style keys by name,
+  identifiers and attribute chains by text, numbers and literals by text.
+  Calls and escaped strings are skipped. Reported on the later key.
+- `godot3-syntax` (Error): `yield(...)`, `.instance()` with no arguments
+  and `connect("sig", target, "method")` from the tree; from source lines
+  (outside strings and comments, so they work despite parse errors) a
+  top-level `tool` line, `onready var`, `export var`, `export(...)`,
+  `setget` on a `var` line, and `remote`/`master`/`puppet`/`*sync` before
+  `func` or `var`. Fixes are listed in "Fix engine".
 
 ## Scripted rules in JS (`src/linter/script/`)
 
@@ -886,7 +1004,7 @@ export default {
 - `python3 benchmarks/lint_project.py` generates a temporary 1000-file
   project, measures median cold/warm runs, asserts identical output, and
   checks targets below 3 s cold / 1 s warm. See docs/handoff/w8-a.md for
-  the measured machine and results.
+  the measured machine and results, and docs/handoff/w9.md for the W9 run.
 
 ## Distribution
 

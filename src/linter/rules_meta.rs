@@ -4,7 +4,8 @@
 //! Every id in `rule_config::get_all_rule_names()` has an entry, plus
 //! `load-variable-name`, which the `variable-name` rule reports for variables
 //! holding a loaded resource, and `fix-failed`, which the fix engine reports
-//! when a fix would break the code. A test runs every bad example through the
+//! when a fix would break the code, and `godot-error`, which the optional
+//! Godot check reports. A test runs every bad example through the
 //! linter and checks it is reported, and that every good example is not.
 
 use crate::linter::diagnostic::{RuleMeta, RuleOrigin, Severity};
@@ -19,7 +20,7 @@ struct BuiltinInfo {
     good_example: &'static str,
 }
 
-const BUILTIN_RULES: [BuiltinInfo; 29] = [
+const BUILTIN_RULES: [BuiltinInfo; 39] = [
     BuiltinInfo {
         id: "assigned-but-never-read",
         severity: Severity::Warning,
@@ -55,6 +56,24 @@ const BUILTIN_RULES: [BuiltinInfo; 29] = [
         rationale: "The GDScript style guide names constants in CONSTANT_CASE so they stand out from variables. Constants holding a preloaded resource may also use PascalCase, like the class they stand for.",
         bad_example: "const maxSpeed = 10\n",
         good_example: "const MAX_SPEED = 10\nconst Bullet = preload(\"res://bullet.tscn\")\n",
+    },
+    BuiltinInfo {
+        id: "duplicate-class-name",
+        severity: Severity::Error,
+        fixable: false,
+        description: "Each class_name is declared by one script in the project.",
+        rationale: "Godot registers one global class per name. The other script fails to load with `Class \"X\" hides a global script class`, and the editor doesn't always say which file wins.",
+        bad_example: "class_name ProjectData\nextends Node\n",
+        good_example: "class_name ExampleData\nextends Node\n",
+    },
+    BuiltinInfo {
+        id: "duplicate-dictionary-key",
+        severity: Severity::Error,
+        fixable: false,
+        description: "Dictionary literals don't repeat a key.",
+        rationale: "Only the last value of a repeated key is kept, so the earlier entry is dead and usually a typo. Godot refuses to load scripts with duplicate literal keys.",
+        bad_example: "var stats = {\"hp\": 10, \"mp\": 5, \"hp\": 20}\n",
+        good_example: "var stats = {\"hp\": 10, \"mp\": 5, \"sp\": 20}\n",
     },
     BuiltinInfo {
         id: "duplicated-load",
@@ -111,6 +130,24 @@ const BUILTIN_RULES: [BuiltinInfo; 29] = [
         good_example: "func move_towards(target):\n\tprint(target)\n",
     },
     BuiltinInfo {
+        id: "godot-error",
+        severity: Severity::Error,
+        fixable: false,
+        description: "Godot loads the script without errors (only with `--godot` or `GDGUARD_GODOT`).",
+        rationale: "gdguard doesn't check types. With a Godot 4 executable configured, `lint` loads the linted scripts in headless Godot once per project and reports its parse, type and warning-as-error messages under this id.",
+        bad_example: "",
+        good_example: "",
+    },
+    BuiltinInfo {
+        id: "godot3-syntax",
+        severity: Severity::Error,
+        fixable: true,
+        description: "No Godot 3 syntax that Godot 4 rejects.",
+        rationale: "Code copied from Godot 3 examples uses `tool`, `onready`, `export`, `setget`, `yield`, `instance()` and string-method `connect`. Godot 4 rejects or renamed them. Mechanical replacements are offered as fixes (`tool` and `onready` safe, the others unsafe).",
+        bad_example: "func _ready():\n\tyield(get_tree(), \"idle_frame\")\n",
+        good_example: "func _ready():\n\tawait get_tree().process_frame\n",
+    },
+    BuiltinInfo {
         id: "load-variable-name",
         severity: Severity::Error,
         fixable: false,
@@ -138,6 +175,24 @@ const BUILTIN_RULES: [BuiltinInfo; 29] = [
         good_example: "var message = (\n\t\"This line is split so that every part \"\n\t+ \"stays under the limit\"\n)\n",
     },
     BuiltinInfo {
+        id: "missing-class-name",
+        severity: Severity::Warning,
+        fixable: true,
+        description: "Every project script declares a class_name, except autoloads.",
+        rationale: "A class_name lets other scripts use the script as a type, which enables typed code and the cross-file checks. Autoload scripts are exempt: they are reached through their singleton name. The unsafe fix adds a PascalCase name from the file name when it is free.",
+        bad_example: "extends Node\n",
+        good_example: "class_name Example\nextends Node\n",
+    },
+    BuiltinInfo {
+        id: "missing-resource-path",
+        severity: Severity::Error,
+        fixable: false,
+        description: "Paths given to load() and preload() exist in the project.",
+        rationale: "A wrong `load()` path only fails at runtime, when the line runs. `res://` and relative paths must name an existing file, and `uid://` paths a UID known from `.uid` files, `.import` files or scene headers.",
+        bad_example: "var icon = load(\"res://missing.png\")\n",
+        good_example: "var data = load(\"res://data.gd\")\n",
+    },
+    BuiltinInfo {
         id: "no-else-return",
         severity: Severity::Warning,
         fixable: true,
@@ -156,6 +211,15 @@ const BUILTIN_RULES: [BuiltinInfo; 29] = [
         good_example: "func f():\n\tpass\n",
     },
     BuiltinInfo {
+        id: "prefer-uid-path",
+        severity: Severity::Warning,
+        fixable: true,
+        description: "load() and preload() use uid:// paths when the resource has a UID.",
+        rationale: "UID paths keep working when files are moved or renamed. Only paths with a known UID (from `.uid` files, `.import` files or scene headers) are reported, and the safe fix replaces the path with the UID.",
+        bad_example: "const Data = preload(\"res://data.gd\")\n",
+        good_example: "const Data = preload(\"uid://cexampledata\")\n",
+    },
+    BuiltinInfo {
         id: "private-access",
         severity: Severity::Error,
         fixable: false,
@@ -165,6 +229,15 @@ const BUILTIN_RULES: [BuiltinInfo; 29] = [
         good_example: "func damage(enemy):\n\tenemy.take_damage(1)\n",
     },
     BuiltinInfo {
+        id: "scene-connection-missing-method",
+        severity: Severity::Error,
+        fixable: false,
+        description: "Scene connections target methods the script defines.",
+        rationale: "A `[connection]` in a `.tscn` file names its method as a string. Godot only reports a missing method when the signal is emitted. Methods inherited from engine classes can't be checked, except that engine methods never start with `_` unless they are virtual callbacks.",
+        bad_example: "extends Control\n",
+        good_example: "extends Control\n\nfunc _on_button_pressed():\n\tpass\n",
+    },
+    BuiltinInfo {
         id: "script-error",
         severity: Severity::Error,
         fixable: false,
@@ -172,6 +245,15 @@ const BUILTIN_RULES: [BuiltinInfo; 29] = [
         rationale: "A failing custom rule cannot reliably check this file. Fix the rule, invalid report, or resource usage before trusting the lint result.",
         bad_example: "",
         good_example: "",
+    },
+    BuiltinInfo {
+        id: "self-assignment",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "Local variables and parameters aren't assigned to themselves.",
+        rationale: "`x = x` on a local has no effect and is usually a typo for another value. Members are skipped: `property = property` is a Godot idiom to run a setter again.",
+        bad_example: "func set_speed(speed):\n\tspeed = speed\n",
+        good_example: "var speed = 0\nfunc set_speed(value):\n\tspeed = value\n",
     },
     BuiltinInfo {
         id: "shadowed-variable",
@@ -217,6 +299,15 @@ const BUILTIN_RULES: [BuiltinInfo; 29] = [
         rationale: "`pass` only exists to fill an empty block. Next to other statements it does nothing.",
         bad_example: "func f():\n\tprint(1)\n\tpass\n",
         good_example: "func f():\n\tprint(1)\n",
+    },
+    BuiltinInfo {
+        id: "unreachable-code",
+        severity: Severity::Warning,
+        fixable: false,
+        description: "No statements after `return`, `break` or `continue` in the same block.",
+        rationale: "Code after these statements never runs. Godot only warns about it in the editor, so headless checks and agents miss it.",
+        bad_example: "func f():\n\treturn 1\n\tprint(\"done\")\n",
+        good_example: "func f():\n\tprint(\"done\")\n\treturn 1\n",
     },
     BuiltinInfo {
         id: "unused-argument",
@@ -327,7 +418,16 @@ mod tests {
         info: &BuiltinInfo,
         source: &str,
     ) -> Vec<crate::linter::diagnostic::Diagnostic> {
-        if matches!(info.id, "unused-signal" | "unknown-member-on-project-class") {
+        if matches!(
+            info.id,
+            "unused-signal"
+                | "unknown-member-on-project-class"
+                | "duplicate-class-name"
+                | "missing-class-name"
+                | "missing-resource-path"
+                | "prefer-uid-path"
+                | "scene-connection-missing-method"
+        ) {
             let root = std::env::temp_dir().join(format!(
                 "gdguard-meta-{}-{}-{:?}-{}",
                 info.id,
@@ -346,6 +446,21 @@ mod tests {
                 "class_name ProjectData\nvar value = 0\n",
             )
             .unwrap();
+            std::fs::write(root.join("data.gd.uid"), "uid://cexampledata\n").unwrap();
+            if info.id == "scene-connection-missing-method" {
+                std::fs::write(
+                    root.join("ui.tscn"),
+                    concat!(
+                        "[gd_scene format=3]\n\n",
+                        "[ext_resource type=\"Script\" path=\"res://example.gd\" id=\"1\"]\n\n",
+                        "[node name=\"UI\" type=\"Control\"]\n",
+                        "script = ExtResource(\"1\")\n\n",
+                        "[node name=\"Button\" type=\"Button\" parent=\".\"]\n\n",
+                        "[connection signal=\"pressed\" from=\"Button\" to=\".\" method=\"_on_button_pressed\"]\n",
+                    ),
+                )
+                .unwrap();
+            }
             let path = root.join("example.gd");
             std::fs::write(&path, source).unwrap();
             let result = crate::linter::api::lint_source(
@@ -373,7 +488,8 @@ mod tests {
         assert!(builtin_rule_meta("load-variable-name").is_some());
         assert!(builtin_rule_meta("fix-failed").is_some());
         assert!(builtin_rule_meta("unused-ignore").is_some());
-        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 5);
+        assert!(builtin_rule_meta("godot-error").is_some());
+        assert_eq!(BUILTIN_RULES.len(), get_all_rule_names().len() + 6);
     }
 
     #[test]
@@ -405,7 +521,10 @@ mod tests {
         for info in &BUILTIN_RULES {
             // `fix-failed` comes from the fix engine, not from linting code.
             if info.bad_example.is_empty() {
-                assert!(matches!(info.id, "fix-failed" | "script-error"));
+                assert!(matches!(
+                    info.id,
+                    "fix-failed" | "script-error" | "godot-error"
+                ));
                 continue;
             }
             let bad = lint_example(info, info.bad_example);

@@ -1,22 +1,28 @@
 pub mod class_name;
 pub mod comparison_with_itself;
 pub mod constant_name;
+pub mod duplicate_dictionary_key;
 pub mod duplicated_load;
 pub mod enum_member_name;
 pub mod enum_name;
 pub mod fix_helpers;
 pub mod function_argument_name;
 pub mod function_name;
+pub mod godot3_syntax;
+mod godot_classes;
 mod godot_virtuals;
 pub mod loop_variable_name;
 pub mod max_line_length;
 pub mod no_else_return;
 pub mod private_access;
 pub mod project_rules;
+pub mod resource_paths;
+pub mod self_assignment;
 pub mod semantic_rules;
 pub mod signal_name;
 pub mod standalone_expression;
 pub mod unnecessary_pass;
+pub mod unreachable_code;
 pub mod unused_argument;
 pub mod variable_name;
 
@@ -103,6 +109,42 @@ pub const ALL_RULES: &[RuleDefinition] = &[
     RuleDefinition {
         name: "unknown-member-on-project-class",
         create: |_config| Box::new(project_rules::UnknownMemberRule),
+    },
+    RuleDefinition {
+        name: "duplicate-class-name",
+        create: |_config| Box::new(project_rules::DuplicateClassNameRule),
+    },
+    RuleDefinition {
+        name: "missing-class-name",
+        create: |_config| Box::new(project_rules::MissingClassNameRule),
+    },
+    RuleDefinition {
+        name: "scene-connection-missing-method",
+        create: |_config| Box::new(project_rules::SceneConnectionMissingMethodRule),
+    },
+    RuleDefinition {
+        name: "missing-resource-path",
+        create: |_config| Box::new(resource_paths::MissingResourcePathRule),
+    },
+    RuleDefinition {
+        name: "prefer-uid-path",
+        create: |_config| Box::new(resource_paths::PreferUidPathRule),
+    },
+    RuleDefinition {
+        name: "self-assignment",
+        create: |_config| Box::new(self_assignment::SelfAssignmentRule),
+    },
+    RuleDefinition {
+        name: "unreachable-code",
+        create: |_config| Box::new(unreachable_code::UnreachableCodeRule),
+    },
+    RuleDefinition {
+        name: "duplicate-dictionary-key",
+        create: |_config| Box::new(duplicate_dictionary_key::DuplicateDictionaryKeyRule),
+    },
+    RuleDefinition {
+        name: "godot3-syntax",
+        create: |_config| Box::new(godot3_syntax::Godot3SyntaxRule),
     },
     RuleDefinition {
         name: "unused-variable",
@@ -226,6 +268,7 @@ pub const SEMANTIC_RULE_IDS: &[&str] = &[
     "shadowed-variable",
     "unused-local-signal",
     "assigned-but-never-read",
+    "self-assignment",
 ];
 pub fn semantic_rules_enabled(config: &LinterConfig) -> bool {
     for id in SEMANTIC_RULE_IDS {
