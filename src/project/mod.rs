@@ -57,6 +57,14 @@ impl ProjectIndex {
         index::has_member_in_script(self, path, member)
     }
 
+    /// Looks for a method in the script ancestors of an explicit base.
+    /// `path` is the project-relative path of the declaring script, used to
+    /// resolve relative bases. Supplying the base supports unsaved buffers.
+    /// Only function declarations count; unresolved bases return Unknown.
+    pub fn has_method_in_base(&self, path: &Path, base: &str, method: &str) -> MemberLookup {
+        index::has_method_in_base(self, path, base, method)
+    }
+
     /// Paths of the valid scripts declaring `class_name`, in path order.
     /// More than one path means the name is ambiguous and unresolved.
     pub fn scripts_declaring(&self, class_name: &str) -> Vec<&Path> {

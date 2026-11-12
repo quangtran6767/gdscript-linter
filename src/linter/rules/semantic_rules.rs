@@ -1,7 +1,8 @@
-//! Rules using the shared lexical model. No type inference or engine-member
-//! assumptions are made; only local/private declarations are considered.
+//! Rules using the shared lexical model and project script inheritance.
+//! No type inference or engine-member assumptions are made.
 use super::{Rule, fix_helpers::remove_lines_edit, godot_virtuals::VIRTUAL_METHODS};
 use crate::linter::diagnostic::{Diagnostic, Edit, FileContext, Fix, FixSafety, Severity};
+use crate::project::MemberLookup;
 use crate::semantic::{ReferenceKind, ScopeKind, Symbol, SymbolKind};
 
 pub struct SemanticRule {
@@ -80,6 +81,7 @@ impl SemanticRule {
                         && !analysis.is_some_and(|analysis| {
                             analysis.connected_methods.contains(&symbol.name)
                         })
+                        && !overrides_script_method(context, symbol)
                 }
                 "shadowed-variable" => {
                     local
@@ -197,6 +199,52 @@ impl SemanticRule {
             });
         }
     }
+}
+
+fn overrides_script_method(context: &FileContext, symbol: &Symbol) -> bool {
+    let Some(project) = context.project else {
+        return false;
+    };
+    let Some(path) = super::resource_paths::project_relative(context.path, &project.root) else {
+        return false;
+    };
+    let Some(mut class) = declaration_node(context, symbol).and_then(|node| node.parent()) else {
+        return false;
+    };
+    // Stop at the owning class: an inner class does not inherit the outer
+    // script's base. Read syntax from the live buffer rather than its summary.
+    while class != context.tree.root_node() && class.kind() != "class_definition" {
+        let Some(parent) = class.parent() else {
+            return false;
+        };
+        class = parent;
+    }
+    let extends = if class.kind() == "class_definition" {
+        class.child_by_field_name("extends")
+    } else {
+        let mut cursor = class.walk();
+        class.named_children(&mut cursor).find_map(|node| {
+            if node.kind() == "extends_statement" {
+                Some(node)
+            } else if node.kind() == "class_name_statement" {
+                node.child_by_field_name("extends")
+            } else {
+                None
+            }
+        })
+    };
+    let Some(extends) = extends else {
+        return false;
+    };
+    let mut cursor = extends.walk();
+    let Some(base) = extends
+        .named_children(&mut cursor)
+        .find(|node| node.kind() != "annotations")
+    else {
+        return false;
+    };
+    let base = context.source[base.byte_range()].trim_matches(['\'', '"']);
+    project.has_method_in_base(&path, base, &symbol.name) == MemberLookup::Yes
 }
 
 fn declaration_node<'a>(

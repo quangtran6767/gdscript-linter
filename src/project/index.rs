@@ -297,37 +297,73 @@ fn lookup_from(index: &ProjectIndex, mut current: usize, member: &str) -> Member
             }
             return MemberLookup::No;
         };
-        if let Some(parent) = index.class_names.get(base) {
-            current = *parent;
+        if let Some(parent) = resolve_base(index, &script.path, base) {
+            current = parent;
             continue;
-        }
-        if base.contains('/') || base.ends_with(".gd") {
-            let path = if let Some(relative) = base.strip_prefix("res://") {
-                PathBuf::from(relative)
-            } else {
-                script.path.parent().unwrap_or(Path::new("")).join(base)
-            };
-            let mut normalized = PathBuf::new();
-            for component in path.components() {
-                match component {
-                    Component::ParentDir => {
-                        normalized.pop();
-                    }
-                    Component::CurDir => {}
-                    other => normalized.push(other.as_os_str()),
-                }
-            }
-            if let Some(parent) = index
-                .scripts
-                .iter()
-                .position(|script| script.path == normalized)
-            {
-                current = parent;
-                continue;
-            }
         }
         return MemberLookup::Unknown;
     }
+}
+
+pub(super) fn has_method_in_base(
+    index: &ProjectIndex,
+    path: &Path,
+    base: &str,
+    method: &str,
+) -> MemberLookup {
+    let Some(mut current) = resolve_base(index, path, base) else {
+        return MemberLookup::Unknown;
+    };
+    let mut visited = HashSet::new();
+    // A cycle back to the declaring script cannot make its own method an
+    // override. The current buffer need not have an on-disk summary.
+    if let Some(own) = index.scripts.iter().position(|script| script.path == path) {
+        visited.insert(own);
+    }
+    loop {
+        if !visited.insert(current) {
+            return MemberLookup::Unknown;
+        }
+        let script = &index.scripts[current];
+        if script.functions.iter().any(|name| name == method) {
+            return MemberLookup::Yes;
+        }
+        let Some(base) = &script.extends else {
+            return MemberLookup::No;
+        };
+        let Some(parent) = resolve_base(index, &script.path, base) else {
+            return MemberLookup::Unknown;
+        };
+        current = parent;
+    }
+}
+
+fn resolve_base(index: &ProjectIndex, script: &Path, base: &str) -> Option<usize> {
+    if let Some(parent) = index.class_names.get(base) {
+        return Some(*parent);
+    }
+    if !base.contains('/') && !base.ends_with(".gd") {
+        return None;
+    }
+    let path = if let Some(relative) = base.strip_prefix("res://") {
+        PathBuf::from(relative)
+    } else {
+        script.parent().unwrap_or(Path::new("")).join(base)
+    };
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::ParentDir => {
+                normalized.pop();
+            }
+            Component::CurDir => {}
+            other => normalized.push(other.as_os_str()),
+        }
+    }
+    index
+        .scripts
+        .iter()
+        .position(|script| script.path == normalized)
 }
 
 /// Run-wide dependency digest for project-aware lint cache entries.

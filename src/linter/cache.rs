@@ -27,7 +27,8 @@ use crate::linter::diagnostic::{Diagnostic, Edit, Fix, FixSafety, Severity, Span
 // diagnostics, since the package version didn't change.
 // Inference-enabled typing no longer requires explicit loop-variable types.
 // Callback exemptions, UID autoload resolution and declaration spacing changed.
-pub const CACHE_VERSION: u32 = 10;
+// Private methods overriding project script methods now count as used.
+pub const CACHE_VERSION: u32 = 11;
 
 /// The cache file, relative to the folder of `gdguard.toml`.
 pub const CACHE_PATH: &str = ".gdguard/cache/lint.json";

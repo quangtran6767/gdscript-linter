@@ -456,9 +456,9 @@ func f():
 
 **warning** · fix: suggestion only (never applied automatically)
 
-Private functions are referenced or are Godot virtual callbacks.
+Private functions are referenced, override a parent script method or are Godot virtual callbacks.
 
-A private helper with no local references may be dead code. Check external callbacks before removing it.
+A private helper with no local references may be dead code. Project script overrides and scene callbacks count as used, including bases in excluded folders. Check other external callbacks before removing it.
 
 Bad:
 

@@ -368,6 +368,97 @@ fn missing_class_name_skips_autoload_scripts_and_scenes_and_offers_a_free_name()
 }
 
 #[test]
+fn private_method_overrides_are_used_across_script_inheritance() {
+    let project = TempProject::new("config_version=5\n");
+    project.write(
+        "addons/lib/base.gd",
+        "class_name LibBase\nextends Node\nfunc _ready() -> void:\n\t_hook()\nfunc _hook() -> void:\n\tpass\nvar _property: int = 0\nsignal _signal\n",
+    );
+    project.write("src/middle.gd", "class_name Middle\nextends LibBase\n");
+    project.write("unrelated.gd", "func _unrelated() -> void:\n\tpass\n");
+    for declaration in [
+        "extends LibBase",
+        "extends Middle",
+        "extends \"res://addons/lib/base.gd\"",
+        "extends '../addons/lib/base.gd'",
+        "extends './middle.gd'",
+        "class_name Child extends Middle",
+    ] {
+        project.write(
+            "src/child.gd",
+            &format!("{declaration}\nfunc _hook() -> void:\n\tprint('hi')\nfunc _unused() -> void:\n\tpass\nfunc _unrelated() -> void:\n\tpass\nfunc _property() -> void:\n\tpass\nfunc _signal() -> void:\n\tpass\n"),
+        );
+        assert_eq!(
+            project.rules("src/child.gd", "unused-private-function"),
+            vec!["_unused", "_unrelated", "_property", "_signal"],
+            "{declaration}"
+        );
+    }
+}
+
+#[test]
+fn private_method_overrides_use_the_live_buffers_own_class() {
+    let project = TempProject::new("config_version=5\n");
+    project.write(
+        "base.gd",
+        "class_name Base\nfunc _hook() -> void:\n\tpass\n",
+    );
+    let path = project.write("child.gd", "extends Node\n");
+    let unused = |source: &str| {
+        gdguard::linter::api::lint_source(&path, source, &Default::default())
+            .unwrap()
+            .diagnostics
+            .into_iter()
+            .filter(|d| d.check_id() == "unused-private-function")
+            .map(|d| d.span.start_byte)
+            .collect::<Vec<_>>()
+    };
+    let source = "extends Base\nfunc _hook() -> void:\n\tpass\nclass Inner:\n\tfunc _hook() -> void:\n\t\tpass\nclass Derived extends Base:\n\tfunc _hook() -> void:\n\t\tpass\n";
+    assert_eq!(
+        unused(source),
+        vec![source.find("class Inner").unwrap() + "class Inner:\n\tfunc ".len()]
+    );
+
+    // Changing the buffer's base must not reuse the on-disk inheritance.
+    project.write("child.gd", "extends Base\n");
+    let source = "extends Node\nfunc _hook() -> void:\n\tpass\n";
+    assert_eq!(unused(source), vec![source.find("_hook").unwrap()]);
+}
+
+#[test]
+fn unresolved_bases_do_not_exempt_unused_private_methods() {
+    let project = TempProject::new("config_version=5\n");
+    project.write("cycle.gd", "class_name Cycle\nextends Child\n");
+    project.write(
+        "a.gd",
+        "class_name Ambiguous\nfunc _hook() -> void:\n\tpass\n",
+    );
+    project.write(
+        "b.gd",
+        "class_name Ambiguous\nfunc _hook() -> void:\n\tpass\n",
+    );
+    project.write("invalid.gd", "class_name Invalid\nfunc _hook(\n");
+    for base in [
+        "Cycle",
+        "Ambiguous",
+        "Invalid",
+        "Missing",
+        "Node",
+        "'missing.gd'",
+    ] {
+        project.write(
+            "child.gd",
+            &format!("class_name Child\nextends {base}\nfunc _hook() -> void:\n\tpass\n"),
+        );
+        assert_eq!(
+            project.rules("child.gd", "unused-private-function"),
+            vec!["_hook"],
+            "{base}"
+        );
+    }
+}
+
+#[test]
 fn scene_connections_report_missing_methods_and_count_as_uses() {
     let project = TempProject::new("config_version=5\n");
     project.write(

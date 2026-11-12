@@ -114,6 +114,49 @@ fn second_run_reads_the_cache() {
 }
 
 #[test]
+fn private_overrides_resolve_excluded_addons_and_invalidate_stale_warnings() {
+    let project = TempProject::new();
+    project.write("project.godot", "config_version=5\n");
+    project.write("gdguard.toml", "[lint]\nexclude = ['addons/**']\n");
+    let base = "class_name LibBase\nextends Node\nfunc _addon_unused() -> void:\n\tpass\n";
+    project.write("addons/lib/base.gd", base);
+    project.write(
+        "src/child.gd",
+        "class_name Child\nextends LibBase\nfunc _hook() -> void:\n\tpass\nfunc _unused() -> void:\n\tpass\n",
+    );
+    let before = project.lint(&["src/"]);
+    assert!(before.contains("Private function '_hook'"), "{before}");
+    let old: serde_json::Value = serde_json::from_str(&project.read(CACHE)).unwrap();
+    let old_diagnostics =
+        old["files"].as_object().unwrap().values().next().unwrap()["diagnostics"].clone();
+
+    // Only the excluded parent changes; the child must be linted again.
+    project.write(
+        "addons/lib/base.gd",
+        &format!("{base}func _ready() -> void:\n\t_hook()\nfunc _hook() -> void:\n\tpass\n"),
+    );
+    let after = project.lint(&["src/"]);
+    assert!(!after.contains("Private function '_hook'"), "{after}");
+    assert!(after.contains("Private function '_unused'"), "{after}");
+    assert_eq!(project.lint(&["src/"]), after);
+    assert_eq!(project.lint(&["--no-cache", "src/"]), after);
+    assert_eq!(project.lint(&["."]), after); // The addon itself stays excluded.
+
+    // An older binary may have cached the false positive with identical
+    // content/settings hashes. The cache version must discard it.
+    let mut cached: serde_json::Value = serde_json::from_str(&project.read(CACHE)).unwrap();
+    cached["version"] = 10.into();
+    for entry in cached["files"].as_object_mut().unwrap().values_mut() {
+        entry["diagnostics"] = old_diagnostics.clone();
+    }
+    project.write(CACHE, &serde_json::to_string(&cached).unwrap());
+    assert_eq!(project.lint(&["src/"]), after);
+
+    project.write("addons/lib/base.gd", base);
+    assert_eq!(project.lint(&["src/"]), before);
+}
+
+#[test]
 fn w9_cache_does_not_hide_the_new_default_declaration_order_rule() {
     let project = TempProject::new();
     project.write("gdguard.toml", "");
