@@ -11,6 +11,41 @@ use std::path::Path;
 test_each_file::test_each_path! { in "./tests/input" => test_file }
 test_each_file::test_each_path! { in "./tests/lint/input" as lint => test_lint_file  }
 
+#[test]
+fn conditional_cast_respects_line_width_and_is_idempotent() {
+    for width in [80, 100] {
+        let prefix = if width == 80 {
+            "selected_mode"
+        } else {
+            "selected_mode_with_a_long_name"
+        };
+        let config = FormatterConfiguration {
+            printer: PrinterConfiguration {
+                max_line_length: width,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        for expression in [
+            "(\n\t\tprimary_mode if OS.is_debug_build() else secondary_mode\n\t) as Mode",
+            "(primary_mode if OS.is_debug_build() else secondary_mode) as Mode",
+        ] {
+            let source = format!("func choose() -> void:\n\t{prefix} = {expression}\n");
+            let output = format_gdscript(&source, &config).unwrap();
+            assert!(
+                output.lines().all(|line| line
+                    .chars()
+                    .map(|c| if c == '\t' { 4 } else { 1 })
+                    .sum::<usize>()
+                    <= width),
+                "{output}"
+            );
+            assert!(output.contains(") as Mode"), "{output}");
+            assert_eq!(format_gdscript(&output, &config).unwrap(), output);
+        }
+    }
+}
+
 fn make_whitespace_visible(s: &str) -> String {
     s.replace(' ', "·")
         .replace('\t', "⇥   ")

@@ -181,6 +181,47 @@ fn declaration_order_unformatted_bodies_are_fixed_without_reformatting() {
 }
 
 #[test]
+fn declaration_order_unformatted_body_preserves_variable_groups() {
+    let project = TempProject::new();
+    for variables in [
+        "var a := 1\nvar b := 2\nvar c := 3",
+        "@export var a := 1\n@export var b := 2\n\n@export var c := 3\n\n@onready var d := 4\n@onready var e := 5",
+    ] {
+        let source = format!(
+            "extends Node\n\n{variables}\n\n\nfunc _unhandled_input(_e: InputEvent) -> void:\n\tprint(\n\t\t1,\n\t\t2)\n\n\nfunc _physics_process(_d: float) -> void:\n\tpass\n"
+        );
+        for format in [false, true] {
+            project.write("gdguard.toml", &format!("[fix]\nformat = {format}\n"));
+            let result = fix(&project, &source, false);
+            assert!(result.output.contains(variables), "{}", result.output);
+            assert!(order_diagnostics(&project, &result.output).is_empty());
+            assert_eq!(fix(&project, &result.output, false).output, result.output);
+        }
+    }
+}
+
+#[test]
+fn declaration_order_main_loop_callbacks_precede_public_methods() {
+    let project = TempProject::new();
+    let callbacks = "func _initialize() -> void:\n\trun()\n\n\nfunc _process(_delta: float) -> bool:\n\treturn false\n\n\nfunc _physics_process(_delta: float) -> bool:\n\treturn false\n\n\nfunc _finalize() -> void:\n\tpass\n";
+    let source = format!(
+        "class_name Boot\nextends SceneTree\n\n\n{callbacks}\n\nfunc run() -> void:\n\tquit()\n"
+    );
+    assert!(order_diagnostics(&project, &source).is_empty());
+    let source = format!(
+        "class_name Boot\nextends SceneTree\n\n\nfunc run() -> void:\n\tquit()\n\n\n{callbacks}"
+    );
+    let result = fix(&project, &source, false);
+    assert!(
+        result.output.find("func _initialize").unwrap() < result.output.find("func run").unwrap()
+    );
+    assert!(
+        result.output.find("func _finalize").unwrap() < result.output.find("func run").unwrap()
+    );
+    assert!(order_diagnostics(&project, &result.output).is_empty());
+}
+
+#[test]
 fn declaration_order_skips_parse_errors_inner_classes_and_ordered_regions() {
     let project = TempProject::new();
     for source in [
@@ -490,7 +531,7 @@ fn declaration_order_raw_fix_splits_inline_extends_without_losing_text() {
     let source = "var health=1\n# Header comment\nclass_name  Example extends  Node # base comment\n## Class docs\n## More docs\nsignal done\n# final comment\n";
     let fixed = raw_reorder(&project, source);
     assert!(
-        fixed.starts_with("# Header comment\nclass_name  Example\n\nextends  Node # base comment"),
+        fixed.starts_with("# Header comment\nclass_name  Example\nextends  Node # base comment"),
         "{fixed}"
     );
     assert_eq!(fixed.matches("class_name").count(), 1);

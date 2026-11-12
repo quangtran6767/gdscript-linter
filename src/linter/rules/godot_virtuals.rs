@@ -1,4 +1,5 @@
-//! Virtual callback exemptions from gdextension-api 0.5.1 (Godot 4.2–4.7).
+//! Virtual callback exemptions from gdextension-api 0.5.1 (Godot 4.2–4.7),
+//! plus GDScript's language-level `_static_init` callback.
 pub const VIRTUAL_METHODS: &[&str] = &[
     "_accessibility_get_contextual_info",
     "_activate_feed",
@@ -1109,6 +1110,7 @@ pub const VIRTUAL_METHODS: &[&str] = &[
     "_spoof_check",
     "_stage_file",
     "_start",
+    "_static_init",
     "_step",
     "_stop",
     "_string_get_character_breaks",

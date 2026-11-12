@@ -58,6 +58,9 @@ structure check, so it can't change what the code does; a file it can't
 parse stays as it is. `--diff` shows the formatting too. The summary
 reads `Fixed 2 problems in 1 file, formatted 3 files`. The default is
 `false`: the fix engine then only keeps already formatted files formatted.
+Formatting during fixes uses the resolved `max-line-length` setting,
+including matching rule overrides and `--max-line-length`. Other formatting
+preferences come from `.editorconfig`.
 
 `unsafe` makes `lint --fix` apply unsafe fixes as well: `true` for every
 rule, or a list of rule ids. Unsafe fixes can change behavior in rare

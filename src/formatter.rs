@@ -2197,6 +2197,39 @@ fn process_binary_operator(context: &mut FormatterContext, node: tree_sitter::No
     };
     let is_and_or = operator_text == "and" || operator_text == "or";
 
+    // Keep a cast's suffix in the same layout decision as its parenthesized
+    // operand. An independently fitted `(expression)` can otherwise use the
+    // whole remaining line and leave no room for ` as Type`.
+    if operator_text == "as"
+        && node.child_by_field_name("left").is_some_and(|left| {
+            GDScriptNodeKind::get_kind_from_ast_node(left)
+                == GDScriptNodeKind::ParenthesizedExpression
+        })
+    {
+        let group_index = begin_group(context.render_elements);
+        let mut previous = None;
+        for index in 0..child_count {
+            let child = node.child(index).expect("binary operator child exists");
+            if let Some(previous) = previous {
+                process_separator_between_sibling_nodes(
+                    GDScriptNodeKind::BinaryOperator,
+                    context.input.source,
+                    &previous,
+                    &child,
+                    context.render_elements,
+                );
+            }
+            if Some(child) == node.child_by_field_name("left") {
+                process_expression_content(context, child);
+            } else {
+                process_node(context, child);
+            }
+            previous = Some(child);
+        }
+        finish_group(context.render_elements, group_index);
+        return;
+    }
+
     let mut has_line_continuation = false;
     let mut current_index = 0;
     while current_index < child_count {

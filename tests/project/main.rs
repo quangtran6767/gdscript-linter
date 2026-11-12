@@ -70,6 +70,49 @@ fn autoloads_summaries_and_three_level_inheritance() {
         MemberLookup::Unknown
     );
 }
+
+#[test]
+fn uid_autoloads_resolve_scripts_and_scenes_and_follow_sidecar_changes() {
+    let project = TempProject::new(
+        "config_version=5\n[autoload]\nGame=\"*uid://abc123xyz\"\nHud=\"uid://hudscene\"\nMissing=\"*uid://missing\"\n",
+    );
+    project.write("scripts/game.gd", "extends Node\n");
+    project.write("scripts/game.gd.uid", "uid://abc123xyz\n");
+    project.write("hud_root.gd", "extends CanvasLayer\n");
+    project.write("hud.tscn", "[gd_scene format=3 uid=\"uid://hudscene\"]\n[ext_resource type=\"Script\" path=\"res://hud_root.gd\" id=\"1\"]\n[node name=\"Hud\" type=\"CanvasLayer\"]\nscript = ExtResource(\"1\")\n");
+    for cached in [true, false] {
+        let index = if cached {
+            ProjectIndex::build(&project.root)
+        } else {
+            ProjectIndex::build_uncached(&project.root)
+        }
+        .unwrap();
+        assert_eq!(index.autoloads["Game"], PathBuf::from("scripts/game.gd"));
+        assert_eq!(index.autoloads["Hud"], PathBuf::from("hud.tscn"));
+        assert_eq!(index.autoloads["Missing"], PathBuf::from("uid://missing"));
+    }
+    assert!(
+        project
+            .rules("scripts/game.gd", "missing-class-name")
+            .is_empty()
+    );
+    assert!(
+        project
+            .rules("hud_root.gd", "missing-class-name")
+            .is_empty()
+    );
+    project.write("scripts/game.gd.uid", "uid://different\n");
+    assert_eq!(
+        project.rules("scripts/game.gd", "missing-class-name"),
+        vec!["extends Node"]
+    );
+    project.write("scripts/game.gd.uid", "uid://abc123xyz\n");
+    assert!(
+        project
+            .rules("scripts/game.gd", "missing-class-name")
+            .is_empty()
+    );
+}
 #[test]
 fn cache_reuses_stable_content_and_invalidates_edits_and_deleted_files() {
     let project = Project::new();

@@ -124,11 +124,24 @@ pub(super) fn build(root: &Path, with_cache: bool) -> Result<ProjectIndex, Strin
             }
         }
     }
+    let mut autoloads = parse_autoloads(&project_text);
+    if autoloads
+        .values()
+        .any(|path| path.to_string_lossy().starts_with("uid://"))
+    {
+        let files = super::analysis::project_files(&root)?;
+        let uid_paths = super::analysis::collect_uid_paths(&root, &files)?;
+        for path in autoloads.values_mut() {
+            if let Some(res) = path.to_str().and_then(|uid| uid_paths.get(uid)) {
+                *path = PathBuf::from(res.trim_start_matches("res://"));
+            }
+        }
+    }
     Ok(ProjectIndex {
         root,
         scripts,
         class_names,
-        autoloads: parse_autoloads(&project_text),
+        autoloads,
     })
 }
 

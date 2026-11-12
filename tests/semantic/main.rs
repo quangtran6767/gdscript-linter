@@ -178,3 +178,18 @@ fn semantic_rule_exemptions_cover_virtuals_underscores_and_string_signals() {
         "unused-variable" | "unused-private-function" | "unused-local-signal"
     )));
 }
+
+#[test]
+fn static_initializer_is_an_engine_callback() {
+    use gdguard::linter::api::{Config, lint_source};
+    let source = "class_name Config\nextends RefCounted\n\nstatic var ready_flag := false\n\n\nstatic func _static_init() -> void:\n\tready_flag = true\n\n\nstatic func _unused_helper() -> void:\n\tpass\n";
+    let diagnostics = lint_source(Path::new("config.gd"), source, &Config::default())
+        .unwrap()
+        .diagnostics;
+    let unused: Vec<_> = diagnostics
+        .iter()
+        .filter(|d| d.check_id() == "unused-private-function")
+        .collect();
+    assert_eq!(unused.len(), 1);
+    assert!(unused[0].message.contains("_unused_helper"));
+}

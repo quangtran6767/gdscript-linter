@@ -124,46 +124,25 @@ impl ProjectAnalysis {
             analysis.collect_tree(&tree, &source);
         }
         let files = project_files(&index.root)?;
+        analysis.uid_paths = collect_uid_paths(&index.root, &files)?;
+        for (uid, path) in &analysis.uid_paths {
+            analysis.path_uids.insert(path.clone(), uid.clone());
+        }
         let mut scenes = Vec::new();
         for path in &files {
             let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
                 continue;
             };
-            if let Some(target_name) = name.strip_suffix(".uid") {
-                let text = std::fs::read_to_string(path).unwrap_or_default();
-                let uid = text.trim();
-                if uid.starts_with("uid://") {
-                    let target = path.with_file_name(target_name);
-                    analysis.add_uid(uid, &res_path(&index.root, &target));
-                }
-            } else if let Some(target_name) = name.strip_suffix(".import") {
-                let text = std::fs::read_to_string(path).unwrap_or_default();
-                if let Some(uid) = import_uid(&text) {
-                    let target = path.with_file_name(target_name);
-                    analysis.add_uid(&uid, &res_path(&index.root, &target));
-                }
-            } else if name.ends_with(".tscn") || name.ends_with(".tres") {
+            if name.ends_with(".tscn") {
                 let text = std::fs::read_to_string(path)
                     .map_err(|error| format!("{}: {}", path.display(), error))?;
-                if let Some(header) = text.lines().next() {
-                    if let Some(uid) = attribute(header, "uid") {
-                        analysis.add_uid(&uid, &res_path(&index.root, path));
-                    }
-                }
-                if name.ends_with(".tscn") {
-                    scenes.push((res_path(&index.root, path), text));
-                }
+                scenes.push((res_path(&index.root, path), text));
             }
         }
         for (scene, text) in &scenes {
             analysis.collect_scene(scene, text);
         }
         Ok(analysis)
-    }
-
-    fn add_uid(&mut self, uid: &str, path: &str) {
-        self.uid_paths.insert(uid.to_string(), path.to_string());
-        self.path_uids.insert(path.to_string(), uid.to_string());
     }
 
     /// Reads the external scripts, nodes and connections of one text scene.
@@ -312,6 +291,45 @@ fn ext_resource_id(value: &str) -> Option<String> {
     } else {
         Some(inner.to_string())
     }
+}
+
+/// Shared UID resolution for project autoloads and resource-path rules.
+pub(super) fn collect_uid_paths(
+    root: &Path,
+    files: &[PathBuf],
+) -> Result<HashMap<String, String>, String> {
+    let mut paths = HashMap::new();
+    for path in files {
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        if let Some(target_name) = name.strip_suffix(".uid") {
+            let text = std::fs::read_to_string(path).unwrap_or_default();
+            let uid = text.trim();
+            if uid.starts_with("uid://") {
+                paths.insert(
+                    uid.to_string(),
+                    res_path(root, &path.with_file_name(target_name)),
+                );
+            }
+        } else if let Some(target_name) = name.strip_suffix(".import") {
+            let text = std::fs::read_to_string(path).unwrap_or_default();
+            if let Some(uid) = import_uid(&text) {
+                paths.insert(uid, res_path(root, &path.with_file_name(target_name)));
+            }
+        } else if name.ends_with(".tscn") || name.ends_with(".tres") {
+            let text = std::fs::read_to_string(path)
+                .map_err(|error| format!("{}: {}", path.display(), error))?;
+            if let Some(uid) = text
+                .lines()
+                .next()
+                .and_then(|header| attribute(header, "uid"))
+            {
+                paths.insert(uid, res_path(root, path));
+            }
+        }
+    }
+    Ok(paths)
 }
 
 /// The `uid` of the `[remap]` section of an `.import` file.

@@ -549,11 +549,11 @@ fn find_child_index_of_kind(node: Node, kind: GDScriptNodeKind) -> Option<u32> {
 fn get_builtin_virtual_priority(method_name: &str) -> u8 {
     match method_name {
         "_init" => 1,
-        "_enter_tree" => 2,
+        "_enter_tree" | "_initialize" => 2,
         "_ready" => 3,
         "_process" => 4,
         "_physics_process" => 5,
-        "_exit_tree" => 6,
+        "_exit_tree" | "_finalize" => 6,
         "_input" => 7,
         "_unhandled_input" => 8,
         "_unhandled_key_input" | "_gui_input" => 9,

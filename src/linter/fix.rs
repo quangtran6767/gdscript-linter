@@ -149,6 +149,9 @@ pub fn fix_source_with_settings(
     if settings.format_on_fix || applied > 0 {
         let mut formatter_config = FormatterConfiguration::default();
         crate::editorconfig::apply_editorconfig_to_formatter_config(&mut formatter_config, path);
+        // Formatting and linting must use the same resolved width, including
+        // gdguard.toml overrides and --max-line-length.
+        formatter_config.printer.max_line_length = settings.linter_config.max_line_length;
         formatter_config.safe = settings.format_on_fix;
         let should_format = settings.format_on_fix || is_formatted(source, &formatter_config);
         if should_format && settings.format_on_fix {

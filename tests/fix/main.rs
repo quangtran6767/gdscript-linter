@@ -285,6 +285,46 @@ fn fix_format_is_idempotent_when_the_formatter_needs_two_passes() {
 }
 
 #[test]
+fn fix_format_conditional_cast_uses_the_configured_lint_width() {
+    let project = TempProject::new();
+    for (width, name) in [
+        (80, "selected_mode"),
+        (100, "selected_mode_with_an_even_longer_name"),
+    ] {
+        project.write("gdguard.toml", &format!("[rules]\nmax-line-length = {{ level = 'warning', max = {width} }}\n[fix]\nformat = true\n"));
+        // The resolved lint setting takes precedence over EditorConfig here,
+        // just as it does when reporting max-line-length diagnostics.
+        project.write(
+            ".editorconfig",
+            "root = true\n[*.gd]\nmax_line_length = 120\n",
+        );
+        let source = format!(
+            "class_name Example\nextends RefCounted\n\nenum Mode {{ FIRST, SECOND }}\n\nvar {name} := Mode.FIRST\nvar primary_mode := Mode.FIRST\nvar secondary_mode := Mode.SECOND\n\n\nfunc choose() -> void:\n\t{name} = (\n\t\tprimary_mode if OS.is_debug_build() else secondary_mode\n\t) as Mode\n"
+        );
+        let result = fix(&project, &source, false);
+        assert!(
+            result.remaining.is_empty(),
+            "{:?}\n{}",
+            result.remaining,
+            result.output
+        );
+        assert_eq!(fix(&project, &result.output, false).output, result.output);
+        let path = project.write("a.gd", &source);
+        let output = Command::new(env!("CARGO_BIN_EXE_gdguard"))
+            .args(["lint", "--fix", "--format", "agent"])
+            .arg(&path)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(project.read("a.gd"), result.output);
+    }
+}
+
+#[test]
 fn fix_format_reports_remaining_issues_in_the_formatted_text() {
     let project = TempProject::new();
     project.write("gdguard.toml", "[fix]\nformat = true\n");

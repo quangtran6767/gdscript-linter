@@ -13,7 +13,8 @@
 //!    the editor does.
 //! 2. Run a small loader script with `--script` that loads each file with
 //!    `ResourceLoader.load(path, "", CACHE_MODE_IGNORE)`. Scripts are
-//!    compiled, not instantiated, but static initializers may run.
+//!    compiled after SceneTree initialization registers autoload singletons,
+//!    not instantiated, but static initializers may run.
 //! 3. Map each `at: GDScript::reload (res://file.gd:LINE)` back to a file.
 //!    Errors in other scripts are reported on line 1 of the file that loaded
 //!    them.
@@ -32,7 +33,7 @@ const GODOT_TIMEOUT: Duration = Duration::from_secs(300);
 
 const LOADER_SCRIPT: &str = "extends SceneTree\n\
 \n\
-func _init() -> void:\n\
+func _initialize() -> void:\n\
 \tfor path in OS.get_cmdline_user_args():\n\
 \t\tprinterr(\"GDGUARD-BEGIN \", path)\n\
 \t\tResourceLoader.load(path, \"\", ResourceLoader.CACHE_MODE_IGNORE)\n\

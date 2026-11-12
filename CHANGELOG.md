@@ -4,6 +4,15 @@ This file documents the changes made to the formatter with each release.
 
 ## Unreleased
 
+### Fixed
+
+- Preserve adjacent variable declarations and intentional variable groups when `declaration-order` fixes an unformatted file (#1).
+- Load scripts after Godot registers autoload singletons, avoiding false `godot-error` diagnostics for valid singleton access (#2).
+- Resolve `uid://` autoload entries through resource UID metadata so autoload scripts remain exempt from `missing-class-name` (#3).
+- Recognize GDScript's `_static_init` callback and order MainLoop's `_initialize` and `_finalize` with built-in virtual methods (#4).
+- Include the cast suffix when wrapping parenthesized expressions, and use the resolved lint width when formatting fixes (#5).
+- Invalidate cached diagnostics and reorder edits from before these corrections.
+
 ### Added
 
 - `type-annotations` (warning, no fix) requires explicit types for function/lambda returns, parameters, variables, constants, loop variables, signal parameters and Array/Dictionary arguments. `allow_inferred = true` permits `:=`; explicit `Variant` is allowed.

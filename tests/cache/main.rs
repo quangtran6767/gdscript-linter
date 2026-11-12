@@ -227,18 +227,23 @@ fn reorder_fix_cache_tracks_formatter_only_editorconfig_settings() {
     };
     let formatted_fix = replacement();
     assert!(formatted_fix.contains("var a = 1\nvar b = 2"));
+    // Both fix paths preserve variable groups. Poison the cached edit so
+    // recomputation is observable even when the resulting text is identical.
+    project.tamper_cache("var a = 1", "var a = 999");
     project.write(
         ".editorconfig",
         "root = true\n[*.gd]\nindent_style = space\n",
     );
     let raw_fix = replacement();
-    assert!(raw_fix.contains("var a = 1\n\nvar b = 2"));
+    assert!(raw_fix.contains("var a = 1\nvar b = 2"));
     assert!(raw_fix.contains("\tprint(\"body\")"));
+    project.tamper_cache("var a = 1", "var a = 999");
     project.write(
         ".editorconfig",
         "root = true\n[*.gd]\nindent_style = tab\ngdscript_formatter_quote_style = single\n",
     );
     assert_eq!(replacement(), raw_fix);
+    project.tamper_cache("var a = 1", "var a = 999");
     project.write(".editorconfig", "root = true\n[*.gd]\nindent_style = tab\n");
     assert_eq!(replacement(), formatted_fix);
 }

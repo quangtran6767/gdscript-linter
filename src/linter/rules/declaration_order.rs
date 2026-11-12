@@ -70,7 +70,7 @@ impl Rule for DeclarationOrderRule {
                 config.reorder_code = true;
                 format_gdscript(context.source, &config).ok()
             } else {
-                reorder_source_slices(root, &plan, context.source)
+                reorder_source_slices(root, &plan, context.source, &config)
             };
             if let Some(reordered) = reordered {
                 diagnostic.fixes.push(Fix {
@@ -106,7 +106,12 @@ fn has_warning_ignore_region(root: Node, source: &str) -> bool {
 }
 
 /// Move complete declaration blocks without changing any text inside them.
-fn reorder_source_slices(root: Node, plan: &ReorderPlan, source: &str) -> Option<String> {
+fn reorder_source_slices(
+    root: Node,
+    plan: &ReorderPlan,
+    source: &str,
+    config: &FormatterConfiguration,
+) -> Option<String> {
     let mut slices = Vec::with_capacity(plan.items.len());
     let mut first_start = source.len();
     let mut last_end = 0;
@@ -173,18 +178,47 @@ fn reorder_source_slices(root: Node, plan: &ReorderPlan, source: &str) -> Option
     } else {
         "\n"
     };
+    let mut previous_kind = None;
+    let mut previous_was_region_start = false;
     for index in 0..plan.items.len() {
+        let item = &plan.items[index];
+        let node = declaration_node(root, item);
+        let is_region_start = node.kind() == "region_start";
+        let is_region_end = node.kind() == "region_end";
+        let mut current = item.declaration_kind;
+        if is_region_start {
+            if let Some(next) = plan.items[index + 1..]
+                .iter()
+                .find(|next| next.declaration_kind != DeclarationKind::RegionStartOrEnd)
+            {
+                current = next.declaration_kind;
+            }
+        }
         if index > 0 {
-            let previous = plan.items[index - 1].declaration_kind;
-            let current = plan.items[index].declaration_kind;
-            let blank_lines = if matches!(
-                previous,
-                DeclarationKind::Method | DeclarationKind::InnerClass
-            ) || matches!(
-                current,
-                DeclarationKind::Method | DeclarationKind::InnerClass
-            ) {
+            // Match the formatter's declaration spacing even when bodies are
+            // unformatted. Existing blank lines divide same-kind variables
+            // into groups; adjacent variables don't acquire new blank lines.
+            use DeclarationKind::*;
+            let previous = previous_kind.expect("a preceding declaration exists");
+            let blank_lines = if is_region_end || previous_was_region_start {
+                0
+            } else if matches!(current, Method | InnerClass) {
+                config.blank_lines_around_definitions
+            } else if matches!(previous, Method | InnerClass) {
                 2
+            } else if previous == current {
+                u16::from(
+                    item.has_blank_line_before
+                        && plan.items[index - 1].child_index < item.child_index,
+                )
+            } else if matches!(
+                previous,
+                ClassAnnotation | ClassName | Extends | ClassDocstring
+            ) && matches!(
+                current,
+                ClassAnnotation | ClassName | Extends | ClassDocstring
+            ) {
+                0
             } else {
                 1
             };
@@ -193,6 +227,10 @@ fn reorder_source_slices(root: Node, plan: &ReorderPlan, source: &str) -> Option
             }
         }
         reordered.push_str(&source[slices[index].clone()]);
+        if item.declaration_kind != DeclarationKind::RegionStartOrEnd || previous_kind.is_none() {
+            previous_kind = Some(current);
+        }
+        previous_was_region_start = is_region_start;
     }
     reordered.push_str(&source[last_end..]);
 
