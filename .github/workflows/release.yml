@@ -3,9 +3,16 @@ name: Release
 on:
   push:
     tags: ["*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build
+        required: true
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   build-binaries:
@@ -22,6 +29,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -51,12 +60,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Verify tag matches Cargo version
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
         run: python -c 'import os,tomllib; assert os.environ["RELEASE_TAG"] == tomllib.load(open("Cargo.toml", "rb"))["package"]["version"], "tag and Cargo version differ"'
       - name: Package addon, types and examples
         run: python .github/package_release.py --only common --output artifacts
@@ -73,6 +82,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
@@ -81,5 +92,4 @@ jobs:
       - name: Create release draft for review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.ref_name }}
         run: gh release create "$RELEASE_TAG" artifacts/*.zip --verify-tag --draft --title "gdguard $RELEASE_TAG" --notes-file release-notes.md

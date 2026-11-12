@@ -35,3 +35,7 @@ creates a **draft** GitHub release for review. Review all platform jobs and
 assets before publishing it. Local Linux validation cannot establish that
 all remote targets compile. No tag or release is created as part of roadmap
 completion. Nothing is ever sent upstream to GDQuest.
+
+If the tag push doesn't start a run, manually dispatch the Release workflow
+on `main` with its `tag` input set to the existing release tag. Every job
+checks out that tag and verifies its version before creating the draft.
