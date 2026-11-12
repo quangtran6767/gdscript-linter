@@ -26,8 +26,8 @@ Godot after copying native assets. Each native archive is platform-specific.
 A maintainer chooses a version explicitly. Update root Cargo.toml, Cargo.lock,
 addon versions, native package version if appropriate, and CHANGELOG before
 creating a matching plain `X.Y.Z` tag. The workflow refuses a tag whose version
-differs from the root package. This development branch retains 0.28.0 until
-that decision; completed roadmap milestones are not published release numbers.
+differs from the root package. Completed roadmap milestones are not published
+release numbers until a maintainer prepares a release.
 
 Pushing an explicitly selected tag triggers six platform/architecture builds,
 packages CLI/legacy alias/native libraries and shared addon/rule assets, then

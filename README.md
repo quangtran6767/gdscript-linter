@@ -6,6 +6,14 @@ remaining diagnostics as JSON, repair them and run it again.
 
 ## Install
 
+Download the CLI ZIP for your operating system and architecture from
+[Releases](https://github.com/quangtran6767/gdscript-linter/releases/latest).
+Extract it and put `gdguard` (Linux/macOS) or `gdguard.exe` (Windows) in a
+folder on your `PATH`. On Linux/macOS, run `chmod +x gdguard` if needed.
+No Rust installation is required for prebuilt binaries.
+
+To build from source instead:
+
 ```sh
 cargo build --locked --release --bin gdguard
 cp target/release/gdguard ~/.local/bin/   # or anywhere on PATH

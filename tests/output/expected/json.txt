@@ -2,7 +2,7 @@
   "version": 1,
   "tool": {
     "name": "gdguard",
-    "version": "0.28.0"
+    "version": "0.28.1"
   },
   "summary": {
     "files": 3,

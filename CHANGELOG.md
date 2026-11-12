@@ -4,6 +4,8 @@ This file documents the changes made to the formatter with each release.
 
 ## Unreleased
 
+## Release 0.28.1 (2026-11-12)
+
 ### Fixed
 
 - Preserve adjacent variable declarations and intentional variable groups when `declaration-order` fixes an unformatted file (#1).

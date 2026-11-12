@@ -243,7 +243,7 @@ checksum = "3489a9e7463353467db3cfe3eb12de31c9b6200e4f928bde4959bf5db5b31d2f"
 
 [[package]]
 name = "gdguard"
-version = "0.28.0"
+version = "0.28.1"
 dependencies = [
  "ast-grep-config",
  "ast-grep-core",
@@ -264,7 +264,7 @@ dependencies = [
 
 [[package]]
 name = "gdguard-gdextension"
-version = "0.22.2"
+version = "0.22.3"
 dependencies = [
  "gdguard",
  "godot",
