@@ -29,7 +29,7 @@ creating a matching plain `X.Y.Z` tag. The workflow refuses a tag whose version
 differs from the root package. Completed roadmap milestones are not published
 release numbers until a maintainer prepares a release.
 
-Pushing an explicitly selected tag triggers six platform/architecture builds,
+Pushing an explicitly selected tag triggers five platform/architecture builds,
 packages CLI/legacy alias/native libraries and shared addon/rule assets, then
 creates a **draft** GitHub release for review. Review all platform jobs and
 assets before publishing it. Local Linux validation cannot establish that
@@ -39,3 +39,7 @@ completion. Nothing is ever sent upstream to GDQuest.
 If the tag push doesn't start a run, manually dispatch the Release workflow
 on `main` with its `tag` input set to the existing release tag. Every job
 checks out that tag and verifies its version before creating the draft.
+
+Release targets are Linux and macOS on x86_64/aarch64, and Windows x86_64.
+Native Windows ARM64 builds are excluded because rquickjs 0.9 doesn't ship
+bindings for `aarch64-pc-windows-msvc`.
